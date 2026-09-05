@@ -1,6 +1,7 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { CheckCircle, Calendar, MapPin, MessageCircle, Home } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -48,20 +49,16 @@ export default function BookingSuccessPage() {
         </div>
 
         <div className="space-y-3">
-          <Button className="w-full" asChild>
-            <Link href="/dashboard/customer">Go to Dashboard</Link>
-          </Button>
+          <Link href="/dashboard/customer" className={cn(buttonVariants(), "w-full")}>
+            Go to Dashboard
+          </Link>
           <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" className="w-full" asChild>
-              <Link href="#">
-                <Calendar className="mr-2 h-4 w-4" /> Add to Cal
-              </Link>
-            </Button>
-            <Button variant="outline" className="w-full" asChild>
-              <Link href="/dashboard/customer/messages">
-                <MessageCircle className="mr-2 h-4 w-4" /> Message
-              </Link>
-            </Button>
+            <Link href="#" className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
+              <Calendar className="mr-2 h-4 w-4" /> Add to Cal
+            </Link>
+            <Link href="/dashboard/customer/messages" className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
+              <MessageCircle className="mr-2 h-4 w-4" /> Message
+            </Link>
           </div>
         </div>
       </div>

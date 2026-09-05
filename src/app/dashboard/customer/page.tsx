@@ -1,4 +1,5 @@
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Calendar, Search, MessageCircle, Activity, MapPin, Clock, ArrowRight } from "lucide-react"
@@ -51,12 +52,12 @@ export default function CustomerDashboardPage() {
             </div>
 
             <div className="flex flex-wrap gap-3 relative z-10">
-              <Button asChild>
-                <Link href="/dashboard/customer/bookings">View Booking</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/dashboard/customer/messages"><MessageCircle className="mr-2 h-4 w-4" /> Message Ahmed</Link>
-              </Button>
+              <Link href="/dashboard/customer/bookings" className={cn(buttonVariants())}>
+                View Booking
+              </Link>
+              <Link href="/dashboard/customer/messages" className={cn(buttonVariants({ variant: "outline" }))}>
+                <MessageCircle className="mr-2 h-4 w-4" /> Message Ahmed
+              </Link>
             </div>
           </CardContent>
         </Card>

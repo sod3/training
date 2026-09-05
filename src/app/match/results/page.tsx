@@ -1,6 +1,7 @@
 import { getTrainers } from "@/lib/services/trainers"
 import { TrainerCard } from "@/components/marketplace/trainer-card"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { Check, SlidersHorizontal } from "lucide-react"
 
@@ -50,9 +51,9 @@ export default async function MatchResultsPage() {
       </div>
       
       <div className="mt-12 flex justify-center">
-        <Button variant="outline" size="lg" asChild>
-          <Link href="/trainers">View all trainers in your area</Link>
-        </Button>
+        <Link href="/trainers" className={cn(buttonVariants({ variant: "outline", size: "lg" }))}>
+          View all trainers in your area
+        </Link>
       </div>
     </div>
   )

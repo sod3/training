@@ -1,6 +1,7 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,11 +50,9 @@ export function RoleSwitcher() {
   return (
     <div className="fixed bottom-4 left-4 z-50">
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="shadow-md bg-background flex items-center gap-2 border-primary/20">
-            <Settings2 className="h-4 w-4" />
-            <span className="capitalize hidden sm:inline-block">Dev: {role}</span>
-          </Button>
+        <DropdownMenuTrigger className={cn(buttonVariants({ variant: "outline", size: "sm" }), "shadow-md bg-background flex items-center gap-2 border-primary/20")}>
+          <Settings2 className="h-4 w-4" />
+          <span className="capitalize hidden sm:inline-block">Dev: {role}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Switch Role</DropdownMenuLabel>

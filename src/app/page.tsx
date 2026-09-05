@@ -3,7 +3,8 @@ import { SocialProof } from "@/components/marketplace/social-proof"
 import { GoalDiscovery } from "@/components/marketplace/goal-discovery"
 import { TrainersNearYou } from "@/components/marketplace/trainers-near-you"
 import { HowItWorks } from "@/components/marketplace/how-it-works"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import Link from "next/link"
 
 export default function Home() {
@@ -65,9 +66,9 @@ export default function Home() {
           <p className="text-lg opacity-90 max-w-[600px]">
             Join thousands of others who found their perfect match. Start your journey today with a verified professional.
           </p>
-          <Button size="lg" variant="secondary" className="font-bold text-base h-14 px-8 mt-4" asChild>
-            <Link href="/match">FIND MY TRAINER</Link>
-          </Button>
+          <Link href="/match" className={cn(buttonVariants({ size: "lg", variant: "secondary" }), "font-bold text-base h-14 px-8 mt-4")}>
+            FIND MY TRAINER
+          </Link>
         </div>
       </section>
     </>

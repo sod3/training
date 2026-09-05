@@ -1,6 +1,6 @@
 import { getFeaturedTrainers } from "@/lib/services/trainers"
 import { TrainerCard } from "@/components/marketplace/trainer-card"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 
@@ -17,11 +17,9 @@ export async function TrainersNearYou() {
               Discover highly-rated verified professionals in your area.
             </p>
           </div>
-          <Button variant="outline" className="shrink-0" asChild>
-            <Link href="/trainers">
-              View All <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
+          <Link href="/trainers" className={buttonVariants({ variant: "outline" })}>
+            View All <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">

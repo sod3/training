@@ -1,7 +1,7 @@
 import { Trainer } from "@/types/trainer"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Heart, MapPin, Star, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 
@@ -77,9 +77,9 @@ export function TrainerCard({ trainer, variant = "default" }: TrainerCardProps) 
             <p className="text-xs text-muted-foreground">Starting from</p>
             <p className="font-semibold">{formatPrice(trainer.basePrice)} <span className="text-xs font-normal text-muted-foreground">/session</span></p>
           </div>
-          <Button variant="default" size="sm" asChild>
-            <Link href={`/trainers/${trainer.slug}`}>View Profile</Link>
-          </Button>
+          <Link href={`/trainers/${trainer.slug}`} className={buttonVariants({ variant: "default", size: "sm" })}>
+            View Profile
+          </Link>
         </div>
       </CardContent>
     </Card>

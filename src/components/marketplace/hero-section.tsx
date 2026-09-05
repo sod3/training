@@ -1,10 +1,11 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, MapPin, Target } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
+import { cn } from "@/lib/utils"
 
 export function HeroSection() {
   return (
@@ -46,16 +47,14 @@ export function HeroSection() {
                     className="border-0 shadow-none focus-visible:ring-0 px-1"
                   />
                 </div>
-                <Button size="lg" className="w-full mt-2" asChild>
-                  <Link href="/match">
-                    <Search className="mr-2 h-4 w-4" /> FIND MY TRAINER
-                  </Link>
-                </Button>
+                <Link href="/match" className={cn(buttonVariants({ size: "lg" }), "w-full mt-2")}>
+                  <Search className="mr-2 h-4 w-4" /> FIND MY TRAINER
+                </Link>
               </div>
               <div className="flex items-center justify-center pt-2">
-                <Button variant="link" asChild className="text-muted-foreground">
-                  <Link href="/trainers">Or browse all trainers</Link>
-                </Button>
+                <Link href="/trainers" className={cn(buttonVariants({ variant: "link" }), "text-muted-foreground")}>
+                  Or browse all trainers
+                </Link>
               </div>
             </div>
 

@@ -1,6 +1,7 @@
 import { getTrainerBySlug } from "@/lib/services/trainers"
 import { notFound } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ShieldCheck, Star, MapPin, Heart, Share, Calendar, CheckCircle2 } from "lucide-react"
@@ -130,9 +131,9 @@ export default async function TrainerProfilePage({ params }: Props) {
                     <span className="text-muted-foreground ml-1">/ {pkg.sessions} {pkg.sessions === 1 ? 'session' : 'sessions'}</span>
                   </div>
                   <p className="text-muted-foreground text-sm flex-1">{pkg.description}</p>
-                  <Button className={`w-full mt-6 ${pkg.isPopular ? 'bg-primary' : 'variant-outline'}`} asChild>
-                    <Link href={`/checkout?package=${pkg.id}`}>Choose Package</Link>
-                  </Button>
+                  <Link href={`/checkout?package=${pkg.id}`} className={cn(buttonVariants({ className: "w-full mt-6" }), pkg.isPopular ? 'bg-primary text-primary-foreground' : 'variant-outline')}>
+                    Choose Package
+                  </Link>
                 </div>
               ))}
             </div>
@@ -198,9 +199,9 @@ export default async function TrainerProfilePage({ params }: Props) {
               </div>
             </div>
 
-            <Button size="lg" className="w-full font-bold h-12" asChild>
-              <Link href="#packages">Book a Session</Link>
-            </Button>
+            <Link href="#packages" className={cn(buttonVariants({ size: "lg" }), "w-full font-bold h-12")}>
+              Book a Session
+            </Link>
             
             <Button variant="outline" size="lg" className="w-full h-12 mt-3 bg-muted/20">
               Message {trainer.firstName}

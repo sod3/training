@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { siteConfig } from "@/config/site"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Dumbbell, Menu, X } from "lucide-react"
 import { useState } from "react"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
@@ -44,21 +44,19 @@ export function Navbar() {
         </div>
 
         <div className="hidden md:flex md:items-center md:space-x-4">
-          <Button variant="ghost" asChild>
-            <Link href="/login">Log In</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/match">Find My Trainer</Link>
-          </Button>
+          <Link href="/login" className={buttonVariants({ variant: "ghost" })}>
+            Log In
+          </Link>
+          <Link href="/match" className={buttonVariants()}>
+            Find My Trainer
+          </Link>
         </div>
 
         {/* Mobile Nav */}
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon" className="md:hidden">
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Toggle Menu</span>
-            </Button>
+          <SheetTrigger className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:hidden")}>
+            <Menu className="h-5 w-5" />
+            <span className="sr-only">Toggle Menu</span>
           </SheetTrigger>
           <SheetContent side="right" className="pr-0">
             <SheetTitle className="sr-only">Menu</SheetTitle>
@@ -88,12 +86,12 @@ export function Navbar() {
               ))}
             </div>
             <div className="flex flex-col space-y-4 pr-6">
-              <Button variant="outline" className="w-full" asChild onClick={() => setIsOpen(false)}>
-                <Link href="/login">Log In</Link>
-              </Button>
-              <Button className="w-full" asChild onClick={() => setIsOpen(false)}>
-                <Link href="/match">Find My Trainer</Link>
-              </Button>
+              <Link href="/login" className={cn(buttonVariants({ variant: "outline" }), "w-full")} onClick={() => setIsOpen(false)}>
+                Log In
+              </Link>
+              <Link href="/match" className={cn(buttonVariants(), "w-full")} onClick={() => setIsOpen(false)}>
+                Find My Trainer
+              </Link>
             </div>
           </SheetContent>
         </Sheet>
