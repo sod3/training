@@ -1,4 +1,4 @@
-import { Trainer } from "@/types/trainer"
+import { Trainer } from "@/types/trainer";
 
 export const trainers: Trainer[] = [
   {
@@ -7,8 +7,10 @@ export const trainers: Trainer[] = [
     firstName: "Ahmed",
     lastName: "Raza",
     gender: "male",
-    profileImage: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=2070&auto=format&fit=crop",
-    coverImage: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop",
+    profileImage:
+      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=900&auto=format&fit=crop",
+    coverImage:
+      "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop",
     headline: "Certified Strength & Transformation Coach",
     bio: "Training should fit your life, not take it over. With over 6 years of experience helping clients in Karachi achieve their dream physiques, I focus on sustainable habits, progressive overload, and making the journey enjoyable.",
     verifiedIdentity: true,
@@ -20,8 +22,18 @@ export const trainers: Trainer[] = [
     responseTime: "within 15 min",
     locations: ["DHA Phase 6", "Clifton", "Bahria Town Karachi"],
     trainingTypes: ["home", "gym", "outdoor"],
-    specialties: ["Strength Training", "Fat Loss", "Muscle Building", "Functional Fitness", "Mobility"],
-    certifications: ["NASM Certified Personal Trainer", "Level 3 Strength Coaching", "First Aid & CPR"],
+    specialties: [
+      "Strength Training",
+      "Fat Loss",
+      "Muscle Building",
+      "Functional Fitness",
+      "Mobility",
+    ],
+    certifications: [
+      "NASM Certified Personal Trainer",
+      "Level 3 Strength Coaching",
+      "First Aid & CPR",
+    ],
     basePrice: 2500,
     nextAvailable: "Today, 6:00 PM",
     packages: [
@@ -31,7 +43,8 @@ export const trainers: Trainer[] = [
         price: 1500,
         sessions: 1,
         duration: 60,
-        description: "1 x 60-minute session. Fitness assessment and goal consultation."
+        description:
+          "1 x 60-minute session. Fitness assessment and goal consultation.",
       },
       {
         id: "p2_t1",
@@ -39,7 +52,8 @@ export const trainers: Trainer[] = [
         price: 9000,
         sessions: 4,
         duration: 60,
-        description: "4 sessions. Personal workout structure and progress check."
+        description:
+          "4 sessions. Personal workout structure and progress check.",
       },
       {
         id: "p3_t1",
@@ -47,8 +61,9 @@ export const trainers: Trainer[] = [
         price: 17000,
         sessions: 8,
         duration: 60,
-        description: "8 sessions. Custom program, progress tracking, and weekly assessment.",
-        isPopular: true
+        description:
+          "8 sessions. Custom program, progress tracking, and weekly assessment.",
+        isPopular: true,
       },
       {
         id: "p4_t1",
@@ -56,8 +71,9 @@ export const trainers: Trainer[] = [
         price: 30000,
         sessions: 12,
         duration: 60,
-        description: "12 sessions. Ongoing programming, progress dashboard, and trainer messaging."
-      }
+        description:
+          "12 sessions. Ongoing programming, progress dashboard, and trainer messaging.",
+      },
     ],
     reviews: [
       {
@@ -66,8 +82,9 @@ export const trainers: Trainer[] = [
         rating: 5,
         date: "2023-10-15",
         goal: "Build Muscle",
-        comment: "Ahmed completely changed my approach to fitness. Highly recommend!",
-        verified: true
+        comment:
+          "Ahmed completely changed my approach to fitness. Highly recommend!",
+        verified: true,
       },
       {
         id: "r2_t1",
@@ -76,9 +93,9 @@ export const trainers: Trainer[] = [
         date: "2023-09-22",
         goal: "Strength",
         comment: "Professional, punctual, and very knowledgeable.",
-        verified: true
-      }
-    ]
+        verified: true,
+      },
+    ],
   },
   {
     id: "t2",
@@ -86,7 +103,8 @@ export const trainers: Trainer[] = [
     firstName: "Hira",
     lastName: "Khan",
     gender: "female",
-    profileImage: "https://images.unsplash.com/photo-1548690312-e3b507d8c110?q=80&w=1974&auto=format&fit=crop",
+    profileImage:
+      "https://images.unsplash.com/photo-1548690312-e3b507d8c110?q=80&w=1974&auto=format&fit=crop",
     headline: "Women's Fitness & Weight Loss Specialist",
     bio: "Empowering women to feel strong and confident. I specialize in weight loss, post-pregnancy fitness, and general wellness. I create a safe, supportive environment for all my clients.",
     verifiedIdentity: true,
@@ -98,18 +116,27 @@ export const trainers: Trainer[] = [
     responseTime: "within 1 hour",
     locations: ["PECHS", "Gulshan-e-Iqbal", "KDA"],
     trainingTypes: ["home", "online", "gym"],
-    specialties: ["Weight Loss", "Post-Pregnancy Fitness", "General Fitness", "Core Strength"],
-    certifications: ["ACE Certified Personal Trainer", "Pre & Postnatal Coaching", "Nutrition Specialist"],
+    specialties: [
+      "Weight Loss",
+      "Post-Pregnancy Fitness",
+      "General Fitness",
+      "Core Strength",
+    ],
+    certifications: [
+      "ACE Certified Personal Trainer",
+      "Pre & Postnatal Coaching",
+      "Nutrition Specialist",
+    ],
     basePrice: 3000,
     nextAvailable: "Tomorrow, 8:00 AM",
     packages: [
-       {
+      {
         id: "p1_t2",
         title: "Trial Session",
         price: 2000,
         sessions: 1,
         duration: 60,
-        description: "Assessment and introductory workout."
+        description: "Assessment and introductory workout.",
       },
       {
         id: "p2_t2",
@@ -118,10 +145,10 @@ export const trainers: Trainer[] = [
         sessions: 8,
         duration: 60,
         description: "8 sessions focused on sustainable weight loss.",
-        isPopular: true
-      }
+        isPopular: true,
+      },
     ],
-    reviews: []
+    reviews: [],
   },
   {
     id: "t3",
@@ -129,7 +156,8 @@ export const trainers: Trainer[] = [
     firstName: "Omar",
     lastName: "Siddiqui",
     gender: "male",
-    profileImage: "https://images.unsplash.com/photo-1583465584518-e9915152a5c8?q=80&w=2071&auto=format&fit=crop",
+    profileImage:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=900&auto=format&fit=crop",
     headline: "Athletic Performance & Mobility Coach",
     bio: "Whether you are a weekend warrior or looking to move pain-free, I build resilient bodies. Let's unlock your athletic potential.",
     verifiedIdentity: true,
@@ -152,10 +180,10 @@ export const trainers: Trainer[] = [
         price: 2000,
         sessions: 1,
         duration: 60,
-        description: "1 x 60-minute targeted session."
-      }
+        description: "1 x 60-minute targeted session.",
+      },
     ],
-    reviews: []
+    reviews: [],
   },
   {
     id: "t4",
@@ -163,7 +191,8 @@ export const trainers: Trainer[] = [
     firstName: "Sara",
     lastName: "Ali",
     gender: "female",
-    profileImage: "https://images.unsplash.com/photo-1594381898411-846e7d193883?q=80&w=1974&auto=format&fit=crop",
+    profileImage:
+      "https://images.unsplash.com/photo-1594381898411-846e7d193883?q=80&w=1974&auto=format&fit=crop",
     headline: "Yoga & Holistic Health Coach",
     bio: "Mindful movement for a stressful world. I combine yoga, Pilates, and functional training to help you find balance.",
     verifiedIdentity: true,
@@ -187,9 +216,103 @@ export const trainers: Trainer[] = [
         sessions: 8,
         duration: 60,
         description: "8 sessions of mindful movement.",
-        isPopular: true
-      }
+        isPopular: true,
+      },
     ],
-    reviews: []
-  }
-]
+    reviews: [],
+  },
+];
+
+// Additional sample coaches share the same typed marketplace contract.
+trainers.push(
+  {
+    ...trainers[1],
+    id: "t5",
+    slug: "ayesha-malik",
+    firstName: "Ayesha",
+    lastName: "Malik",
+    profileImage:
+      "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=85",
+    headline: "Strength & Everyday Fitness Coach",
+    bio: "Simple, structured training for busy lives. I help beginners build strength with clear guidance and a pace that feels manageable.",
+    locations: ["Clifton", "DHA Phase 6"],
+    specialties: ["Strength Training", "General Fitness", "Muscle Building"],
+    trainingTypes: ["home", "gym", "online"],
+    rating: 4.8,
+    reviewCount: 43,
+    sessionsCompleted: 156,
+    experienceYears: 5,
+    basePrice: 2800,
+    nextAvailable: "Today, 6:30 PM",
+    packages: [
+      {
+        id: "p1_t5",
+        title: "Trial Session",
+        price: 1800,
+        sessions: 1,
+        duration: 60,
+        description:
+          "An assessment, goal conversation, and guided first workout.",
+      },
+      {
+        id: "p2_t5",
+        title: "Strength Starter",
+        price: 10000,
+        sessions: 4,
+        duration: 60,
+        description:
+          "Four guided strength sessions with a personal training plan.",
+      },
+    ],
+    reviews: [],
+  },
+  {
+    ...trainers[3],
+    id: "t6",
+    slug: "mehwish-ahmed",
+    firstName: "Mehwish",
+    lastName: "Ahmed",
+    profileImage:
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=900&q=85",
+    headline: "Mobility & Postnatal Fitness Coach",
+    bio: "A supportive approach to movement, mobility, and returning to a regular routine. Every session meets you where you are.",
+    locations: ["North Nazimabad", "Gulshan-e-Iqbal"],
+    specialties: ["Mobility", "Post-Pregnancy Fitness", "General Fitness"],
+    rating: 4.9,
+    reviewCount: 56,
+    sessionsCompleted: 185,
+    experienceYears: 6,
+    basePrice: 2600,
+    nextAvailable: "Tomorrow, 9:00 AM",
+    certifications: [
+      "ACE Certified Personal Trainer",
+      "Pre & Postnatal Coaching",
+    ],
+    packages: [
+      {
+        id: "p1_t6",
+        title: "Trial Session",
+        price: 1600,
+        sessions: 1,
+        duration: 60,
+        description:
+          "A gentle introduction and a conversation about your goals.",
+      },
+    ],
+    reviews: [],
+  },
+);
+// Every coach has a single-session entry point before committing to a package.
+trainers[3].packages.unshift({
+  id: "p0_t4",
+  title: "Trial Session",
+  price: 2200,
+  sessions: 1,
+  duration: 60,
+  description: "A first session focused on your movement, comfort, and goals.",
+});
+
+// Approximate distances are illustrative, relative to the demo's central Karachi search point.
+trainers.forEach((trainer, index) => {
+  trainer.distanceKm = [2.1, 5.4, 8.2, 3.6, 1.8, 7.3][index];
+});

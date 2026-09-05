@@ -1,76 +1,35 @@
-"use client"
-
-import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Settings2 } from "lucide-react"
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-
-export type AppRole = "visitor" | "customer" | "trainer" | "admin"
-
+"use client";
+import { useRouter } from "next/navigation";
+import { useStore } from "@/components/marketplace/store";
+export type AppRole = "visitor" | "customer" | "trainer" | "admin";
 export function RoleSwitcher() {
-  const [role, setRole] = useState<AppRole>("visitor")
-  const router = useRouter()
-  const [isMounted, setIsMounted] = useState(false)
-
-  useEffect(() => {
-    setIsMounted(true)
-    const savedRole = localStorage.getItem("app_role") as AppRole
-    if (savedRole) {
-      setRole(savedRole)
-    }
-  }, [])
-
-  const handleRoleChange = (newRole: AppRole) => {
-    setRole(newRole)
-    localStorage.setItem("app_role", newRole)
-    
-    // Auto-navigate to the right dashboard for convenience
-    if (newRole === "customer") router.push("/dashboard/customer")
-    else if (newRole === "trainer") router.push("/dashboard/trainer")
-    else if (newRole === "admin") router.push("/admin")
-    else router.push("/")
-  }
-
-  if (!isMounted) return null
-
-  // Only show in development
-  if (process.env.NODE_ENV !== "development") {
-    return null
-  }
-
+  const { state, update } = useStore();
+  const router = useRouter();
+  if (process.env.NODE_ENV !== "development") return null;
   return (
-    <div className="fixed bottom-4 left-4 z-50">
-      <DropdownMenu>
-        <DropdownMenuTrigger className={cn(buttonVariants({ variant: "outline", size: "sm" }), "shadow-md bg-background flex items-center gap-2 border-primary/20")}>
-          <Settings2 className="h-4 w-4" />
-          <span className="capitalize hidden sm:inline-block">Dev: {role}</span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Switch Role</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => handleRoleChange("visitor")}>
-            Visitor
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleRoleChange("customer")}>
-            Customer
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleRoleChange("trainer")}>
-            Trainer
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleRoleChange("admin")}>
-            Admin
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  )
+    <label className="dev-role">
+      <span className="sr-only">Demo role</span>
+      <select
+        value={state.role}
+        onChange={(e) => {
+          const role = e.target.value;
+          update({ role });
+          localStorage.setItem("app_role", role);
+          router.push(
+            role === "visitor"
+              ? "/"
+              : role === "admin"
+                ? "/admin"
+                : `/dashboard/${role}`,
+          );
+        }}
+      >
+        {["visitor", "customer", "trainer", "admin"].map((r) => (
+          <option value={r} key={r}>
+            Demo: {r}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }

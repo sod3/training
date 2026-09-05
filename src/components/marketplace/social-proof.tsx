@@ -1,26 +1,83 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+import { useInView, useReducedMotion } from "framer-motion";
+function Counter({
+  end,
+  suffix,
+  decimal = 0,
+}: {
+  end: number;
+  suffix: string;
+  decimal?: number;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const visible = useInView(ref, { once: true });
+  const reduced = useReducedMotion();
+  const [n, setN] = useState(end);
+  useEffect(() => {
+    if (!visible || reduced) return;
+    let frame = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / 950, 1);
+      setN(end * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [visible, reduced, end]);
+  return (
+    <span ref={ref} aria-label={`${end}${suffix}`}>
+      <span aria-hidden>
+        {n.toLocaleString("en-US", {
+          minimumFractionDigits: decimal,
+          maximumFractionDigits: decimal,
+        })}
+        {suffix}
+      </span>
+    </span>
+  );
+}
 export function SocialProof() {
   return (
-    <section className="border-y bg-muted/30 py-12">
-      <div className="container px-4 md:px-6">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4 divide-x divide-border/50 text-center">
-          <div className="flex flex-col justify-center space-y-1">
-            <h3 className="text-3xl font-bold text-foreground">100+</h3>
-            <p className="text-sm text-muted-foreground font-medium">Verified Trainers</p>
+    <>
+      <section
+        className="container metrics"
+        aria-label="Illustrative marketplace statistics"
+      >
+        {[
+          [100, "+", "Verified trainers"],
+          [2500, "+", "Sessions booked"],
+          [4.9, "★", "Average client rating"],
+          [92, "%", "Would book again"],
+        ].map(([n, s, l]) => (
+          <div key={l}>
+            <strong>
+              <Counter
+                end={Number(n)}
+                suffix={String(s)}
+                decimal={n === 4.9 ? 1 : 0}
+              />
+            </strong>
+            <span>{l}</span>
           </div>
-          <div className="flex flex-col justify-center space-y-1">
-            <h3 className="text-3xl font-bold text-foreground">2,500+</h3>
-            <p className="text-sm text-muted-foreground font-medium">Sessions Booked</p>
-          </div>
-          <div className="flex flex-col justify-center space-y-1">
-            <h3 className="text-3xl font-bold text-foreground">4.9</h3>
-            <p className="text-sm text-muted-foreground font-medium">Average Rating</p>
-          </div>
-          <div className="flex flex-col justify-center space-y-1">
-            <h3 className="text-3xl font-bold text-foreground">92%</h3>
-            <p className="text-sm text-muted-foreground font-medium">Would Book Again</p>
-          </div>
+        ))}
+        <small className="metrics-note">Illustrative demo figures</small>
+      </section>
+      <div
+        className="marquee"
+        aria-label="Verified trainers. Real reviews. Train at home. Transparent pricing. Online coaching. Book in minutes."
+      >
+        <div aria-hidden>
+          {[0, 1].map((i) => (
+            <span key={i}>
+              VERIFIED TRAINERS <b>✳</b> REAL REVIEWS <b>✳</b> TRAIN AT HOME{" "}
+              <b>✳</b> TRANSPARENT PRICING <b>✳</b> ONLINE COACHING <b>✳</b>{" "}
+              BOOK IN MINUTES <b>✳</b>{" "}
+            </span>
+          ))}
         </div>
       </div>
-    </section>
-  )
+    </>
+  );
 }

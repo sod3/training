@@ -1,113 +1,256 @@
-"use client"
-
-import { Button, buttonVariants } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search, MapPin, Target } from "lucide-react"
-import Link from "next/link"
-import { motion } from "framer-motion"
-import { cn } from "@/lib/utils"
-
+"use client";
+import Image from "next/image";
+import Link from "next/link";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+  useSpring,
+} from "framer-motion";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BadgeCheck,
+  ShieldCheck,
+  Star,
+  MapPin,
+  Target,
+  Check,
+} from "lucide-react";
+import { goals, locations } from "@/lib/marketplace";
+import { ease } from "@/lib/motion";
 export function HeroSection() {
+  const router = useRouter();
+  const reduced = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const [goal, setGoal] = useState("");
+  const [location, setLocation] = useState("");
+  const [type, setType] = useState("");
+  const x = useSpring(0, { stiffness: 120, damping: 30 });
+  const y = useSpring(0, { stiffness: 120, damping: 30 });
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end start"],
+  });
+  const scrollY = useTransform(scrollYProgress, [0, 1], [0, 30]);
   return (
-    <section className="relative overflow-hidden bg-background pt-16 md:pt-24 lg:pt-32 pb-16 lg:pb-32">
-      <div className="container px-4 md:px-6">
-        <div className="grid gap-12 lg:grid-cols-2 lg:gap-8 items-center">
-          <motion.div 
+    <section className="hero" ref={ref}>
+      <div className="container hero-grid">
+        <div className="hero-copy">
+          <motion.p
+            className="eyebrow"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <span className="live-dot" /> PERSONAL TRAINING, MATCHED TO YOU
+          </motion.p>
+          <h1>
+            {["Find the trainer", "who gets you", "there."].map((line, i) => (
+              <span className="masked-line" key={line}>
+                <motion.span
+                  initial={{ y: reduced ? 0 : "105%" }}
+                  animate={{ y: 0 }}
+                  transition={{ duration: 0.65, delay: 0.08 + i * 0.1, ease }}
+                  className={i === 2 ? "hero-emphasis" : ""}
+                >
+                  {line}
+                  {i === 2 && (
+                    <span className="heading-arrow" aria-hidden>
+                      ↗
+                    </span>
+                  )}
+                </motion.span>
+              </span>
+            ))}
+          </h1>
+          <motion.p
+            className="hero-description"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35, duration: 0.5 }}
+          >
+            Your goals. Your schedule. Your kind of coach.
+            <br className="desktop-break" /> Meet verified personal trainers who
+            make it personal.
+          </motion.p>
+          <motion.form
+            className="hero-search"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex flex-col justify-center space-y-8"
+            transition={{ delay: 0.45, duration: 0.5 }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              router.push(
+                `/match?${new URLSearchParams({ goal, location, type })}`,
+              );
+            }}
           >
-            <div className="space-y-6">
-              <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl xl:text-6xl/none">
-                Find the trainer <br className="hidden sm:block" />
-                <span className="text-primary">who gets you there.</span>
-              </h1>
-              <p className="max-w-[600px] text-muted-foreground md:text-xl leading-relaxed">
-                Meet verified personal trainers matched to your goals, schedule and location. 
-                Your premium fitness journey starts here.
-              </p>
+            <div className="search-fields">
+              <label>
+                <span>
+                  <Target size={15} /> Your goal
+                </span>
+                <select
+                  aria-label="Your goal"
+                  value={goal}
+                  onChange={(e) => setGoal(e.target.value)}
+                >
+                  <option value="">What moves you?</option>
+                  {goals.map((g) => (
+                    <option key={g}>{g}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>
+                  <MapPin size={15} /> Location
+                </span>
+                <select
+                  aria-label="Location"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                >
+                  <option value="">Karachi, anywhere</option>
+                  {locations.map((l) => (
+                    <option key={l}>{l}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>
+                  <ShieldCheck size={15} /> Train your way
+                </span>
+                <select
+                  aria-label="Training type"
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                >
+                  <option value="">Home, gym or online</option>
+                  {["home", "gym", "outdoor", "online"].map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+              </label>
             </div>
-            
-            <div className="w-full max-w-md space-y-4">
-              <div className="flex flex-col gap-2 p-2 bg-card border rounded-xl shadow-sm">
-                <div className="flex items-center gap-2 px-3 py-2 border-b">
-                  <Target className="w-5 h-5 text-muted-foreground" />
-                  <Input 
-                    type="text" 
-                    placeholder="What is your goal?" 
-                    className="border-0 shadow-none focus-visible:ring-0 px-1"
-                  />
-                </div>
-                <div className="flex items-center gap-2 px-3 py-2 border-b">
-                  <MapPin className="w-5 h-5 text-muted-foreground" />
-                  <Input 
-                    type="text" 
-                    placeholder="Where are you located?" 
-                    className="border-0 shadow-none focus-visible:ring-0 px-1"
-                  />
-                </div>
-                <Link href="/match" className={cn(buttonVariants({ size: "lg" }), "w-full mt-2")}>
-                  <Search className="mr-2 h-4 w-4" /> FIND MY TRAINER
-                </Link>
-              </div>
-              <div className="flex items-center justify-center pt-2">
-                <Link href="/trainers" className={cn(buttonVariants({ variant: "link" }), "text-muted-foreground")}>
-                  Or browse all trainers
-                </Link>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted-foreground font-medium">
-              <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary">✓</span>
-                Identity Verified
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary">✓</span>
-                Real Client Reviews
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary">✓</span>
-                Transparent Pricing
-              </div>
-            </div>
-          </motion.div>
-          
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="mx-auto flex w-full max-w-[500px] items-center justify-center lg:max-w-none lg:justify-end"
-          >
-            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl md:aspect-square lg:aspect-[4/5]">
-              {/* Using a premium fitness placeholder */}
-              <img
-                src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1000&auto=format&fit=crop"
-                alt="Personal Trainer coaching a client"
-                className="object-cover w-full h-full"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-              
-              <div className="absolute bottom-6 left-6 right-6 p-4 bg-background/95 backdrop-blur rounded-xl border shadow-lg">
-                <div className="flex items-center gap-4">
-                  <div className="flex -space-x-2">
-                    <img className="inline-block h-10 w-10 rounded-full border-2 border-background object-cover" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" alt=""/>
-                    <img className="inline-block h-10 w-10 rounded-full border-2 border-background object-cover" src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80" alt=""/>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-background bg-primary text-xs font-medium text-primary-foreground">
-                      4.9★
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Join 2,500+ users</p>
-                    <p className="text-xs text-muted-foreground">who found their perfect match.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+            <button className="btn">
+              Find my trainer <ArrowRight size={18} />
+            </button>
+          </motion.form>
+          <div className="hero-browse">
+            <Link href="/trainers" className="text-link">
+              Just looking? Browse trainers <ArrowUpRight size={16} />
+            </Link>
+            <span>It starts with one session.</span>
+          </div>
+          <div className="hero-trust">
+            {[
+              "Identity verified",
+              "Real client reviews",
+              "Transparent pricing",
+            ].map((t) => (
+              <span key={t}>
+                <Check size={14} />
+                {t}
+              </span>
+            ))}
+          </div>
         </div>
+        <motion.div
+          className="hero-visual"
+          initial={{ opacity: 0, scale: reduced ? 1 : 1.04 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, duration: 0.8, ease }}
+          style={{ y: reduced ? 0 : scrollY }}
+          onPointerMove={(e) => {
+            if (reduced || e.pointerType !== "mouse") return;
+            const r = e.currentTarget.getBoundingClientRect();
+            x.set(((e.clientX - r.left - r.width / 2) / r.width) * 7);
+            y.set(((e.clientY - r.top - r.height / 2) / r.height) * 7);
+          }}
+          onPointerLeave={() => {
+            x.set(0);
+            y.set(0);
+          }}
+        >
+          <motion.div className="hero-image" style={{ x, y }}>
+            <Image
+              src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=1400&q=85"
+              alt="Personal trainer guiding a client through a strength exercise"
+              fill
+              priority
+              sizes="(max-width: 900px) 100vw, 47vw"
+            />
+            <div className="hero-image-shade" />
+            <span className="image-kicker">
+              <span className="live-dot" /> GOOD PEOPLE. REAL PROGRESS.
+            </span>
+            <div className="image-caption">
+              <span>
+                A stronger you.
+                <br />
+                Starts with the right person.
+              </span>
+              <ArrowUpRight size={38} />
+            </div>
+          </motion.div>
+          <motion.div
+            className="hero-rating"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.75, duration: 0.4 }}
+          >
+            <span className="rating-star">★</span>
+            <div>
+              <strong>
+                4.9 <small>/ 5</small>
+              </strong>
+              <p>84 verified reviews</p>
+            </div>
+          </motion.div>
+          <motion.div
+            className="hero-coach"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.65, duration: 0.5 }}
+          >
+            <div className="coach-top">
+              <div className="coach-avatar">
+                <Image
+                  src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80"
+                  alt="Ahmed Raza"
+                  fill
+                  sizes="44px"
+                />
+              </div>
+              <div>
+                <strong>
+                  Ahmed Raza <BadgeCheck size={17} />
+                </strong>
+                <p>Strength & transformation</p>
+              </div>
+              <span className="coach-rating">
+                <Star size={13} fill="currentColor" /> 4.9
+              </span>
+            </div>
+            <div className="coach-bottom">
+              <span>
+                <i className="live-dot" /> Available today{" "}
+                <small>From Rs. 2,500 / session</small>
+              </span>
+              <Link href="/booking?trainer=ahmed-raza" className="btn small">
+                Book trial <ArrowUpRight size={15} />
+              </Link>
+            </div>
+          </motion.div>
+          <span className="hero-side-note">
+            KARACHI, MEET YOUR NEXT CHAPTER.
+          </span>
+        </motion.div>
       </div>
     </section>
-  )
+  );
 }

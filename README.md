@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Elevate
 
-## Getting Started
+A responsive personal training marketplace for Karachi, built on the existing Next.js 16 App Router project. It uses Geist, Tailwind 4, Base UI, Framer Motion, Lucide, and Recharts.
 
-First, run the development server:
+## Run locally
 
-```bash
+```sh
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+For a production preview:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sh
+npm run build
+npm run start -- --port 3100
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Verify
 
-## Learn More
+```sh
+npm run lint
+npm run build
+npx playwright install chromium
+npm run test:e2e
+```
 
-To learn more about Next.js, take a look at the following resources:
+The browser tests start a production server on port 3100 (or reuse one already running). They cover public and dashboard routes, nine viewport widths from 320 to 1920 pixels, filter state, mobile sheets, favorites, comparison, matching, booking, simulated payment failure, calendar export, cancellation, applications, and messages.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Architecture
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `src/app`: route wrappers, static information pages, homepage, and error/loading boundaries. Trainer profiles use `generateStaticParams`; unknown trainers return HTTP 404.
+- `src/components/marketplace`: discovery, trainer cards and profiles, filter/map experience, six-step matching, authentication, booking, and confirmation.
+- `src/components/dashboard`: shared responsive workspace for customer, trainer, and admin roles, including bookings, progress, messaging, applications, and booking-value charts.
+- `src/components/marketplace/store.tsx`: typed local demo state, persistence, toast feedback, and comparison tray.
+- `src/data/trainers.ts` and `src/types/trainer.ts`: the original trainer contract and six sample coaches. Every coach has a single-session entry point.
+- `src/lib/marketplace.ts`: shared goal matching, price formatting, date keys, and demo slot generation.
+- `src/lib/motion.ts` and `src/components/motion`: reusable motion settings and viewport reveals.
+- `src/app/globals.css`: semantic color tokens, typography, layouts, breakpoints, focus states, and reduced-motion rules.
 
-## Deploy on Vercel
+## Product flows
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Search supports goal, specialty/name, location, gender, training type, budget, rating, experience, identity verification, and availability. Filters update immediately and share through the URL. List/map mode uses an explicitly illustrative map; distance sorting uses sample distances.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Matching scores are deterministic: the percentage is the share of selected goal, area, training type, price, and time criteria that match. Gender is a strict preference filter. Reasons accompany each result.
+
+Bookings carry the selected trainer, package, date, time, location, and amount through checkout. Occupied slots are unavailable while a booking remains active. All times are PKT. Confirmation exports an `.ics` file, and cancellation follows the displayed 12-hour sample policy.
+
+Trainer accounts can log completed sessions. Customer dashboards show package usage and accept a review after the package is completed. Applications can be approved or declined from the admin workspace.
+
+## Demo boundaries
+
+This remains backend-independent. Profiles, reviews, statistics, credentials, availability, photos, and editorial stories are sample content. Identity and credential badges are distinct; credentials are not claimed as verified when the sample record says otherwise.
+
+Login selects a demo role; it is not authentication or access control. No payment is taken. No email, SMS, support request, or message is sent externally. Bookings, favorites, comparisons, progress, workspace profile, reviews, and messages persist in this browser under `elevate-state`. Clear the site's browser storage to reset the demo.
+
+Photos are served through Next/Image from Unsplash, with responsive sizes and lazy loading. The main hero is prioritized. No fabricated before/after transformation photos or guaranteed outcome claims are used.
+
+The existing Vercel deployment is not changed by local development. Deploy through the project's existing hosting workflow when ready.

@@ -5,6 +5,7 @@ import { siteConfig } from "@/config/site";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { RoleSwitcher } from "@/components/layout/role-switcher";
+import { StoreProvider } from "@/components/marketplace/store";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,12 +35,17 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
-        <Navbar />
-        <main className="flex-1 flex flex-col">
-          {children}
-        </main>
-        <Footer />
-        <RoleSwitcher />
+        <StoreProvider>
+          <a href="#main-content" className="skip-link">
+            Skip to content
+          </a>
+          <Navbar />
+          <main id="main-content" className="flex-1 flex flex-col">
+            {children}
+          </main>
+          <Footer />
+          <RoleSwitcher />
+        </StoreProvider>
       </body>
     </html>
   );

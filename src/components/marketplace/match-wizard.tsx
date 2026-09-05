@@ -1,0 +1,158 @@
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Target,
+  MapPin,
+  Users,
+  Wallet,
+  Clock,
+  House,
+  ShieldCheck,
+} from "lucide-react";
+import { goals, locations } from "@/lib/marketplace";
+const questions = [
+  {
+    id: "goal",
+    title: "What are you working toward?",
+    copy: "A starting point is all you need. Your coach will help with the rest.",
+    options: goals,
+    icon: Target,
+  },
+  {
+    id: "type",
+    title: "Where do you feel your best?",
+    copy: "Find a coach who can meet you where you’re comfortable.",
+    options: ["home", "gym", "outdoor", "online"],
+    icon: House,
+  },
+  {
+    id: "location",
+    title: "Where in Karachi are you?",
+    copy: "A convenient location makes showing up a little easier.",
+    options: locations,
+    icon: MapPin,
+  },
+  {
+    id: "gender",
+    title: "Who would you like to train with?",
+    copy: "Your comfort matters. Choose what feels right.",
+    options: ["female", "male", "no preference"],
+    icon: Users,
+  },
+  {
+    id: "budget",
+    title: "What works for your budget?",
+    copy: "Per session, with clear prices before you book.",
+    options: ["Rs. 1,500–2,500", "Rs. 2,500–4,000", "Rs. 4,000+", "Flexible"],
+    icon: Wallet,
+  },
+  {
+    id: "time",
+    title: "When is your time to move?",
+    copy: "We’ll look for a schedule that works around your day.",
+    options: ["Morning", "Afternoon", "Evening", "Flexible"],
+    icon: Clock,
+  },
+];
+export function MatchWizard({ initial }: { initial: Record<string, string> }) {
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState(initial);
+  const [processing, setProcessing] = useState(false);
+  const router = useRouter();
+  const q = questions[step];
+  const Icon = q.icon;
+  const next = () => {
+    if (!answers[q.id]) return;
+    if (step < 5) setStep(step + 1);
+    else {
+      setProcessing(true);
+      setTimeout(
+        () => router.push(`/match/results?${new URLSearchParams(answers)}`),
+        1200,
+      );
+    }
+  };
+  return (
+    <div className="quiz-page">
+      <div className="quiz-top">
+        <button
+          aria-label="Previous question"
+          disabled={step === 0 || processing}
+          onClick={() => setStep(step - 1)}
+        >
+          <ArrowLeft size={19} />
+        </button>
+        <div className="quiz-progress">
+          <div style={{ width: `${((step + 1) / 6) * 100}%` }} />
+        </div>
+        <span>{step + 1} OF 6</span>
+      </div>
+      {processing ? (
+        <div className="matching-status" role="status">
+          <ShieldCheck size={45} />
+          <h1>Finding your people.</h1>
+          <p>A little thought now. A better fit for you.</p>
+          {[
+            "Matching your goal",
+            "Checking your location",
+            "Comparing availability",
+            "Matching your budget",
+          ].map((s, i) => (
+            <motion.div
+              key={s}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: i * 0.22 }}
+            >
+              <Check size={17} />
+              {s}
+            </motion.div>
+          ))}
+        </div>
+      ) : (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={q.id}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="quiz-content"
+          >
+            <span className="quiz-icon">
+              <Icon size={24} />
+            </span>
+            <p className="eyebrow">LET’S MAKE THIS PERSONAL</p>
+            <h1>{q.title}</h1>
+            <p>{q.copy}</p>
+            <div className="quiz-options">
+              {q.options.map((option) => (
+                <button
+                  key={option}
+                  className={answers[q.id] === option ? "selected" : ""}
+                  aria-pressed={answers[q.id] === option}
+                  onClick={() => setAnswers({ ...answers, [q.id]: option })}
+                >
+                  <span>{option}</span>
+                  <span className="option-check">
+                    {answers[q.id] === option && <Check size={15} />}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <button className="btn" disabled={!answers[q.id]} onClick={next}>
+              {step === 5 ? "Find my matches" : "Continue"}
+              <ArrowRight size={18} />
+            </button>
+            <small>No commitment. Just a better place to start.</small>
+          </motion.div>
+        </AnimatePresence>
+      )}
+    </div>
+  );
+}

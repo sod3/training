@@ -1,59 +1,106 @@
-import { Target, Search, CalendarCheck } from "lucide-react"
-
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { Check, ArrowRight, BadgeCheck, CalendarDays } from "lucide-react";
 export function HowItWorks() {
+  const [active, setActive] = useState(0);
+  const steps = [
+    {
+      title: "Tell us what moves you.",
+      text: "Your goals, your location, your kind of training. A few questions help us get to know you.",
+    },
+    {
+      title: "Find your kind of coach.",
+      text: "Explore your matches. Read reviews, compare approaches, and find someone you connect with.",
+    },
+    {
+      title: "One session. A fresh start.",
+      text: "Choose a time that works. Book a trial before committing to anything more.",
+    },
+  ];
   return (
-    <section className="py-16 md:py-32">
-      <div className="container px-4 md:px-6">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">How it works</h2>
-          <p className="mt-4 text-muted-foreground md:text-lg max-w-[600px] mx-auto">
-            Your fitness journey shouldn't be complicated. We've made finding the right coach as simple as possible.
+    <section className="section story-section" id="how-it-works">
+      <div className="container story-grid">
+        <div className="story-intro">
+          <p className="eyebrow">FROM “ONE DAY” TO DAY ONE</p>
+          <h2>
+            Finding your trainer
+            <br />
+            should feel simple.
+          </h2>
+          <p className="section-copy">
+            Three small steps.
+            <br />A very different kind of fitness journey.
           </p>
+          <Link href="/match" className="btn">
+            Let’s find your fit <ArrowRight size={17} />
+          </Link>
+          <div
+            className="story-demo"
+            aria-label={`Example: ${steps[active].title}`}
+          >
+            <span className="eyebrow">YOUR ELEVATE EXPERIENCE</span>
+            {active === 0 ? (
+              <>
+                <h3>Make it yours.</h3>
+                {["Build muscle", "At home", "DHA, Karachi"].map((t) => (
+                  <div className="demo-option" key={t}>
+                    {t}
+                    <Check size={17} />
+                  </div>
+                ))}
+              </>
+            ) : active === 1 ? (
+              <>
+                <h3>A few good matches.</h3>
+                {["Ahmed Raza", "Hira Khan", "Sara Ali"].map((n, i) => (
+                  <div className="demo-option" key={n}>
+                    <span>
+                      {n} <BadgeCheck size={15} />
+                    </span>
+                    <strong>{96 - i * 3}%</strong>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <>
+                <CalendarDays size={32} className="text-primary my-5" />
+                <h3>You’re booked.</h3>
+                <p>Saturday · 6:30 PM</p>
+                <div className="demo-option">
+                  Your first session <Check size={17} />
+                </div>
+              </>
+            )}
+            <small>Illustrative product preview</small>
+          </div>
         </div>
-        
-        <div className="grid md:grid-cols-3 gap-12 md:gap-8 relative">
-          <div className="hidden md:block absolute top-1/4 left-[15%] right-[15%] h-0.5 bg-border -z-10" />
-          
-          <div className="flex flex-col items-center text-center space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center mb-2 shadow-lg">
-              <Target className="w-8 h-8" />
-            </div>
-            <div className="space-y-2">
-              <span className="text-sm font-bold tracking-wider text-muted-foreground uppercase">Step 01</span>
-              <h3 className="text-xl font-bold">Tell us your goal.</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Whether you want to lose weight, build strength, or improve mobility, we'll ask a few questions to understand your needs.
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex flex-col items-center text-center space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center mb-2 shadow-lg">
-              <Search className="w-8 h-8" />
-            </div>
-            <div className="space-y-2">
-              <span className="text-sm font-bold tracking-wider text-muted-foreground uppercase">Step 02</span>
-              <h3 className="text-xl font-bold">Meet your matches.</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Browse verified profiles, read reviews, and compare packages from top-rated trainers in your area.
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex flex-col items-center text-center space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center mb-2 shadow-lg">
-              <CalendarCheck className="w-8 h-8" />
-            </div>
-            <div className="space-y-2">
-              <span className="text-sm font-bold tracking-wider text-muted-foreground uppercase">Step 03</span>
-              <h3 className="text-xl font-bold">Book. Train. Progress.</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Securely book a trial session or full package. Manage your schedule and track your progress all in one place.
-              </p>
-            </div>
-          </div>
+        <div className="story-steps">
+          {steps.map((s, i) => (
+            <motion.div
+              key={s.title}
+              onViewportEnter={() => setActive(i)}
+              viewport={{ amount: 0.7 }}
+              className={`story-step ${active === i ? "active" : ""}`}
+            >
+              <span className="step-number">0{i + 1}</span>
+              <h3>{s.title}</h3>
+              <p>{s.text}</p>
+              <div className="mobile-step-preview">
+                <Check size={18} />
+                {
+                  [
+                    "Your preferences, all in one place",
+                    "Personalized recommendations",
+                    "Clear pricing. A time that fits.",
+                  ][i]
+                }
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>
-  )
+  );
 }

@@ -1,33 +1,31 @@
-import { getFeaturedTrainers } from "@/lib/services/trainers"
-import { TrainerCard } from "@/components/marketplace/trainer-card"
-import { Button, buttonVariants } from "@/components/ui/button"
-import Link from "next/link"
-import { ArrowRight } from "lucide-react"
-
-export async function TrainersNearYou() {
-  const trainers = await getFeaturedTrainers()
-
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import { trainers } from "@/data/trainers";
+import { TrainerCard } from "./trainer-card";
+import { Reveal } from "@/components/motion/reveal";
+export function TrainersNearYou() {
   return (
-    <section className="py-16 md:py-24 bg-muted/30">
-      <div className="container px-4 md:px-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10">
+    <section className="section container">
+      <Reveal>
+        <div className="section-heading">
           <div>
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Top trainers near you</h2>
-            <p className="text-muted-foreground mt-2 max-w-[600px]">
-              Discover highly-rated verified professionals in your area.
-            </p>
+            <p className="eyebrow">GOOD COACHES. GREAT CONNECTIONS.</p>
+            <h2>
+              Your next chapter.
+              <br />
+              Their expertise.
+            </h2>
           </div>
-          <Link href="/trainers" className={buttonVariants({ variant: "outline" })}>
-            View All <ArrowRight className="ml-2 h-4 w-4" />
+          <Link href="/trainers" className="text-link">
+            Meet all trainers <ArrowUpRight size={18} />
           </Link>
         </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          {trainers.map((trainer) => (
-            <TrainerCard key={trainer.id} trainer={trainer} />
-          ))}
-        </div>
+      </Reveal>
+      <div className="trainer-grid swipe-row">
+        {trainers.slice(0, 4).map((t) => (
+          <TrainerCard key={t.id} trainer={t} />
+        ))}
       </div>
     </section>
-  )
+  );
 }
