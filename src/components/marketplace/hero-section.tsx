@@ -1,9 +1,18 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ArrowDown, Check, MapPin } from "lucide-react";
 export function HeroSection() {
   return <section className="spotter-hero">
-    <div className="spotter-hero-media"><Image src="/images/coaching.webp" alt="A professional male trainer guiding a male client through a dumbbell exercise" fill fetchPriority="high" loading="eager" sizes="100vw"/><div className="spotter-hero-shade"/></div>
+    <div className="spotter-hero-media">
+      <video
+        src="/Trainer.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+        style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+      />
+      <div className="spotter-hero-shade"/>
+    </div>
     <div className="container spotter-hero-content">
       <p className="eyebrow hero-enter"><span className="live-dot"/> PERSONAL TRAINING · MADE PERSONAL</p>
       <h1>{["Find the trainer", "who gets you", "there."].map((line,i)=><span className="masked-line" key={line}><span style={{animationDelay:(.08+i*.1)+"s"}}>{line}</span></span>)}</h1>
