@@ -1,15 +1,13 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
   Check,
   Target,
   MapPin,
-  Users,
-  Wallet,
   Clock,
   House,
   ShieldCheck,
@@ -38,20 +36,6 @@ const questions = [
     icon: MapPin,
   },
   {
-    id: "gender",
-    title: "Who would you like to train with?",
-    copy: "Your comfort matters. Choose what feels right.",
-    options: ["female", "male", "no preference"],
-    icon: Users,
-  },
-  {
-    id: "budget",
-    title: "What works for your budget?",
-    copy: "Per session, with clear prices before you book.",
-    options: ["Rs. 1,500–2,500", "Rs. 2,500–4,000", "Rs. 4,000+", "Flexible"],
-    icon: Wallet,
-  },
-  {
     id: "time",
     title: "When is your time to move?",
     copy: "We’ll look for a schedule that works around your day.",
@@ -68,7 +52,7 @@ export function MatchWizard({ initial }: { initial: Record<string, string> }) {
   const Icon = q.icon;
   const next = () => {
     if (!answers[q.id]) return;
-    if (step < 5) setStep(step + 1);
+    if (step < questions.length - 1) setStep(step + 1);
     else {
       setProcessing(true);
       setTimeout(
@@ -77,7 +61,7 @@ export function MatchWizard({ initial }: { initial: Record<string, string> }) {
       );
     }
   };
-  return (
+  return (<MotionConfig reducedMotion="user">
     <div className="quiz-page">
       <div className="quiz-top">
         <button
@@ -88,9 +72,11 @@ export function MatchWizard({ initial }: { initial: Record<string, string> }) {
           <ArrowLeft size={19} />
         </button>
         <div className="quiz-progress">
-          <div style={{ width: `${((step + 1) / 6) * 100}%` }} />
+          <div style={{ width: `${((step + 1) / questions.length) * 100}%` }} />
         </div>
-        <span>{step + 1} OF 6</span>
+        <span>
+          {step + 1} OF {questions.length}
+        </span>
       </div>
       {processing ? (
         <div className="matching-status" role="status">
@@ -101,7 +87,7 @@ export function MatchWizard({ initial }: { initial: Record<string, string> }) {
             "Matching your goal",
             "Checking your location",
             "Comparing availability",
-            "Matching your budget",
+            "Finding your best matches",
           ].map((s, i) => (
             <motion.div
               key={s}
@@ -146,7 +132,7 @@ export function MatchWizard({ initial }: { initial: Record<string, string> }) {
               ))}
             </div>
             <button className="btn" disabled={!answers[q.id]} onClick={next}>
-              {step === 5 ? "Find my matches" : "Continue"}
+              {step === questions.length - 1 ? "Find my matches" : "Continue"}
               <ArrowRight size={18} />
             </button>
             <small>No commitment. Just a better place to start.</small>
@@ -154,5 +140,6 @@ export function MatchWizard({ initial }: { initial: Record<string, string> }) {
         </AnimatePresence>
       )}
     </div>
+    </MotionConfig>
   );
 }

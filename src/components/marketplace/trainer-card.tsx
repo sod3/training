@@ -1,7 +1,6 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
 import {
   Heart,
   MapPin,
@@ -14,7 +13,7 @@ import {
 import { Trainer } from "@/types/trainer";
 import { useStore } from "./store";
 import { money } from "@/lib/marketplace";
-import { spring } from "@/lib/motion";
+import { VerifiedBadge } from "./verified-badge";
 export function TrainerCard({
   trainer: t,
   variant = "default",
@@ -23,16 +22,10 @@ export function TrainerCard({
   variant?: "default" | "compact" | "horizontal";
 }) {
   const { state, update, notify } = useStore();
-  const reduced = useReducedMotion();
   const saved = state.saved.includes(t.id);
   const compared = state.compare.includes(t.id);
   return (
-    <motion.article
-      layout
-      className={`trainer-card ${variant}`}
-      whileHover={reduced ? undefined : { y: -6 }}
-      transition={spring}
-    >
+    <article className={"trainer-card " + variant}>
       <div className="trainer-photo">
         <Link
           href={`/trainers/${t.slug}`}
@@ -42,18 +35,17 @@ export function TrainerCard({
             src={t.profileImage}
             alt={`${t.firstName} ${t.lastName}, personal trainer`}
             fill
-            sizes="(max-width: 640px) 85vw, (max-width: 1100px) 45vw, 25vw"
+            sizes="(max-width: 640px) 100vw, (max-width: 1100px) 45vw, 33vw"
           />
         </Link>
-        <span
-          className={`photo-label ${t.matchScore !== undefined ? "match-label" : ""}`}
-        >
-          {t.matchScore !== undefined
-            ? `${t.matchScore}% match`
-            : t.verifiedCredentials
-              ? "Credentials verified"
-              : "Identity verified"}
-        </span>
+        {t.matchScore !== undefined ? (
+          <span className="photo-label match-label">{t.matchScore}% match</span>
+        ) : (
+          <VerifiedBadge
+            className="photo-label"
+            credentials={t.verifiedCredentials}
+          />
+        )}
         <button
           className={`favorite ${saved ? "saved" : ""}`}
           aria-label={`${saved ? "Unsave" : "Save"} ${t.firstName}`}
@@ -87,7 +79,7 @@ export function TrainerCard({
           </span>
         </div>
         <p className="trainer-specialty">
-          {t.specialties.slice(0, 2).join(" & ")}
+          {t.headline.replace(/Certified | Coach| Specialist/g, "")}
         </p>
         <p className="trainer-location">
           <MapPin size={14} />
@@ -95,7 +87,7 @@ export function TrainerCard({
           <span>· {t.trainingTypes.slice(0, 2).join(" / ")}</span>
         </p>
         <p className="trainer-meta">
-          {t.reviewCount} reviews <span>·</span> {t.sessionsCompleted} sessions
+          {t.reviewCount} sample reviews <span>·</span> Demo profile
         </p>
         <div className="trainer-price">
           <p>
@@ -130,6 +122,6 @@ export function TrainerCard({
           </button>
         </div>
       </div>
-    </motion.article>
+    </article>
   );
 }

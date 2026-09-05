@@ -1,3 +1,8 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Find your trainer",
+  alternates: { canonical: "/trainers" },
+};
 import { TrainerSearch } from "@/components/marketplace/trainer-search";
 export default async function Page({
   searchParams,

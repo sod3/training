@@ -10,9 +10,6 @@ export default async function Page({
 }) {
   const a = await searchParams;
   const matches = trainers
-    .filter(
-      (t) => !a.gender || a.gender === "no preference" || t.gender === a.gender,
-    )
     .map((t) => {
       const reasons: string[] = [];
       let total = 0;
@@ -63,7 +60,8 @@ export default async function Page({
         reasons,
       };
     })
-    .sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+    .sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
+    .slice(0, 3);
   return (
     <div className="container section">
       <Link
@@ -75,7 +73,7 @@ export default async function Page({
       </Link>
       <div className="page-heading mt-9">
         <p className="eyebrow">A LITTLE MORE PERSONAL</p>
-        <h1>{matches.length} coaches to get to know.</h1>
+        <h1>{matches.length} trainers matched for you.</h1>
         <p>
           Ranked by your preferences. Match percentages show how many selected
           criteria fit.

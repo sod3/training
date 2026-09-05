@@ -17,6 +17,7 @@ import { Trainer } from "@/types/trainer";
 import { trainers } from "@/data/trainers";
 import { money, dateKey, slots } from "@/lib/marketplace";
 import { useStore } from "./store";
+import { VerifiedBadge } from "./verified-badge";
 import { TrainerCard } from "./trainer-card";
 export function Profile({ trainer: t }: { trainer: Trainer }) {
   const { state, update, notify } = useStore();
@@ -48,6 +49,13 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
             {t.firstName} {t.lastName} <BadgeCheck />
           </h1>
           <p>{t.headline}</p>
+          <p className="profile-location-line">
+            <MapPin size={14} />
+            {t.locations[0]} · Karachi <span>Next: {t.nextAvailable}</span>
+          </p>
+          <p className="fine-print">
+            Sample coach · Illustrative reviews, availability and credentials
+          </p>
         </div>
         <div className="profile-actions">
           <button
@@ -138,8 +146,15 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
           <section className="profile-section" id="overview">
             <p className="eyebrow">MEET YOUR COACH</p>
             <h2>A little about {t.firstName}.</h2>
-            <p>{t.bio}</p>
+            <p>{t.bio.slice(0, 220)}</p>
+            {t.bio.length > 220 && (
+              <details>
+                <summary>Read more</summary>
+                <p>{t.bio.slice(220)}</p>
+              </details>
+            )}
             <div className="trust-pills">
+              <VerifiedBadge credentials={t.verifiedCredentials} />
               {t.verifiedIdentity && (
                 <span>
                   <BadgeCheck size={16} />
@@ -345,7 +360,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
         <div className="trainer-grid swipe-row">
           {trainers
             .filter((tr) => tr.id !== t.id)
-            .slice(0, 4)
+            .slice(0, 3)
             .map((tr) => (
               <TrainerCard trainer={tr} key={tr.id} />
             ))}

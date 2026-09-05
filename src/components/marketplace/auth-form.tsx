@@ -14,12 +14,18 @@ export function AuthForm({
 }) {
   const { update, notify } = useStore();
   const router = useRouter();
-  const [role, setRole] = useState(initialRole);
+  const [role, setRole] = useState(
+    ["customer", "trainer", "admin"].includes(initialRole)
+      ? initialRole
+      : "customer",
+  );
+  const [visible, setVisible] = useState(false);
+  const [busy, setBusy] = useState(false);
   return (
     <div className="auth-page">
       <div className="auth-photo">
         <Image
-          src="https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1200&q=85"
+          src="/images/coaching.webp"
           alt="Making time for a focused training session"
           fill
           priority
@@ -43,7 +49,7 @@ export function AuthForm({
         <p className="eyebrow">
           {signup ? "YOUR NEXT CHAPTER" : "BACK IN YOUR CORNER"}
         </p>
-        <h1>{signup ? "Let’s get you started." : "Welcome back."}</h1>
+        <h1>{signup ? "Start training differently." : "Welcome back."}</h1>
         <p>
           {signup
             ? "Make a little space for your goals."
@@ -52,8 +58,9 @@ export function AuthForm({
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            setBusy(true);
             const f = new FormData(e.currentTarget);
-            update({ role, name: String(f.get("name") || "Sara") });
+            update({ role, name: String(f.get("name") || "Hamza") });
             localStorage.setItem("app_role", role);
             notify(
               signup
@@ -86,13 +93,21 @@ export function AuthForm({
           <label className="field">
             Password
             <input
-              type="password"
+              type={visible ? "text" : "password"}
               required
               minLength={6}
               autoComplete={signup ? "new-password" : "current-password"}
               placeholder="At least 6 characters"
             />
           </label>
+          <button
+            className="password-toggle"
+            type="button"
+            aria-pressed={visible}
+            onClick={() => setVisible(!visible)}
+          >
+            {visible ? "Hide password" : "Show password"}
+          </button>
           <fieldset className="filter-group">
             <legend>Explore as</legend>
             <div className="choice-chips">
@@ -109,8 +124,12 @@ export function AuthForm({
               ))}
             </div>
           </fieldset>
-          <button className="btn w-full">
-            {signup ? "Create demo account" : "Log in to demo"}
+          <button className="btn w-full" disabled={busy}>
+            {busy
+              ? "Opening your workspace…"
+              : signup
+                ? "Create demo account"
+                : "Log in to demo"}
             <ArrowRight size={17} />
           </button>
         </form>

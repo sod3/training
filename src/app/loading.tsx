@@ -3,7 +3,7 @@ export default function Loading() {
     <div className="container section" aria-label="Loading page" role="status">
       <div className="skeleton-heading" />
       <div className="trainer-grid">
-        {[0, 1, 2, 3].map((i) => (
+        {[0, 1, 2].map((i) => (
           <div className="skeleton-panel" key={i}>
             <div className="skeleton-image" />
             <div className="skeleton-heading" />

@@ -8,7 +8,7 @@ import {
   MapPin,
   ArrowUpRight,
 } from "lucide-react";
-import { HowItWorks } from "@/components/marketplace/how-it-works";
+import { Reveal } from "@/components/motion/reveal";
 import { FAQ } from "@/components/marketplace/faq";
 import {
   TrainerApplication,
@@ -42,13 +42,13 @@ const copy: Record<
 > = {
   about: {
     eyebrow: "GOOD TRAINING STARTS WITH GOOD PEOPLE",
-    title: "Fitness is personal.\nFinding a trainer should be, too.",
+    title: "Better trainers.\nBetter matches.\nBetter training.",
     intro:
-      "Elevate brings personal trainers and people in Karachi together, around the things that actually matter: goals, comfort, location, and time.",
+      "Spotter brings personal trainers and people in Karachi together, around the things that actually matter: goals, comfort, location, and time.",
     sections: [
       [
         "A better place to start.",
-        "Finding a coach shouldn’t mean scrolling endlessly or guessing what a session costs. Elevate puts approach, availability, and prices in one place.",
+        "Finding a coach shouldn’t mean scrolling endlessly or guessing what a session costs. Spotter puts approach, availability, and prices in one place.",
       ],
       [
         "Built for the way you live.",
@@ -136,7 +136,7 @@ const copy: Record<
     eyebrow: "A SHARED UNDERSTANDING",
     title: "A place to explore.\nA prototype to try.",
     intro:
-      "Elevate is a frontend demonstration of a personal training marketplace, not a live booking service.",
+      "Spotter is a frontend demonstration of a personal training marketplace, not a live booking service.",
     sections: [
       [
         "Sample marketplace content.",
@@ -204,8 +204,53 @@ export default async function Page({
             works.
           </p>
         </div>
-        <HowItWorks />
-        <FAQ />
+        <div className="container journey-grid">
+          <div className="journey-image">
+            <Image
+              src="/images/coaching.webp"
+              alt="A male trainer coaching a male client"
+              fill
+              sizes="(max-width:768px) 100vw, 45vw"
+            />
+          </div>
+          <div>
+            {[
+              [
+                "Tell us where you’re going.",
+                "Choose your goal, location, setting and usual training time.",
+              ],
+              [
+                "Meet your matches.",
+                "See which sample profiles fit your preferences.",
+              ],
+              [
+                "Choose your trainer.",
+                "Get to know their approach, credentials and pricing.",
+              ],
+              [
+                "Book your first session.",
+                "Pick your date, time and session. Review before confirming.",
+              ],
+              [
+                "Start training.",
+                "One session. A clear plan. A stronger routine.",
+              ],
+            ].map(([title, copy], i) => (
+              <Reveal key={title}>
+                <article className="journey-step">
+                  <span>0{i + 1}</span>
+                  <div>
+                    <h2>{title}</h2>
+                    <p>{copy}</p>
+                  </div>
+                </article>
+              </Reveal>
+            ))}
+            <Link className="btn" href="/match">
+              Find my trainer →
+            </Link>
+          </div>
+        </div>
       </>
     );
   if (info === "locations")
@@ -241,14 +286,17 @@ export default async function Page({
           <div>
             <p className="eyebrow">YOUR EXPERTISE DESERVES A PLATFORM</p>
             <h1>
-              Do the coaching.
+              Do great work.
               <br />
-              We’ll help with the rest.
+              We’ll help people find it.
             </h1>
             <p className="section-copy">
               Find clients who fit your approach, manage your sessions, and
               build a reputation that speaks for itself.
             </p>
+            <a className="btn lime mt-6" href="#apply">
+              Apply to join →
+            </a>
             <div className="onboarding-benefits">
               {[
                 [ShieldCheck, "Let your credentials speak."],
@@ -266,7 +314,7 @@ export default async function Page({
             </div>
             <div className="onboarding-photo">
               <Image
-                src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=900&q=80"
+                src="/images/coaching.webp"
                 alt="A coach guiding a client"
                 fill
                 sizes="50vw"
@@ -316,4 +364,19 @@ export default async function Page({
       {info === "help" && <FAQ />}
     </>
   );
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ info: string }>;
+}) {
+  const { info } = await params;
+  return {
+    title: info
+      .split("-")
+      .map((s) => s[0].toUpperCase() + s.slice(1))
+      .join(" "),
+    alternates: { canonical: "/" + info },
+  };
 }

@@ -1,6 +1,5 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
-import { MotionConfig } from "framer-motion";
 import Link from "next/link";
 import { Check, X } from "lucide-react";
 export type Booking = {
@@ -23,7 +22,17 @@ type State = {
   messages: { trainerId: string; text: string }[];
   role: string;
   name: string;
-  applications: { name: string; specialty: string; status: string }[];
+  applications: {
+    name: string;
+    specialty: string;
+    status: string;
+    email?: string;
+    qualifications?: string;
+    location?: string;
+    availability?: string;
+    bio?: string;
+    documentName?: string;
+  }[];
   progress: { date: string; weight: number }[];
   goal: string;
   reviews: { bookingId: string; rating: number; text: string }[];
@@ -54,7 +63,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   /* eslint-disable react-hooks/set-state-in-effect -- Restore browser persistence after the identical SSR snapshot. */
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("elevate-state");
+      const saved = localStorage.getItem("spotter-state");
       if (saved) setState({ ...initial, ...JSON.parse(saved) });
     } catch {}
     setReady(true);
@@ -63,7 +72,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (ready) {
       try {
-        localStorage.setItem("elevate-state", JSON.stringify(state));
+        localStorage.setItem("spotter-state", JSON.stringify(state));
       } catch {}
     }
   }, [state, ready]);
@@ -74,7 +83,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [toast]);
   return (
-    <MotionConfig reducedMotion="user">
       <Context.Provider
         value={{
           state,
@@ -113,7 +121,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           </div>
         )}
       </Context.Provider>
-    </MotionConfig>
   );
 }
 export const useStore = () => useContext(Context);

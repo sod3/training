@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, MotionConfig } from "framer-motion";
 import { CalendarDays, MessageCircle } from "lucide-react";
 import { useStore } from "./store";
 import { trainers } from "@/data/trainers";
@@ -43,15 +43,15 @@ export function BookingSuccess({ reference }: { reference: string }) {
     const data = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//Elevate//Demo Booking//EN",
+      "PRODID:-//Spotter//Demo Booking//EN",
       "BEGIN:VEVENT",
-      `UID:${b.id}@elevate.demo`,
+      `UID:${b.id}@spotter.demo`,
       `DTSTAMP:${format(new Date())}`,
       `DTSTART:${format(start)}`,
       `DTEND:${format(new Date(start.getTime() + duration * 60000))}`,
       `SUMMARY:${escape(`Training with ${t.firstName} ${t.lastName}`)}`,
       `LOCATION:${escape(b.address)}`,
-      "DESCRIPTION:Elevate demo booking. Sample session only.",
+      "DESCRIPTION:Spotter demo booking. Sample session only.",
       "END:VEVENT",
       "END:VCALENDAR",
     ].join("\r\n");
@@ -64,7 +64,7 @@ export function BookingSuccess({ reference }: { reference: string }) {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
-  return (
+  return (<MotionConfig reducedMotion="user">
     <div className="success-page">
       <div className="success-check">
         <svg viewBox="0 0 52 52" fill="none">
@@ -131,5 +131,6 @@ export function BookingSuccess({ reference }: { reference: string }) {
       </div>
       <small>No payment was taken. Your booking is saved on this device.</small>
     </div>
+    </MotionConfig>
   );
 }

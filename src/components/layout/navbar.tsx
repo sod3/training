@@ -2,8 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { ArrowUpRight, ArrowRight, Menu, MapPin } from "lucide-react";
+import { ArrowUpRight, ArrowRight, Menu } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import {
   Sheet,
@@ -14,11 +13,8 @@ import {
 import { useStore } from "@/components/marketplace/store";
 export function Logo() {
   return (
-    <Link href="/" className="brand" aria-label="Elevate home">
-      <span className="brand-mark">
-        <ArrowUpRight strokeWidth={3} />
-      </span>
-      elevate<span className="brand-period">.</span>
+    <Link href="/" className="brand" aria-label="Spotter home">
+      SPOTTER<span className="brand-period">.</span>
     </Link>
   );
 }
@@ -37,11 +33,7 @@ export function Navbar() {
     pathname,
   );
   return (
-    <motion.header
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
-      className={`site-nav ${scrolled ? "scrolled" : ""}`}
+    <header className={`site-nav ${pathname === "/" ? "on-hero" : ""} ${scrolled ? "scrolled" : ""}`}
     >
       <div className="container nav-inner">
         <Logo />
@@ -63,9 +55,6 @@ export function Navbar() {
               ))}
             </nav>
             <div className="nav-actions">
-              <span className="nav-city">
-                <MapPin size={14} /> Karachi
-              </span>
               <Link
                 href={
                   state.role === "visitor"
@@ -78,7 +67,7 @@ export function Navbar() {
               >
                 {state.role === "visitor" ? "Log in" : "Dashboard"}
               </Link>
-              <Link href="/match" className="btn small">
+              <Link href="/match" className="btn lime small">
                 Find my trainer <ArrowRight size={16} />
               </Link>
             </div>
@@ -90,7 +79,7 @@ export function Navbar() {
                 <Menu />
               </SheetTrigger>
               <SheetContent className="p-7">
-                <SheetTitle>Explore Elevate</SheetTitle>
+                <SheetTitle>Explore Spotter</SheetTitle>
                 <nav className="mobile-links">
                   {siteConfig.mainNav.map((item) => (
                     <Link
@@ -121,6 +110,6 @@ export function Navbar() {
           </>
         )}
       </div>
-    </motion.header>
+    </header>
   );
 }

@@ -19,10 +19,32 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: siteConfig.name,
+    default: "Spotter — Find Personal Trainers Near You",
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
+  metadataBase: new URL("https://training-seven-taupe.vercel.app"),
+  openGraph: {
+    title: "Spotter — Find Personal Trainers Near You",
+    description: siteConfig.description,
+    siteName: "Spotter",
+    type: "website",
+    images: [
+      {
+        url: "/images/coaching.webp",
+        width: 1672,
+        height: 941,
+        alt: "Personal training, made personal",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Spotter — Find Personal Trainers Near You",
+    description: siteConfig.description,
+    images: ["/images/coaching.webp"],
+  },
+  icons: { icon: "/icon.svg" },
 };
 
 export default function RootLayout({

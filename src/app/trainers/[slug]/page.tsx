@@ -16,3 +16,19 @@ export default async function Page({
   if (!trainer) notFound();
   return <Profile trainer={trainer} />;
 }
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const t = await getTrainerBySlug(slug);
+  return {
+    title: t
+      ? t.firstName + " " + t.lastName + " — " + t.headline
+      : "Trainer not found",
+    description: t?.bio,
+    alternates: { canonical: "/trainers/" + slug },
+  };
+}

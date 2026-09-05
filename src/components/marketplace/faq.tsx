@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import { Plus } from "lucide-react";
 export const faqs = [
   [
@@ -14,10 +14,6 @@ export const faqs = [
   [
     "How much do trainers charge?",
     "Each trainer sets their prices. Session rates and package totals appear on their profile, and the complete total is shown before you confirm.",
-  ],
-  [
-    "Can I choose a female trainer?",
-    "Absolutely. Use the female trainer filter to discover coaches for home, gym, or online training.",
   ],
   [
     "Can trainers come to my home?",
@@ -38,7 +34,7 @@ export const faqs = [
 ];
 export function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
-  return (
+  return (<MotionConfig reducedMotion="user">
     <section className="section container faq-section">
       <div>
         <p className="eyebrow">A LITTLE CLARITY</p>
@@ -83,5 +79,6 @@ export function FAQ() {
         ))}
       </div>
     </section>
+    </MotionConfig>
   );
 }

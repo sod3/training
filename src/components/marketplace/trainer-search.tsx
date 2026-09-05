@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import {
   MapPin,
   Search,
@@ -24,7 +24,6 @@ export function TrainerSearch({
     q: initial.q || "",
     location: initial.location || "",
     goal: initial.goal || "",
-    gender: initial.gender || "",
     type: initial.type || "",
     availability: initial.availability || "",
     price: initial.price || "5000",
@@ -51,7 +50,6 @@ export function TrainerSearch({
       q: "",
       location: "",
       goal: "",
-      gender: "",
       type: "",
       availability: "",
       price: "5000",
@@ -73,7 +71,6 @@ export function TrainerSearch({
           t.locations.some((l) =>
             l.toLowerCase().includes(filters.location.toLowerCase()),
           )) &&
-        (!filters.gender || t.gender === filters.gender) &&
         (!filters.type ||
           t.trainingTypes.some((type) => type === filters.type)) &&
         t.basePrice <= Number(filters.price) &&
@@ -109,7 +106,7 @@ export function TrainerSearch({
   const filterUI = (
     <>
       <div className="filter-title">
-        <h3>Your kind of training</h3>
+        <h3>Refine your search</h3>
         <button onClick={clear}>Reset</button>
       </div>
       <label className="field">
@@ -136,24 +133,6 @@ export function TrainerSearch({
           ))}
         </select>
       </label>
-      <fieldset className="filter-group">
-        <legend>Trainer preference</legend>
-        {[
-          ["", "No preference"],
-          ["female", "Female"],
-          ["male", "Male"],
-        ].map(([v, l]) => (
-          <label key={v}>
-            <input
-              type="radio"
-              name={open ? "gender-sheet" : "gender"}
-              checked={filters.gender === v}
-              onChange={() => set("gender", v)}
-            />
-            {l}
-          </label>
-        ))}
-      </fieldset>
       <fieldset className="filter-group">
         <legend>Train your way</legend>
         <div className="choice-chips">
@@ -198,7 +177,7 @@ export function TrainerSearch({
         </select>
       </label>
       <label className="field">
-        Minimum rating
+        Rating
         <select
           value={filters.rating}
           onChange={(e) => set("rating", e.target.value)}
@@ -225,16 +204,16 @@ export function TrainerSearch({
           checked={!!filters.verified}
           onChange={(e) => set("verified", e.target.checked ? "true" : "")}
         />
-        Identity verified only
+        Sample identity checks
       </label>
     </>
   );
-  return (
+  return (<MotionConfig reducedMotion="user">
     <div className="container search-page">
       <div className="page-heading">
         <p className="eyebrow">YOUR PEOPLE ARE OUT THERE</p>
-        <h1>Find your kind of trainer.</h1>
-        <p>Good coaching starts with a good connection.</p>
+        <h1>Find your trainer.</h1>
+        <p>Professionals matched to your goals.</p>
       </div>
       <div className="search-input">
         <Search size={19} />
@@ -249,7 +228,72 @@ export function TrainerSearch({
         </span>
       </div>
       <div className="search-layout">
-        <aside className="filter-sidebar">{!open && filterUI}</aside>
+        <div className="desktop-filter-bar compact-filter-bar">
+          {!open && (
+            <>
+              <label className="field">
+                Location
+                <select
+                  value={filters.location}
+                  onChange={(e) => set("location", e.target.value)}
+                >
+                  <option value="">All of Karachi</option>
+                  {locations.map((l) => (
+                    <option key={l}>{l}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                Goal
+                <select
+                  value={filters.goal}
+                  onChange={(e) => set("goal", e.target.value)}
+                >
+                  <option value="">All goals</option>
+                  {goals.map((g) => (
+                    <option key={g}>{g}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                Price · up to {money(Number(filters.price))}
+                <input
+                  aria-label="Maximum session price"
+                  type="range"
+                  min="1500"
+                  max="5000"
+                  step="500"
+                  value={filters.price}
+                  onChange={(e) => set("price", e.target.value)}
+                />
+              </label>
+              <label className="field">
+                Availability
+                <select
+                  value={filters.availability}
+                  onChange={(e) => set("availability", e.target.value)}
+                >
+                  <option value="">Any time</option>
+                  <option value="today">Today</option>
+                  <option value="tomorrow">Tomorrow</option>
+                  <option value="week">This week</option>
+                </select>
+              </label>
+              <label className="field">
+                Training type
+                <select
+                  value={filters.type}
+                  onChange={(e) => set("type", e.target.value)}
+                >
+                  <option value="">Any setting</option>
+                  {["home", "gym", "outdoor", "online"].map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
+        </div>
         <div className="results-area">
           <div className="result-toolbar">
             <div>
@@ -264,7 +308,7 @@ export function TrainerSearch({
             </div>
             <div className="result-controls">
               <button
-                className="btn outline small mobile-filter"
+                className="btn outline small all-filters"
                 onClick={() => setOpen(true)}
               >
                 <SlidersHorizontal size={15} />
@@ -412,5 +456,6 @@ export function TrainerSearch({
         </SheetContent>
       </Sheet>
     </div>
+    </MotionConfig>
   );
 }

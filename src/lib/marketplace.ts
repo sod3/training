@@ -1,5 +1,5 @@
 import { Trainer } from "@/types/trainer";
-export const money = (n: number) => `Rs. ${n.toLocaleString("en-PK")}`;
+export const money = (n: number) => `PKR ${n.toLocaleString("en-PK")}`;
 export const locations = [
   "DHA",
   "Clifton",
@@ -16,7 +16,6 @@ export const goals = [
   "Body Transformation",
   "Sports Performance",
   "General Fitness",
-  "Post-Pregnancy Fitness",
 ];
 export const goalTerms: Record<string, string[]> = {
   "lose weight": ["weight loss", "fat loss"],
@@ -24,7 +23,6 @@ export const goalTerms: Record<string, string[]> = {
   "increase strength": ["strength"],
   "body transformation": ["fat loss", "weight loss", "muscle"],
   "general fitness": ["general fitness", "functional", "conditioning"],
-  "post-pregnancy fitness": ["post-pregnancy"],
 };
 export const matchesGoal = (t: Trainer, goal: string) =>
   !goal ||

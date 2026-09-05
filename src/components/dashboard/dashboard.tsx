@@ -199,7 +199,7 @@ export function Dashboard({
       <aside className="dashboard-nav">
         <p className="eyebrow">
           {isAdmin
-            ? "ELEVATE OPERATIONS"
+            ? "SPOTTER OPERATIONS"
             : isTrainer
               ? "YOUR COACHING BUSINESS"
               : "YOUR TRAINING SPACE"}

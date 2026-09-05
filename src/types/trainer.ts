@@ -1,5 +1,4 @@
 export type TrainingType = "home" | "gym" | "outdoor" | "online";
-export type TrainerGender = "male" | "female" | "no_preference";
 
 export interface TrainerPackage {
   id: string;
@@ -26,7 +25,6 @@ export interface Trainer {
   slug: string;
   firstName: string;
   lastName: string;
-  gender: TrainerGender;
   profileImage: string;
   coverImage?: string;
   headline: string;

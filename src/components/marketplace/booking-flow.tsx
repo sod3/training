@@ -37,6 +37,8 @@ export function BookingFlow({
     params.type || t?.trainingTypes[0] || "home",
   );
   const [address, setAddress] = useState(params.address || "");
+  const [step, setStep] = useState(checkout ? 2 : 0);
+  const [details, setDetails] = useState({ name: "", email: "", phone: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [simulate, setSimulate] = useState(false);
@@ -69,7 +71,8 @@ export function BookingFlow({
     available.includes(time) &&
     date >= dateKey() &&
     date <= dateKey(30) &&
-    t.trainingTypes.some((v) => v === type);
+    t.trainingTypes.some((v) => v === type) &&
+    (type !== "home" || address.trim().length > 0);
   const summaryParams = () =>
     new URLSearchParams({
       trainer: t.slug,
@@ -82,6 +85,10 @@ export function BookingFlow({
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+    if (step === 0) {
+      setStep(1);
+      return;
+    }
     if (!valid) {
       setError(
         "This time is no longer available. Choose another date or time.",
@@ -90,6 +97,16 @@ export function BookingFlow({
     }
     if (!checkout) {
       router.push(`/checkout?${summaryParams()}`);
+      return;
+    }
+    if (step === 2) {
+      const f = new FormData(e.currentTarget);
+      setDetails({
+        name: String(f.get("name")),
+        email: String(f.get("email")),
+        phone: String(f.get("phone")),
+      });
+      setStep(3);
       return;
     }
     if (!navigator.onLine) {
@@ -104,10 +121,9 @@ export function BookingFlow({
       );
       return;
     }
-    const form = new FormData(e.currentTarget);
     setBusy(true);
     const booking: Booking = {
-      id: `ELV-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+      id: `SPT-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
       trainerId: t.id,
       packageId: pkg.id,
       date,
@@ -119,7 +135,7 @@ export function BookingFlow({
           : type === "online"
             ? "Online session"
             : t.locations[0],
-      name: String(form.get("name") || state.name || "Guest"),
+      name: String(details.name || state.name || "Guest"),
       price: pkg.price,
       status: "Confirmed",
     };
@@ -148,72 +164,87 @@ export function BookingFlow({
             : "Pick a session that fits your life. All times are in Karachi (PKT)."}
         </p>
       </div>
+      <div className="booking-steps" aria-label="Booking progress">
+        {["Session", "Schedule", "Details", "Payment"].map((label, i) => (
+          <span
+            key={label}
+            className={step === i ? "active" : ""}
+            aria-current={step === i ? "step" : undefined}
+          >
+            {i + 1} · {label}
+          </span>
+        ))}
+      </div>
       <form onSubmit={submit} className="checkout-grid">
         <div className="booking-form">
           {!checkout ? (
             <>
-              <section className="panel">
-                <h2>Choose your session</h2>
-                <div className="booking-packages">
-                  {t.packages.map((p) => (
-                    <button
-                      type="button"
-                      key={p.id}
-                      className={packageId === p.id ? "selected" : ""}
-                      aria-pressed={packageId === p.id}
-                      onClick={() => setPackageId(p.id)}
-                    >
-                      <div>
-                        <strong>{p.title}</strong>
-                        <small>
-                          {p.sessions} sessions · {p.duration} min each
-                        </small>
-                      </div>
-                      <span>{money(p.price)}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-              <section className="panel">
-                <h2>A time for you</h2>
-                <label className="field">
-                  Date
-                  <input
-                    type="date"
-                    required
-                    min={dateKey()}
-                    max={dateKey(30)}
-                    value={date}
-                    onChange={(e) => {
-                      setDate(e.target.value);
-                      setTime("");
-                    }}
-                  />
-                </label>
-                <fieldset className="filter-group">
-                  <legend>Available times</legend>
-                  <div className="choice-chips">
-                    {available.map((s) => (
+              {step === 0 && (
+                <section className="panel">
+                  <h2>Choose your session</h2>
+                  <div className="booking-packages">
+                    {t.packages.map((p) => (
                       <button
                         type="button"
-                        key={s}
-                        className={time === s ? "selected" : ""}
-                        aria-pressed={time === s}
-                        onClick={() => setTime(s)}
+                        key={p.id}
+                        className={packageId === p.id ? "selected" : ""}
+                        aria-pressed={packageId === p.id}
+                        onClick={() => setPackageId(p.id)}
                       >
-                        {s}
+                        <div>
+                          <strong>{p.title}</strong>
+                          <small>
+                            {p.sessions} sessions · {p.duration} min each
+                          </small>
+                        </div>
+                        <span>{money(p.price)}</span>
                       </button>
                     ))}
                   </div>
-                  {!available.length && (
-                    <p className="fine-print">
-                      No sessions left on this date. Try a different date.
-                    </p>
-                  )}
-                </fieldset>
-              </section>
+                </section>
+              )}
+              {step === 1 && (
+                <section className="panel">
+                  <h2>A time for you</h2>
+                  <label className="field">
+                    Date
+                    <input
+                      type="date"
+                      required
+                      min={dateKey()}
+                      max={dateKey(30)}
+                      value={date}
+                      onChange={(e) => {
+                        setDate(e.target.value);
+                        setTime("");
+                      }}
+                    />
+                  </label>
+                  <fieldset className="filter-group">
+                    <legend>Available times</legend>
+                    <div className="choice-chips">
+                      {available.map((s) => (
+                        <button
+                          type="button"
+                          key={s}
+                          className={time === s ? "selected" : ""}
+                          aria-pressed={time === s}
+                          onClick={() => setTime(s)}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                    {!available.length && (
+                      <p className="fine-print">
+                        No sessions left on this date. Try a different date.
+                      </p>
+                    )}
+                  </fieldset>
+                </section>
+              )}
             </>
-          ) : (
+          ) : step === 2 ? (
             <section className="panel">
               <h2>Your details</h2>
               <label className="field">
@@ -222,7 +253,7 @@ export function BookingFlow({
                   name="name"
                   autoComplete="name"
                   required
-                  defaultValue={state.name}
+                  defaultValue={details.name || state.name}
                   placeholder="Your name"
                 />
               </label>
@@ -231,6 +262,7 @@ export function BookingFlow({
                 <input
                   type="email"
                   name="email"
+                  defaultValue={details.email}
                   autoComplete="email"
                   required
                   placeholder="you@example.com"
@@ -241,6 +273,7 @@ export function BookingFlow({
                 <input
                   type="tel"
                   name="phone"
+                  defaultValue={details.phone}
                   autoComplete="tel"
                   required
                   placeholder="03XX XXXXXXX"
@@ -250,41 +283,43 @@ export function BookingFlow({
                 Demo booking only. No confirmation email or SMS is sent.
               </p>
             </section>
+          ) : null}
+          {step === 0 && (
+            <section className="panel">
+              <h2>Where you’ll train</h2>
+              <div className="choice-chips">
+                {t.trainingTypes.map((v) => (
+                  <button
+                    type="button"
+                    key={v}
+                    aria-pressed={type === v}
+                    className={type === v ? "selected" : ""}
+                    onClick={() => setType(v)}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+              {type === "home" ? (
+                <label className="field mt-5">
+                  Training address
+                  <input
+                    required
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Street, building, and area"
+                  />
+                </label>
+              ) : (
+                <p className="muted mt-5">
+                  {type === "online"
+                    ? "Your trainer will coordinate the online session details in messages."
+                    : `Training in ${t.locations[0]}. Coordinate the exact meeting point in messages.`}
+                </p>
+              )}
+            </section>
           )}
-          <section className="panel">
-            <h2>Where you’ll train</h2>
-            <div className="choice-chips">
-              {t.trainingTypes.map((v) => (
-                <button
-                  type="button"
-                  key={v}
-                  aria-pressed={type === v}
-                  className={type === v ? "selected" : ""}
-                  onClick={() => setType(v)}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
-            {type === "home" ? (
-              <label className="field mt-5">
-                Training address
-                <input
-                  required
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Street, building, and area"
-                />
-              </label>
-            ) : (
-              <p className="muted mt-5">
-                {type === "online"
-                  ? "Your trainer will coordinate the online session details in messages."
-                  : `Training in ${t.locations[0]}. Coordinate the exact meeting point in messages.`}
-              </p>
-            )}
-          </section>
-          {checkout && (
+          {step === 3 && (
             <section className="panel">
               <h2>Payment preview</h2>
               <div className="payment-demo">
@@ -320,7 +355,7 @@ export function BookingFlow({
               </h2>
               <p>
                 <BadgeCheck size={14} />
-                Identity verified
+                Sample profile
               </p>
             </div>
           </div>
@@ -359,7 +394,7 @@ export function BookingFlow({
             </div>
             <div>
               <dt>Service fee</dt>
-              <dd>Rs. 0</dd>
+              <dd>PKR 0</dd>
             </div>
             <div className="order-total">
               <dt>Total</dt>
@@ -379,15 +414,28 @@ export function BookingFlow({
           <button
             type="submit"
             className="btn w-full"
-            disabled={!ready || busy || !valid}
+            disabled={!ready || busy || (step > 0 && !valid)}
           >
             {busy
               ? "Saving your booking…"
-              : checkout
+              : step === 3
                 ? "Confirm demo booking"
-                : "Continue to booking"}
+                : step === 2
+                  ? "Review & payment"
+                  : step === 0
+                    ? "Choose a time"
+                    : "Continue to booking"}
             <ArrowRight size={17} />
           </button>
+          {step > 0 && step !== 2 && (
+            <button
+              type="button"
+              className="text-link mt-4"
+              onClick={() => setStep(step - 1)}
+            >
+              ← Back
+            </button>
+          )}
           <p className="cancellation-note">
             <Check size={15} />
             Free cancellation 12+ hours before

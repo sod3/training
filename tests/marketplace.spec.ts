@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-const widths = [320, 375, 390, 430, 768, 1024, 1280, 1440, 1920];
+const widths = [320, 360, 375, 390, 430, 768, 1024, 1280, 1440, 1728, 1920];
 test("homepage and key screens fit every requested viewport", async ({
   page,
 }) => {
@@ -36,16 +36,16 @@ test("all navigation destinations resolve, unknown profiles show a useful 404", 
     "/",
     "/trainers",
     "/trainers/ahmed-raza",
-    "/trainers/hira-khan",
+    "/trainers/usman-ali",
     "/trainers/omar-siddiqui",
-    "/trainers/sara-ali",
-    "/trainers/ayesha-malik",
-    "/trainers/mehwish-ahmed",
+    "/trainers/bilal-khan",
+    "/trainers/fahad-malik",
+    "/trainers/hassan-ahmed",
     "/match",
     "/match/results",
     "/compare",
-    "/booking?trainer=hira-khan",
-    "/checkout?package=p1_t2",
+    "/booking?trainer=usman-ali",
+    "/checkout?package=p1_t8",
     "/booking/success",
     "/login",
     "/signup",
@@ -90,9 +90,9 @@ test("all navigation destinations resolve, unknown profiles show a useful 404", 
 test("filters, saved trainers, comparison and mobile sheet work", async ({
   page,
 }) => {
-  await page.goto("/trainers?gender=female");
+  await page.goto("/trainers?type=online");
   await expect(page.locator(".trainer-card")).toHaveCount(4);
-  await page.getByRole("button", { name: "Save Hira", exact: true }).click();
+  await page.getByRole("button", { name: "Save Bilal", exact: true }).click();
   await expect(page.getByRole("status").first()).toContainText("Trainer saved");
   await page
     .locator(".trainer-card")
@@ -102,13 +102,13 @@ test("filters, saved trainers, comparison and mobile sheet work", async ({
   await page
     .getByRole("link", { name: "Compare trainers →", exact: true })
     .click();
-  await expect(page.locator(".comparison-grid")).toContainText("Hira Khan");
+  await expect(page.locator(".comparison-grid")).toContainText("Bilal Khan");
   await page.goto("/dashboard/customer/saved");
   await expect(page.locator(".trainer-card")).toHaveCount(1);
   await page.reload();
   await expect(page.locator(".trainer-card")).toHaveCount(1);
   await page.goto("/trainers?goal=Mobility");
-  await expect(page.locator(".trainer-card")).toHaveCount(4);
+  await expect(page.locator(".trainer-card")).toHaveCount(3);
   await page.getByLabel("Search trainers or specialties").fill("zzzzzz");
   await expect(
     page.getByRole("heading", { name: "No exact matches yet." }),
@@ -120,7 +120,10 @@ test("filters, saved trainers, comparison and mobile sheet work", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: /^Filters/ }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await page.getByRole("dialog").getByLabel("Female", { exact: true }).check();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "online", exact: true })
+    .click();
   await page.getByRole("button", { name: "Show 4 trainers" }).click();
   await expect(page.locator(".trainer-card")).toHaveCount(4);
 });
@@ -128,21 +131,14 @@ test("match preferences produce deterministic relevant results", async ({
   page,
 }) => {
   await page.goto("/match");
-  for (const answer of [
-    "Build Muscle",
-    "home",
-    "DHA",
-    "female",
-    "Flexible",
-    "Evening",
-  ]) {
+  for (const answer of ["Build Muscle", "home", "DHA", "Evening"]) {
     await page.getByRole("button", { name: answer, exact: true }).click();
     await page
       .getByRole("button", { name: /Continue|Find my matches/ })
       .click();
   }
   await expect(page).toHaveURL(/match\/results/);
-  await expect(page.locator(".trainer-card").first()).toContainText("Ayesha");
+  await expect(page.locator(".trainer-card").first()).toContainText("Ahmed");
   await expect(page.locator(".trainer-card").first()).toContainText(
     "100% match",
   );
@@ -150,16 +146,20 @@ test("match preferences produce deterministic relevant results", async ({
 test("booking uses selected coach and price, persists, exports calendar, and handles cancellation", async ({
   page,
 }) => {
-  await page.goto("/booking?trainer=hira-khan");
-  await page.getByRole("button", { name: "8:00 AM", exact: true }).click();
+  await page.goto("/booking?trainer=usman-ali");
   await page.getByRole("button", { name: "online", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Choose a time", exact: true })
+    .click();
+  await page.getByRole("button", { name: "8:00 AM", exact: true }).click();
   await page.getByRole("button", { name: "Continue to booking" }).click();
   await expect(page).toHaveURL(/checkout/);
-  await expect(page.locator(".order-summary")).toContainText("Hira Khan");
-  await expect(page.locator(".order-total")).toContainText("Rs. 2,000");
+  await expect(page.locator(".order-summary")).toContainText("Usman Ali");
+  await expect(page.locator(".order-total")).toContainText("PKR 2,000");
   await page.getByLabel("Full name", { exact: true }).fill("Test Client");
   await page.getByLabel("Email", { exact: true }).fill("test@example.com");
   await page.getByLabel("Phone number", { exact: true }).fill("03001234567");
+  await page.getByRole("button", { name: "Review & payment" }).click();
   await page.getByLabel("Test a failed demo payment").check();
   await page.getByRole("button", { name: "Confirm demo booking" }).click();
   await expect(page.locator(".form-error[role=alert]")).toContainText(
@@ -170,16 +170,16 @@ test("booking uses selected coach and price, persists, exports calendar, and han
   await expect(
     page.getByRole("heading", { name: "You’re booked." }),
   ).toBeVisible();
-  await expect(page.locator(".success-page")).toContainText("Hira Khan");
+  await expect(page.locator(".success-page")).toContainText("Usman Ali");
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Add to calendar" }).click();
-  expect((await download).suggestedFilename()).toMatch(/ELV-.*\.ics/);
+  expect((await download).suggestedFilename()).toMatch(/SPT-.*\.ics/);
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "You’re booked." }),
   ).toBeVisible();
   await page.getByRole("link", { name: "View booking →" }).click();
-  await expect(page.locator(".booking-row")).toContainText("Hira Khan");
+  await expect(page.locator(".booking-row")).toContainText("Usman Ali");
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Cancel booking" }).click();
   await expect(page.locator(".booking-row .status")).toHaveText("Cancelled");
@@ -190,10 +190,21 @@ test("trainer applications and messages update demo state", async ({
   await page.goto("/become-a-trainer");
   await page.getByLabel("Full name").fill("Test Coach");
   await page.getByLabel("Email", { exact: true }).fill("coach@example.com");
-  await page.getByLabel("Your specialty").fill("Strength");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page
     .getByLabel("Your qualifications")
     .fill("Sample coaching certificate");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByLabel("Your specialty").fill("Strength");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByLabel("Training locations").fill("DHA");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByLabel("Preferred availability").selectOption("Evening");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page
+    .getByLabel("Your coaching approach")
+    .fill("Thoughtful strength coaching for beginners.");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Submit application" }).click();
   await expect(
@@ -202,7 +213,7 @@ test("trainer applications and messages update demo state", async ({
   await page.goto("/admin/applications");
   await page.getByRole("button", { name: "Approve", exact: true }).click();
   await expect(page.locator(".application-row .status")).toHaveText("Approved");
-  await page.goto("/dashboard/customer/messages?trainer=t2");
+  await page.goto("/dashboard/customer/messages?trainer=t8");
   await page
     .getByLabel("Your message")
     .fill("Hello, I’m interested in a trial.");
@@ -217,17 +228,25 @@ test("booked slots cannot be reused and profile preferences survive reload", asy
   page,
 }) => {
   await page.goto("/booking?trainer=ahmed-raza");
-  await page.getByRole("button", { name: "6:00 PM", exact: true }).click();
   await page.getByRole("button", { name: "gym", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Choose a time", exact: true })
+    .click();
+  await page.getByRole("button", { name: "6:00 PM", exact: true }).click();
   await page.getByRole("button", { name: "Continue to booking" }).click();
   await page.getByLabel("Full name", { exact: true }).fill("Test Member");
   await page.getByLabel("Email", { exact: true }).fill("member@example.com");
   await page.getByLabel("Phone number").fill("03000000000");
+  await page.getByRole("button", { name: "Review & payment" }).click();
   await page.getByRole("button", { name: "Confirm demo booking" }).click();
   await expect(
     page.getByRole("heading", { name: "You’re booked." }),
   ).toBeVisible();
   await page.goto("/booking?trainer=ahmed-raza");
+  await page.getByRole("button", { name: "gym", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Choose a time", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "6:00 PM", exact: true }),
   ).toHaveCount(0);
