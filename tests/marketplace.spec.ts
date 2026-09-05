@@ -273,17 +273,13 @@ test("booked slots cannot be reused and profile preferences survive reload", asy
   await page.reload();
   await expect(page.locator(".profile-review")).toContainText("Clear guidance");
 });
-test("map, price sorting, persisted URL filters, and accessible menu work", async ({
+test("price sorting, persisted URL filters, no fake map, and accessible menu work", async ({
   page,
 }) => {
   await page.goto("/trainers");
   await page.getByLabel("Sort trainers").selectOption("low");
   await expect(page.locator(".trainer-card").first()).toContainText("Omar");
-  await page.getByRole("button", { name: "Show map" }).click();
-  await expect(page.locator(".map-pin")).toHaveCount(6);
-  await page.locator(".map-pin").first().hover();
-  await expect(page.locator(".map-list-card.selected")).toHaveCount(1);
-  await page.getByRole("button", { name: "Show list" }).click();
+  await expect(page.getByRole("button", { name: "Show map" })).toHaveCount(0);
   await page.getByLabel("Maximum session price").fill("2500");
   await page.reload();
   await expect(page.getByLabel("Maximum session price")).toHaveValue("2500");

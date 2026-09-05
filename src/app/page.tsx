@@ -5,8 +5,9 @@ import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { HeroSection } from "@/components/marketplace/hero-section";
 import { TrainerCard } from "@/components/marketplace/trainer-card";
-import { HowItWorks } from "@/components/marketplace/how-it-works";
 import { Reveal } from "@/components/motion/reveal";
+import { HomeMatchExperience } from "@/components/marketplace/home-match-experience";
+import { TrustSection } from "@/components/marketplace/trust-section";
 import { trainers } from "@/data/trainers";
 export default function Home() {
   return (
@@ -39,7 +40,8 @@ export default function Home() {
           illustrative.
         </p>
       </section>
-      <HowItWorks />
+      <HomeMatchExperience />
+      <TrustSection />
       <section className="spotter-story container">
         <Reveal>
           <div className="story-photo">
@@ -55,7 +57,7 @@ export default function Home() {
         <Reveal>
           <div className="story-copy">
             <p className="eyebrow">
-              <span className="section-index">03 /</span> MORE THAN A SESSION
+              <span className="section-index">04 /</span> MORE THAN A SESSION
             </p>
             <h2>
               A little guidance.

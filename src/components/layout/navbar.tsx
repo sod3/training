@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowUpRight, ArrowRight, Menu } from "lucide-react";
+import { ArrowUpRight, ArrowRight, Menu, MapPin } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import {
   Sheet,
@@ -55,6 +55,9 @@ export function Navbar() {
               ))}
             </nav>
             <div className="nav-actions">
+              <Link href="/locations" className="nav-location" aria-label="Explore trainers by location">
+                <MapPin size={14} /> Karachi
+              </Link>
               <Link
                 href={
                   state.role === "visitor"

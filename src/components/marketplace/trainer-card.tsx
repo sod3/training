@@ -87,7 +87,7 @@ export function TrainerCard({
           <span>· {t.trainingTypes.slice(0, 2).join(" / ")}</span>
         </p>
         <p className="trainer-meta">
-          {t.reviewCount} sample reviews <span>·</span> Demo profile
+          {t.reviewCount} reviews <span>·</span> {t.experienceYears} yrs experience
         </p>
         <div className="trainer-price">
           <p>

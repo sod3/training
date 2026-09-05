@@ -1,8 +1,8 @@
 # SPOTTER design and media notes
 
-The homepage contains five moments: cinematic hero, three featured trainers, three concise steps, one illustrative member story, and a final CTA. Warm off-white, near-black and charcoal dominate; lime is reserved for calls to action and selected details. Geist is loaded through next/font. Framer Motion provides shared reveals and honors reduced-motion preferences.
+The homepage now contains six deliberate moments: cinematic hero, three featured trainers, an interactive matching preview, a minimal trust section, one illustrative member story, and a decisive final CTA. Warm off-white, near-black and charcoal dominate; lime is reserved for calls to action and selected details. Geist is loaded through next/font. Framer Motion provides shared reveals and honors reduced-motion preferences.
 
-The existing browser-backed demo contract is preserved: saved trainers, comparisons, bookings, calendar export, cancellation, progress, reviews, messages and application review. Matching now has four questions; booking has four stages; applications have seven steps. No live authentication, verification, external messaging, payment gateway or backend was introduced.
+The existing browser-backed demo contract is preserved: saved trainers, comparisons, bookings, calendar export, cancellation, progress, reviews, messages and application review. Matching has four questions; booking has four stages; applications have seven steps. No live authentication, verification, external messaging, payment gateway or backend was introduced. The old illustrative fake-map interaction was removed rather than presenting fabricated coordinates as functional map data.
 
 ## Generated assets
 

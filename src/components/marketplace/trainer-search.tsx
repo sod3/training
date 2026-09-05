@@ -7,8 +7,6 @@ import {
   Search,
   SlidersHorizontal,
   X,
-  LayoutGrid,
-  Map,
   ArrowUpRight,
 } from "lucide-react";
 import { trainers } from "@/data/trainers";
@@ -33,8 +31,6 @@ export function TrainerSearch({
   });
   const [sort, setSort] = useState("recommended");
   const [open, setOpen] = useState(false);
-  const [map, setMap] = useState(false);
-  const [hover, setHover] = useState("");
   const set = (key: string, value: string) => {
     const next = { ...filters, [key]: value };
     setFilters(next);
@@ -214,6 +210,7 @@ export function TrainerSearch({
         <p className="eyebrow">YOUR PEOPLE ARE OUT THERE</p>
         <h1>Find your trainer.</h1>
         <p>Professionals matched to your goals.</p>
+        <p className="directory-demo-note">Prototype profiles and availability are illustrative.</p>
       </div>
       <div className="search-input">
         <Search size={19} />
@@ -326,13 +323,6 @@ export function TrainerSearch({
                 <option value="low">Price: low to high</option>
                 <option value="high">Price: high to low</option>
               </select>
-              <button
-                className={`icon-button ${map ? "selected" : ""}`}
-                aria-label={map ? "Show list" : "Show map"}
-                onClick={() => setMap(!map)}
-              >
-                {map ? <LayoutGrid size={18} /> : <Map size={18} />}
-              </button>
             </div>
           </div>
           {count > 0 && (
@@ -382,48 +372,6 @@ export function TrainerSearch({
                     {t.firstName} · {t.specialties[0]} ↗
                   </Link>
                 ))}
-              </div>
-            </div>
-          ) : map ? (
-            <div className="map-layout">
-              <div>
-                {results.map((t) => (
-                  <Link
-                    href={`/trainers/${t.slug}`}
-                    key={t.id}
-                    className={`map-list-card ${hover === t.id ? "selected" : ""}`}
-                    onMouseEnter={() => setHover(t.id)}
-                    onFocus={() => setHover(t.id)}
-                  >
-                    <strong>
-                      {t.firstName} {t.lastName}
-                    </strong>
-                    <span>
-                      {t.locations[0]} · {money(t.basePrice)}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-              <div className="mock-map">
-                <span className="map-water">ARABIAN SEA</span>
-                <span className="map-city">KARACHI</span>
-                {results.map((t, i) => (
-                  <Link
-                    key={t.id}
-                    href={`/trainers/${t.slug}`}
-                    aria-label={`View ${t.firstName}, ${money(t.basePrice)}`}
-                    className={`map-pin ${hover === t.id ? "selected" : ""}`}
-                    style={{
-                      left: `${20 + (i % 3) * 26}%`,
-                      top: `${22 + Math.floor(i / 3) * 28}%`,
-                    }}
-                    onMouseEnter={() => setHover(t.id)}
-                    onFocus={() => setHover(t.id)}
-                  >
-                    {money(t.basePrice)}
-                  </Link>
-                ))}
-                <small>Illustrative map · Pins are not exact locations</small>
               </div>
             </div>
           ) : (
