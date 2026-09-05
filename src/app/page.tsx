@@ -1,69 +1,75 @@
-import Image from "next/image";
+import { HeroSection } from "@/components/marketplace/hero-section"
+import { SocialProof } from "@/components/marketplace/social-proof"
+import { GoalDiscovery } from "@/components/marketplace/goal-discovery"
+import { TrainersNearYou } from "@/components/marketplace/trainers-near-you"
+import { HowItWorks } from "@/components/marketplace/how-it-works"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <>
+      <HeroSection />
+      <SocialProof />
+      <GoalDiscovery />
+      <TrainersNearYou />
+      <HowItWorks />
+      
+      {/* Featured Transformation Placeholder Section */}
+      <section className="py-16 bg-foreground text-background">
+        <div className="container px-4 md:px-6">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-6">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                Real results. <br/> Real transformations.
+              </h2>
+              <p className="text-muted text-lg max-w-[500px]">
+                "Working with Ahmed changed my life. In 8 weeks, I lost 9kg, gained muscle, and learned how to train properly."
+              </p>
+              <div className="flex gap-8 border-t border-border/20 pt-6">
+                <div>
+                  <p className="text-2xl font-bold">8 weeks</p>
+                  <p className="text-sm text-muted">Duration</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">-9kg</p>
+                  <p className="text-sm text-muted">Weight lost</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">24</p>
+                  <p className="text-sm text-muted">Sessions</p>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+               {/* Placeholders for Before/After */}
+               <div className="aspect-[3/4] bg-muted/20 rounded-2xl flex items-center justify-center">
+                 <span className="text-muted font-medium">Before</span>
+               </div>
+               <div className="aspect-[3/4] bg-muted/30 rounded-2xl flex items-center justify-center relative overflow-hidden">
+                 <img src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=600&auto=format&fit=crop" className="object-cover w-full h-full opacity-80" alt="After" />
+                 <span className="absolute bottom-4 left-4 bg-background/90 text-foreground px-3 py-1 rounded-full text-sm font-semibold">After</span>
+               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA Section */}
+      <section className="py-24 bg-primary text-primary-foreground relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-black/20 to-transparent" />
+        <div className="container relative z-10 px-4 md:px-6 flex flex-col items-center text-center space-y-8">
+          <h2 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl max-w-[800px]">
+            Your goal deserves the right trainer.
+          </h2>
+          <p className="text-lg opacity-90 max-w-[600px]">
+            Join thousands of others who found their perfect match. Start your journey today with a verified professional.
           </p>
+          <Button size="lg" variant="secondary" className="font-bold text-base h-14 px-8 mt-4" asChild>
+            <Link href="/match">FIND MY TRAINER</Link>
+          </Button>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+      </section>
+    </>
+  )
 }
