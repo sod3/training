@@ -23,7 +23,7 @@ npm run admin:bootstrap
 
 ## Environment
 
-`MONGODB_URI`, `AUTH_SECRET`, and `APP_URL` are required. `ADMIN_EMAIL` and `ADMIN_PASSWORD` are used to provision the administrator. Configure the manual payment receiver details with `PAYMENT_ACCOUNT_NAME`, `JAZZCASH_ACCOUNT_NUMBER`, and `EASYPAISA_ACCOUNT_NUMBER`. Configure the private S3-compatible bucket with `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, and optional `S3_ENDPOINT` for images, payment screenshots, and verification documents. `CRON_SECRET` protects the scheduled hold-expiry, reminder, and upload-cleanup worker at `/api/jobs`.
+`MONGODB_URI`, `AUTH_SECRET`, and `APP_URL` are required. `ADMIN_EMAIL` and `ADMIN_PASSWORD` are used to provision the administrator. Configure the manual payment receiver details with `PAYMENT_ACCOUNT_NAME`, `JAZZCASH_ACCOUNT_NUMBER`, and `EASYPAISA_ACCOUNT_NUMBER`. S3-compatible storage is recommended for uploads; configure `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, and optional `S3_ENDPOINT` when available. Without S3, uploads are stored in MongoDB (up to the application’s 4 MB per-file limit). `CRON_SECRET` protects the scheduled hold-expiry, reminder, and upload-cleanup worker at `/api/jobs`.
 
 ## Application architecture
 
@@ -48,4 +48,4 @@ npm run test:e2e
 
 The backend suite uses a temporary MongoDB replica set and tests authentication validation, role and ownership guards, availability/timezones, partial-overlap races, idempotency, snapshots, payment webhook signatures, review eligibility, favorites, and private conversations. The browser suite starts the production build on port 3200 and checks public pages, responsive layout, secure registration/login, protected workspaces, support requests, and trainer application state.
 
-Deploy the build to Vercel, set every production variable from `.env.example`, use an HTTPS `APP_URL`, run the index/bootstrap commands once against the production database, and configure the JazzCash/EasyPaisa receiver details. Configure the Vercel cron in `vercel.json` or invoke `/api/jobs` once per minute with `Authorization: Bearer $CRON_SECRET`. An S3-compatible provider is required for payment screenshots and other uploads.
+Deploy the build to Vercel, set every production variable from `.env.example`, use an HTTPS `APP_URL`, run the index/bootstrap commands once against the production database, and configure the JazzCash/EasyPaisa receiver details. Configure the Vercel cron in `vercel.json` or invoke `/api/jobs` once per minute with `Authorization: Bearer $CRON_SECRET`. For production scale, configure an S3-compatible provider; otherwise the application uses MongoDB-backed uploads.

@@ -37,6 +37,14 @@ function storage() {
     },
   });
 }
+function hasStorageConfig() {
+  return Boolean(
+    process.env.S3_BUCKET &&
+      process.env.S3_REGION &&
+      process.env.S3_ACCESS_KEY_ID &&
+      process.env.S3_SECRET_ACCESS_KEY,
+  );
+}
 export async function uploadFile(actor: Actor, form: FormData) {
   const file = form.get("file");
   const purpose = form.get("purpose");
@@ -89,7 +97,11 @@ export async function uploadFile(actor: Actor, form: FormData) {
     mime = "image/webp";
   }
   const key = `${String(purpose).toLowerCase()}/${actor.id}/${randomUUID()}.${pdf ? "pdf" : "webp"}`;
-  const client = purpose === "PRIVATE" ? null : storage();
+  // Keep uploads functional on deployments without object storage. MongoDB is
+  // already used for private documents and mediaResponse can serve the same
+  // stored bytes for public and payment-proof uploads. When S3 is configured,
+  // use it to keep binary data out of MongoDB.
+  const client = hasStorageConfig() ? storage() : null;
   if (client)
     await client.send(
       new PutObjectCommand({
@@ -106,7 +118,7 @@ export async function uploadFile(actor: Actor, form: FormData) {
       key,
       mime,
       size: body.length,
-      data: purpose === "PRIVATE" ? body : undefined,
+      data: client ? undefined : body,
       purpose: String(purpose),
     });
     return {
