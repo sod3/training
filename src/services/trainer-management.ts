@@ -150,7 +150,7 @@ export async function trainerAction(
   if (resource === "availability") {
     const input = availabilitySchema.parse(data);
     return mongoose.connection.transaction(async (session) => {
-      await lockTrainer(trainer._id, session);
+      const current = await lockTrainer(trainer._id, session);
       // Existing sessions remain explicit reservations. Removing a rule never cancels them.
       await TrainerAvailability.deleteMany(
         { trainerId: trainer._id },
@@ -160,16 +160,16 @@ export async function trainerAction(
         await TrainerAvailability.create(
           input.rules.map((r) => ({
             ...r,
-            trainerId: trainer._id,
-            timezone: trainer.timezone,
+            trainerId: current._id,
+            timezone: current.timezone,
           })),
           { session },
         );
-      trainer.availabilityReviewStatus = "APPROVED";
-      trainer.availabilityReviewNotes = "";
-      trainer.availabilityReviewedBy = undefined;
-      trainer.availabilityReviewedAt = undefined;
-      await trainer.save({ session });
+      current.availabilityReviewStatus = "APPROVED";
+      current.availabilityReviewNotes = "";
+      current.availabilityReviewedBy = undefined;
+      current.availabilityReviewedAt = undefined;
+      await current.save({ session });
       return {
         message:
           "Availability saved and active immediately. Existing reservations remain scheduled.",

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, useApi } from "@/lib/client-api";
@@ -100,10 +100,10 @@ export function Dashboard({
   const endpoint = `${selectedRole === "admin" ? "admin" : selectedRole === "trainer" ? "trainer" : "dashboard"}/${tab}?${new URLSearchParams({ q, status, page: String(page), days })}`;
   const { data, error, loading, reload } = useApi<Item>(endpoint);
   const items = rows(data?.items);
-  const update = () => {
+  const update = useCallback(() => {
     reload();
     refresh();
-  };
+  }, [refresh, reload]);
   const overview = ["overview", "analytics", "reports", "earnings"].includes(
     tab,
   );
@@ -203,7 +203,7 @@ export function Dashboard({
             )
           )}
         </div>
-        {error ? (
+        {error && !data ? (
           <section className="panel" role="alert">
             <h2>Unable to load this workspace.</h2>
             <p>{error}</p>
@@ -211,7 +211,7 @@ export function Dashboard({
               Try again
             </button>
           </section>
-        ) : loading ? (
+        ) : !data && loading ? (
           <div className="panel" role="status">
             Loading your workspace…
           </div>

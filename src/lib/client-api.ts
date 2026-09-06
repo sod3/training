@@ -37,7 +37,12 @@ export function useApi<T>(path: string | null) {
         if (active) setState({ data, error: "", loading: false });
       })
       .catch((e: Error) => {
-        if (active) setState({ data: null, error: e.message, loading: false });
+        if (active)
+          setState((state) => ({
+            data: state.data,
+            error: e.message,
+            loading: false,
+          }));
       });
     return () => {
       active = false;
