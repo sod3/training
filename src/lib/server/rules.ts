@@ -48,6 +48,27 @@ export type AvailabilityRule = {
   endTime: string;
   trainingTypes: string[];
 };
+// Recurring wall-clock minutes, including overnight and Saturday/Sunday wrap.
+// Adjacent windows are valid. Combine training types into one window when times overlap.
+export function availabilityConflict(rules: AvailabilityRule[]) {
+  const minutes = (time: string) =>
+    Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+  const ranges = rules.map((rule) => {
+    const start = rule.dayOfWeek * 1440 + minutes(rule.startTime);
+    let end = rule.dayOfWeek * 1440 + minutes(rule.endTime);
+    if (end <= start) end += 1440;
+    return { start, end };
+  });
+  for (let i = 0; i < ranges.length; i++)
+    for (let j = i + 1; j < ranges.length; j++)
+      for (const shift of [-10080, 0, 10080])
+        if (
+          ranges[i].start < ranges[j].end + shift &&
+          ranges[i].end > ranges[j].start + shift
+        )
+          return [i + 1, j + 1];
+  return null;
+}
 export function generateSlots(
   date: string,
   zone: string,

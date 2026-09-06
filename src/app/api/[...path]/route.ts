@@ -65,6 +65,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 type Context = { params: Promise<{ path: string[] }> };
 async function handle(request: Request, context: Context) {
+  let operation = "request.parse";
   try {
     const { path } = await context.params;
     const [root, id, action] = path;
@@ -105,7 +106,9 @@ async function handle(request: Request, context: Context) {
         easypaisa:
           process.env.EASYPAISA_ACCOUNT_NUMBER || "Add EasyPaisa number",
       });
+    operation = "MongoDB.connect";
     await connectDB();
+    operation = "request.dispatch";
     if (root === "jobs" && method === "GET") {
       assert(
         process.env.CRON_SECRET &&
@@ -186,6 +189,7 @@ async function handle(request: Request, context: Context) {
             .lean(),
         });
       if (root === "media" && id) return mediaResponse(id, await currentUser());
+      operation = "authentication.requireUser";
       const user = await requireUser(
         root === "admin"
           ? ["ADMIN"]
@@ -208,6 +212,7 @@ async function handle(request: Request, context: Context) {
           ),
         });
       }
+      operation = "dashboard.read";
       if (root === "dashboard" || root === "admin" || root === "trainer")
         return json(await dashboardData(user, id || "overview", params));
       if (root === "bookings" && id) {
@@ -240,12 +245,14 @@ async function handle(request: Request, context: Context) {
       }
       assert(false, "Not found", 404);
     }
+    operation = "request.checkOrigin";
     checkOrigin(request);
     if (root === "uploads") {
       const user = await requireUser();
       await rateLimit(`upload:${user.id}`, 15, 60);
       return json(await uploadFile(user, await request.formData()));
     }
+    operation = "request.parseBody";
     const raw = await request.text();
     assert(raw.length <= 32768, "Request too large", 413);
     let data: unknown;
@@ -265,6 +272,7 @@ async function handle(request: Request, context: Context) {
       await rateLimit(`contact:${requestIp(request)}`, 5, 60);
       return json(await contact(data, await currentUser()));
     }
+    operation = "authentication.requireUser";
     const user = await requireUser(
       root === "admin"
         ? ["ADMIN"]
@@ -272,10 +280,13 @@ async function handle(request: Request, context: Context) {
           ? ["TRAINER"]
           : undefined,
     );
+    operation = "RateLimit.findOneAndUpdate";
     await rateLimit(`write:${user.id}`, 150, 15);
+    operation = "request.action";
     if (root === "admin")
       return json(await adminAction(user, id || "", action, data));
     if (root === "trainer") {
+      operation = "trainer.action";
       if (id === "payouts") return json(await requestPayout(user, data));
       return json(await trainerAction(user, id || "", action, data, method));
     }
@@ -339,7 +350,11 @@ async function handle(request: Request, context: Context) {
       return json(await completeSession(user, id, data));
     assert(false, "Not found", 404);
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(error, {
+      method: request.method,
+      route: new URL(request.url).pathname,
+      operation,
+    });
   }
 }
 function json(data: unknown) {

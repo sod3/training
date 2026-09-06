@@ -10,9 +10,10 @@
     "test:e2e": "playwright test",
     "format": "prettier --write src tests playwright.config.ts",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "tsx --test tests/backend.test.ts",
+    "test": "tsx --test tests/backend.test.ts tests/availability.test.ts",
     "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
     "db:indexes": "tsx scripts/db-indexes.ts",
+    "db:check": "tsx scripts/check-database.ts",
     "db:seed": "tsx scripts/seed.ts"
   },
   "dependencies": {

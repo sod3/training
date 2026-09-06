@@ -11,6 +11,27 @@ export const record = (value: unknown): Item =>
     : {};
 export const rows = (value: unknown): Item[] =>
   Array.isArray(value) ? value.map(record) : [];
+const availabilityRows = (value: unknown): Item[] =>
+  rows(value).map((rule) => ({
+    dayOfWeek:
+      Number.isInteger(Number(rule.dayOfWeek)) &&
+      Number(rule.dayOfWeek) >= 0 &&
+      Number(rule.dayOfWeek) <= 6
+        ? Number(rule.dayOfWeek)
+        : 1,
+    startTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(rule.startTime ?? ""))
+      ? rule.startTime
+      : "09:00",
+    endTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(rule.endTime ?? ""))
+      ? rule.endTime
+      : "17:00",
+    trainingTypes: (() => {
+      const types = Array.isArray(rule.trainingTypes)
+        ? rule.trainingTypes
+        : csv(rule.trainingTypes);
+      return types.length ? types : ["gym"];
+    })(),
+  }));
 const csv = (value: unknown) =>
   String(value || "")
     .split(",")
@@ -292,7 +313,7 @@ export function AvailabilityPanel({
   data: Item;
   reload: () => void;
 }) {
-  const [rules, setRules] = useState(rows(data.rules));
+  const [rules, setRules] = useState(availabilityRows(data.rules));
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const set = (index: number, key: string, value: unknown) =>

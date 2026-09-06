@@ -13,6 +13,9 @@ import {
   User,
 } from "@/models";
 import { assert } from "@/lib/server/errors";
+import { connectDB } from "@/lib/server/db";
+import { databaseOperation } from "@/lib/server/diagnostics";
+import { availabilityConflict } from "@/lib/server/rules";
 import { notifyUser } from "@/lib/server/email";
 import { type Actor } from "@/lib/server/security";
 import {
@@ -21,12 +24,25 @@ import {
   objectId,
   packageSchema,
   profileSchema,
+  timezone,
 } from "@/lib/server/validation";
 import { lockTrainer, settings } from "./bookings";
 
+// Mongoose forwards these options to the driver's withTransaction(). Bound its
+// retry budget below the route's 60-second Vercel limit so failures can be logged.
+const availabilityTransactionOptions = {
+  readConcern: { level: "snapshot" as const },
+  writeConcern: { w: "majority" as const },
+  timeoutMS: 25000,
+};
+
 export async function ownTrainer(actor: Actor) {
   assert(actor.role === "TRAINER", "Trainer access required", 403);
-  const trainer = await TrainerProfile.findOne({ userId: actor.id });
+  objectId.parse(actor.id);
+  await connectDB();
+  const trainer = await databaseOperation("TrainerProfile.findOne(owner)", () =>
+    TrainerProfile.findOne({ userId: actor.id }),
+  );
   assert(trainer, "Trainer profile not found", 404);
   return trainer;
 }
@@ -148,33 +164,77 @@ export async function trainerAction(
     return { message: "Package saved" };
   }
   if (resource === "availability") {
+    assert(!id, "Not found", 404);
+    assert(
+      method === "POST" || method === "PATCH",
+      "Use POST or PATCH to replace the weekly schedule",
+      405,
+    );
     const input = availabilitySchema.parse(data);
-    return mongoose.connection.transaction(async (session) => {
-      const current = await lockTrainer(trainer._id, session);
-      // Existing sessions remain explicit reservations. Removing a rule never cancels them.
-      await TrainerAvailability.deleteMany(
-        { trainerId: trainer._id },
-        { session },
-      );
-      if (input.rules.length)
-        await TrainerAvailability.create(
-          input.rules.map((r) => ({
-            ...r,
-            trainerId: current._id,
-            timezone: current.timezone,
-          })),
-          { session },
+    const conflict = availabilityConflict(input.rules);
+    assert(
+      !conflict,
+      `Time windows ${conflict?.join(" and ")} overlap. Combine them or adjust their times.`,
+      409,
+    );
+    return databaseOperation("TrainerAvailability.transaction", () =>
+      mongoose.connection.transaction(async (session) => {
+        const current = await databaseOperation(
+          "TrainerProfile.lock(availability)",
+          () => lockTrainer(trainer._id, session),
         );
-      current.availabilityReviewStatus = "APPROVED";
-      current.availabilityReviewNotes = "";
-      current.availabilityReviewedBy = undefined;
-      current.availabilityReviewedAt = undefined;
-      await current.save({ session });
-      return {
-        message:
-          "Availability saved and active immediately. Existing reservations remain scheduled.",
-      };
-    });
+        // The zone is server-owned; invalid stored profile data is a server error.
+        if (!timezone.safeParse(current.timezone).success)
+          throw new Error(
+            "TrainerProfile.timezone is not a valid IANA timezone",
+          );
+        // Existing sessions remain explicit reservations. Removing a rule never cancels them.
+        await databaseOperation("TrainerAvailability.deleteMany(replace)", () =>
+          TrainerAvailability.deleteMany(
+            { trainerId: trainer._id },
+            { session },
+          ),
+        );
+        if (input.rules.length)
+          await databaseOperation(
+            "TrainerAvailability.create(weekly rules)",
+            () =>
+              TrainerAvailability.create(
+                input.rules.map((r) => ({
+                  ...r,
+                  trainerId: current._id,
+                  timezone: current.timezone,
+                })),
+                // Mongoose 9 rejects multi-document create with a session unless
+                // writes are explicitly ordered. Keep all rows in this transaction.
+                { session, ordered: true },
+              ),
+          );
+        // Update only review metadata, without revalidating unrelated legacy profile fields.
+        await databaseOperation(
+          "TrainerProfile.updateOne(availability review)",
+          () =>
+            TrainerProfile.updateOne(
+              { _id: current._id },
+              {
+                $set: {
+                  availabilityReviewStatus: "APPROVED",
+                  availabilityReviewNotes: "",
+                },
+                $unset: {
+                  availabilityReviewedBy: 1,
+                  availabilityReviewedAt: 1,
+                },
+              },
+              { session, runValidators: true },
+            ),
+        );
+        return {
+          message:
+            "Availability saved and active immediately. Existing reservations remain scheduled.",
+        };
+      }, availabilityTransactionOptions),
+    );
   }
   if (resource === "exceptions") {
     if (method === "DELETE" && id) {

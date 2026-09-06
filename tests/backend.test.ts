@@ -143,6 +143,45 @@ after(async () => {
   await mongoose.disconnect();
   if (db) await db.stop();
 });
+
+test("trainers can save multiple weekly windows in a transaction", async () => {
+  const rules = [
+    {
+      dayOfWeek: 1,
+      startTime: "09:00",
+      endTime: "12:00",
+      trainingTypes: ["gym"],
+    },
+    {
+      dayOfWeek: 2,
+      startTime: "13:00",
+      endTime: "17:00",
+      trainingTypes: ["gym"],
+    },
+  ];
+  const actor = {
+    ...trainerActor,
+    id: new mongoose.Types.ObjectId().toString(),
+  };
+  const trainer = await TrainerProfile.create({
+    userId: actor.id,
+    slug: "availability-regression",
+  });
+  await trainerAction(actor, "availability", undefined, { rules }, "POST");
+  const saved = await TrainerAvailability.find({ trainerId: trainer._id })
+    .sort({ dayOfWeek: 1 })
+    .lean();
+  assert.equal(saved.length, 2);
+  assert.deepEqual(
+    saved.map(({ dayOfWeek, startTime, endTime, trainingTypes }) => ({
+      dayOfWeek,
+      startTime,
+      endTime,
+      trainingTypes,
+    })),
+    rules,
+  );
+});
 test("signup rejects privileged roles, mismatched passwords and missing consent", () => {
   const body = {
     firstName: "A",

@@ -28,6 +28,7 @@ import {
   User,
 } from "@/models";
 import { assert } from "@/lib/server/errors";
+import { databaseOperation } from "@/lib/server/diagnostics";
 import { type Actor } from "@/lib/server/security";
 import { objectId, settingsSchema } from "@/lib/server/validation";
 import { lockTrainer, settings } from "./bookings";
@@ -423,9 +424,13 @@ export async function dashboardData(
       };
     if (section === "availability" || section === "calendar")
       return {
-        rules: await TrainerAvailability.find({
-          trainerId: trainer._id,
-        }).lean(),
+        rules: await databaseOperation("TrainerAvailability.find(reload)", () =>
+          TrainerAvailability.find({
+            trainerId: trainer._id,
+          })
+            .sort({ dayOfWeek: 1, startTime: 1, _id: 1 })
+            .lean(),
+        ),
         exceptions: await TrainerAvailabilityException.find({
           trainerId: trainer._id,
           end: { $gte: new Date() },

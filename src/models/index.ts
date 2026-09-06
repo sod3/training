@@ -1,4 +1,5 @@
 import mongoose, { Schema, type InferSchemaType } from "mongoose";
+import { DateTime } from "luxon";
 
 const ref = (name: string) => ({
   type: Schema.Types.ObjectId,
@@ -17,7 +18,11 @@ const money = {
   validate: Number.isSafeInteger,
   required: true,
 };
-const options = { timestamps: true as const, strict: "throw" as const };
+const options = {
+  timestamps: true as const,
+  strict: "throw" as const,
+  bufferCommands: false,
+};
 function model<S extends Schema>(name: string, schema: S) {
   return (
     (mongoose.models[name] as mongoose.Model<InferSchemaType<S>> | undefined) ??
@@ -220,12 +225,48 @@ export const TrainerAvailability = model(
   new Schema(
     {
       trainerId: ref("TrainerProfile"),
-      dayOfWeek: { type: Number, min: 0, max: 6, required: true },
-      startTime: { type: String, required: true },
-      endTime: { type: String, required: true },
-      slotDuration: { type: Number, default: 15 },
-      timezone: { type: String, required: true },
-      trainingTypes: [String],
+      dayOfWeek: {
+        type: Number,
+        min: 0,
+        max: 6,
+        required: true,
+        validate: Number.isInteger,
+      },
+      startTime: {
+        type: String,
+        required: true,
+        match: /^([01]\d|2[0-3]):[0-5]\d$/,
+      },
+      endTime: {
+        type: String,
+        required: true,
+        match: /^([01]\d|2[0-3]):[0-5]\d$/,
+        validate: {
+          validator: function (this: { startTime?: string }, end: string) {
+            return end !== this.startTime;
+          },
+          message: "Start and end must differ",
+        },
+      },
+      slotDuration: {
+        type: Number,
+        default: 15,
+        min: 1,
+        validate: Number.isInteger,
+      },
+      timezone: {
+        type: String,
+        required: true,
+        validate: (zone: string) => DateTime.now().setZone(zone).isValid,
+      },
+      trainingTypes: {
+        type: [{ type: String, enum: ["home", "gym", "outdoor", "online"] }],
+        required: true,
+        validate: (types: string[]) =>
+          types.length >= 1 &&
+          types.length <= 4 &&
+          new Set(types).size === types.length,
+      },
       active: { type: Boolean, default: true },
     },
     options,
@@ -356,7 +397,13 @@ export const Payment = model(
       providerId: { type: String, unique: true, sparse: true },
       checkoutUrl: { type: String, select: false },
       payerName: { type: String, trim: true, maxlength: 120 },
-      transactionId: { type: String, trim: true, maxlength: 120 },
+      transactionId: {
+        type: String,
+        trim: true,
+        maxlength: 120,
+        unique: true,
+        sparse: true,
+      },
       proofUploadId: { type: Schema.Types.ObjectId, ref: "Upload" },
       submittedAt: Date,
       reviewedAt: Date,
@@ -383,10 +430,6 @@ export const Payment = model(
     },
     options,
   ),
-);
-Payment.collection.createIndex(
-  { transactionId: 1 },
-  { unique: true, sparse: true },
 );
 export const WebhookEvent = model(
   "WebhookEvent",

@@ -145,10 +145,148 @@ test("trainer signup creates a private draft and privileged signup is rejected",
         data: { ...body, email: "privileged@spotter.test", role: "ADMIN" },
       })
     ).status(),
-  ).toBe(422);
+  ).toBe(400);
   const publicTrainers = await request.get("/api/trainers");
   expect((await publicTrainers.json()).total).toBe(0);
 });
+test("trainer availability persists after adding, editing and removing windows in the production build", async ({
+  page,
+  request,
+}) => {
+  const anonymous = await request.post("/api/trainer/availability", {
+    headers: origin,
+    data: { rules: [] },
+  });
+  expect(anonymous.status()).toBe(401);
+  const signup = {
+    firstName: "Schedule",
+    lastName: "Test",
+    email: `schedule-${Date.now()}@spotter.test`,
+    password: "integration-trainer-password",
+    confirmPassword: "integration-trainer-password",
+    terms: true,
+    role: "TRAINER",
+  };
+  expect(
+    (
+      await page.request.post("/api/auth/signup", {
+        headers: origin,
+        data: signup,
+      })
+    ).status(),
+  ).toBe(200);
+  await page.goto("/trainer/availability");
+  await expect(
+    page.getByRole("heading", { name: "Your weekly schedule" }),
+  ).toBeVisible();
+  const windows = page.locator(".schedule-rule");
+  const persist = async () => {
+    const response = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/trainer/availability") &&
+        response.request().method() === "POST",
+    );
+    await page
+      .getByRole("button", { name: "Save schedule", exact: true })
+      .click();
+    expect((await response).status()).toBe(200);
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { name: "Your weekly schedule" }),
+    ).toBeVisible();
+  };
+  await page.getByRole("button", { name: "Add time window" }).click();
+  await page.getByRole("button", { name: "Add time window" }).click();
+  await windows
+    .nth(1)
+    .getByRole("combobox", { name: "Day", exact: true })
+    .selectOption("2");
+  await persist();
+  await expect(windows).toHaveCount(2);
+  await expect(
+    windows.nth(1).getByRole("combobox", { name: "Day", exact: true }),
+  ).toHaveValue("2");
+  await windows.first().getByLabel("Start", { exact: true }).fill("08:30");
+  await persist();
+  await expect(
+    windows.first().getByLabel("Start", { exact: true }),
+  ).toHaveValue("08:30");
+  await windows
+    .nth(1)
+    .getByRole("button", { name: "Remove", exact: true })
+    .click();
+  await persist();
+  await expect(windows).toHaveCount(1);
+  const loaded = await (
+    await page.request.get("/api/trainer/availability")
+  ).json();
+  expect(loaded.rules).toHaveLength(1);
+  expect(loaded.rules[0].startTime).toBe("08:30");
+  expect(loaded.rules[0].timezone).toBe("Asia/Karachi");
+  const row = {
+    dayOfWeek: 1,
+    startTime: "09:00",
+    endTime: "12:00",
+    trainingTypes: ["gym"],
+  };
+  expect(
+    (
+      await page.request.post("/api/trainer/availability", {
+        headers: origin,
+        data: { rules: [row, row] },
+      })
+    ).status(),
+  ).toBe(409);
+  expect(
+    (
+      await page.request.post("/api/trainer/availability", {
+        headers: origin,
+        data: { rules: [{ ...row, startTime: "25:00" }] },
+      })
+    ).status(),
+  ).toBe(400);
+  expect(
+    (
+      await page.request.post("/api/trainer/availability", {
+        headers: { ...origin, "Content-Type": "application/json" },
+        data: "{invalid",
+      })
+    ).status(),
+  ).toBe(400);
+  expect(
+    (await (await page.request.get("/api/trainer/availability")).json()).rules,
+  ).toHaveLength(1);
+  await windows
+    .first()
+    .getByRole("button", { name: "Remove", exact: true })
+    .click();
+  await persist();
+  await expect(windows).toHaveCount(0);
+  expect(
+    (await (await page.request.get("/api/trainer/availability")).json()).rules,
+  ).toEqual([]);
+  expect(
+    (
+      await request.post("/api/auth/signup", {
+        headers: origin,
+        data: {
+          ...signup,
+          role: "CUSTOMER",
+          email: `schedule-customer-${Date.now()}@spotter.test`,
+        },
+      })
+    ).status(),
+  ).toBe(200);
+  expect(
+    (
+      await request.post("/api/trainer/availability", {
+        headers: origin,
+        data: { rules: [] },
+      })
+    ).status(),
+  ).toBe(403);
+});
+
 test("admin login accesses real records and contact requests reach support", async ({
   request,
 }) => {

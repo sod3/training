@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { AuthSession, RateLimit, User } from "@/models";
 import { connectDB } from "./db";
 import { assert } from "./errors";
+import { databaseOperation } from "./diagnostics";
 import { allowedRole, type Role } from "./rules";
 
 export type Actor = {
@@ -20,7 +21,7 @@ export const hashToken = (token: string) =>
 export const randomToken = () => randomBytes(32).toString("hex");
 export function secret() {
   const value = process.env.AUTH_SECRET;
-  assert(value && value.length >= 32, "Authentication is not configured", 503);
+  assert(value && value.length >= 32, "Authentication is not configured", 500);
   return value;
 }
 export const hashPassword = (value: string) => bcrypt.hash(value, 12);
@@ -34,12 +35,12 @@ export function appUrl() {
       : process.env.VERCEL_URL
         ? `https://${process.env.VERCEL_URL}`
         : undefined);
-  assert(url, "Application URL is not configured", 503);
+  assert(url, "Application URL is not configured", 500);
   const parsed = new URL(url);
   assert(
     process.env.NODE_ENV !== "production" || parsed.protocol === "https:",
     "Application requires HTTPS",
-    503,
+    500,
   );
   return parsed.origin;
 }
@@ -125,12 +126,18 @@ export async function currentUser(): Promise<Actor | null> {
   const token = (await cookies()).get(cookieName)?.value;
   if (!token || !/^[a-f\d]{64}$/.test(token)) return null;
   await connectDB();
-  const session = await AuthSession.findOne({
-    tokenHash: hashToken(token),
-    expiresAt: { $gt: new Date() },
-  }).lean();
+  const session = await databaseOperation(
+    "AuthSession.findOne(current user)",
+    () =>
+      AuthSession.findOne({
+        tokenHash: hashToken(token),
+        expiresAt: { $gt: new Date() },
+      }).lean(),
+  );
   if (!session) return null;
-  const user = await User.findById(session.userId).lean();
+  const user = await databaseOperation("User.findById(current user)", () =>
+    User.findById(session.userId).lean(),
+  );
   if (
     !user ||
     user.status !== "ACTIVE" ||
@@ -141,9 +148,11 @@ export async function currentUser(): Promise<Actor | null> {
   // lifetime for abandoned sessions.
   const refreshedExpiry = new Date(Date.now() + sessionLifetime);
   if (session.expiresAt.getTime() < Date.now() + 180 * 86400000) {
-    await AuthSession.updateOne(
-      { _id: session._id },
-      { $set: { expiresAt: refreshedExpiry } },
+    await databaseOperation("AuthSession.updateOne(refresh expiry)", () =>
+      AuthSession.updateOne(
+        { _id: session._id },
+        { $set: { expiresAt: refreshedExpiry } },
+      ),
     );
   }
   return {

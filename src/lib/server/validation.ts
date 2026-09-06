@@ -67,7 +67,9 @@ export const packageSchema = z
     sortOrder: z.number().int().min(0).max(100).default(0),
   })
   .strict();
-const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+const time = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:mm (00:00–23:59)");
 export const availabilitySchema = z
   .object({
     rules: z
@@ -77,7 +79,14 @@ export const availabilitySchema = z
             dayOfWeek: z.number().int().min(0).max(6),
             startTime: time,
             endTime: time,
-            trainingTypes: z.array(trainingType).min(1).max(4),
+            trainingTypes: z
+              .array(trainingType)
+              .min(1)
+              .max(4)
+              .refine(
+                (types) => new Set(types).size === types.length,
+                "Training types must be unique",
+              ),
           })
           .strict()
           .refine(
