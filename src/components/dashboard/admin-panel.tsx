@@ -188,6 +188,7 @@ export function AdminPanel({
               value: str(item, "profileVisibility"),
             },
           ];
+        if (section === "trainers") label = "Save trainer";
         if (section === "reviews")
           fields = [
             {
@@ -268,6 +269,14 @@ export function AdminPanel({
                 Download private evidence
               </a>
             )}
+            {section === "trainers" && str(item, "cnicUploadId") && (
+              <a
+                className="btn outline small"
+                href={`/api/media/${str(item, "cnicUploadId")}`}
+              >
+                View CNIC picture
+              </a>
+            )}
             {section === "payments" && str(item, "proofUploadId") && (
               <a
                 className="btn outline small"
@@ -297,8 +306,13 @@ export function AdminPanel({
             )}
             {(fields.length > 0 ||
               (section === "refunds" && item.status === "REQUESTED")) && (
-              <details className="mt-5">
-                <summary>Manage record</summary>
+              <div className={section === "trainers" ? "mt-5" : "mt-5"}>
+                {section === "trainers" && (
+                  <p className="muted">
+                    Set Visibility to PUBLIC to approve and publish this trainer
+                    immediately.
+                  </p>
+                )}
                 <ActionForm
                   endpoint={endpoint}
                   fields={fields}
@@ -306,7 +320,7 @@ export function AdminPanel({
                   onDone={reload}
                   confirmation="Save this administrative change? It will be recorded in the audit log."
                 />
-              </details>
+              </div>
             )}
           </article>
         );

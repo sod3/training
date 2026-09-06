@@ -52,7 +52,7 @@ import {
 import {
   attachPublic,
   cleanUploads,
-  mediaUrl,
+  mediaResponse,
   uploadFile,
 } from "@/services/storage";
 import { trainerAction } from "@/services/trainer-management";
@@ -185,8 +185,7 @@ async function handle(request: Request, context: Context) {
             .select("kind name slug city body")
             .lean(),
         });
-      if (root === "media" && id)
-        return Response.redirect(await mediaUrl(id, await currentUser()), 307);
+      if (root === "media" && id) return mediaResponse(id, await currentUser());
       const user = await requireUser(
         root === "admin"
           ? ["ADMIN"]

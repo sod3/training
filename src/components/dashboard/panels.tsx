@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import Link from "next/link";
 import { api, useApi } from "@/lib/client-api";
 import { ActionForm, UploadForm, type Field } from "./action-form";
 export type Item = Record<string, unknown>;
@@ -471,113 +470,109 @@ export function VerificationPanel({
   reload: () => void;
 }) {
   const application = record(data.application);
-  const [uploadId, setUploadId] = useState("");
+  const trainer = record(data.trainer);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
   return (
-    <>
-      <section className="panel">
-        <h2>Your application</h2>
-        <span className="status">{str(application, "status") || "DRAFT"}</span>
-        <p>Step {num(application, "step") + 1} of 10</p>
-        {!!application.adminNotes && <p>{str(application, "adminNotes")}</p>}
-        <ol className="application-steps">
-          <li>
-            <Link href="/trainer/profile">
-              Complete personal and professional details, specialties and
-              locations
-            </Link>
-          </li>
-          <li>
-            <Link href="/trainer/packages">Create your training packages</Link>
-          </li>
-          <li>
-            <Link href="/trainer/availability">
-              Set your weekly availability
-            </Link>
-          </li>
-          <li>Upload identity and certification documents below</li>
-          <li>Review and submit your application</li>
-        </ol>
-        <ActionForm
-          endpoint="trainer/application"
-          fields={[
-            {
-              name: "step",
-              label: "Application progress (0–9)",
-              type: "number",
-              value: num(application, "step"),
-              min: 0,
-              max: 9,
-            },
-          ]}
-          label="Save progress"
-          onDone={reload}
-        />
-        <ActionForm
-          endpoint="trainer/application"
-          fields={[]}
-          transform={() => ({ step: 9, submit: true })}
-          confirmation="Submit your completed application for review?"
-          label="Submit application"
-          onDone={reload}
-        />
-      </section>
-      <section className="panel">
-        <h2>Verification documents</h2>
-        <p>
-          Documents are private and accessible only to you and authorized
-          reviewers.
-        </p>
-        <UploadForm purpose="PRIVATE" onUploaded={setUploadId} />
-        {uploadId && (
-          <ActionForm
-            endpoint="trainer/credentials"
-            fields={[
+    <section className="panel">
+      <h2>Simple verification</h2>
+      <p>
+        Send these four details once. An admin will review and publish your
+        profile.
+      </p>
+      <span className="status">
+        {str(application, "status") || "Not submitted"}
+      </span>
+      <form
+        className="workspace-form"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          if (busy) return;
+          setBusy(true);
+          setMessage("");
+          const form = event.currentTarget;
+          const values = new FormData(form);
+          try {
+            const file = values.get("cnicPicture");
+            const upload = new FormData();
+            upload.set("purpose", "PRIVATE");
+            upload.set("file", file as File);
+            const response = await fetch("/api/uploads", {
+              method: "POST",
+              body: upload,
+            });
+            const uploaded = await response.json();
+            if (!response.ok) throw new Error(uploaded.error);
+            const result = await api<{ message: string }>(
+              "trainer/verification",
               {
-                name: "type",
-                label: "Document type",
-                type: "select",
-                options: ["IDENTITY", "CERTIFICATION"],
+                name: values.get("name"),
+                phone: values.get("phone"),
+                cnic: values.get("cnic"),
+                uploadId: uploaded.id,
               },
-              { name: "title", label: "Document title", required: true },
-              {
-                name: "issuingOrganization",
-                label: "Issuing organization",
-                required: true,
-              },
-              {
-                name: "expiryDate",
-                label: "Expiry date, if applicable",
-                type: "date",
-              },
-            ]}
-            transform={(v) => ({
-              ...v,
-              uploadId,
-              expiryDate: v.expiryDate || undefined,
-            })}
-            onDone={() => {
-              setUploadId("");
-              reload();
-            }}
-            label="Attach document"
+            );
+            setMessage(result.message);
+            reload();
+          } catch (error) {
+            setMessage((error as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <label className="field">
+          Full name
+          <input
+            name="name"
+            required
+            defaultValue={str(trainer, "displayName")}
+            maxLength={170}
           />
-        )}
-        {rows(data.credentials).map((c) => (
-          <article className="booking-row" key={str(c, "_id")}>
-            <div>
-              <h3>{str(c, "title")}</h3>
-              <p>
-                {str(c, "type")} · {str(c, "verificationStatus")}
-              </p>
-              <p>{str(c, "adminNotes")}</p>
-            </div>
-            <a className="text-link" href={`/api/media/${str(c, "uploadId")}`}>
-              Download document
-            </a>
-          </article>
-        ))}
-      </section>
-    </>
+        </label>
+        <label className="field">
+          Phone number
+          <input
+            name="phone"
+            required
+            defaultValue={str(trainer, "phone")}
+            maxLength={30}
+          />
+        </label>
+        <label className="field">
+          CNIC number
+          <input
+            name="cnic"
+            required
+            defaultValue={str(trainer, "cnic")}
+            placeholder="12345-1234567-1"
+            pattern="[0-9]{5}-[0-9]{7}-[0-9]"
+          />
+        </label>
+        <label className="field">
+          CNIC picture
+          <input
+            name="cnicPicture"
+            type="file"
+            required
+            accept=".jpg,.jpeg,.png,.webp"
+          />
+          <small>JPG, PNG, or WebP. Maximum 4 MB.</small>
+        </label>
+        {message && <p role="status">{message}</p>}
+        <button className="btn" disabled={busy}>
+          {busy ? "Submitting…" : "Submit verification"}
+        </button>
+      </form>
+      {str(trainer, "cnicUploadId") && (
+        <a
+          className="text-link"
+          href={`/api/media/${str(trainer, "cnicUploadId")}`}
+        >
+          View submitted CNIC picture
+        </a>
+      )}
+    </section>
   );
 }
 export function MessagesPanel({

@@ -596,16 +596,28 @@ export async function adminAction(
         .strict()
         .parse(data);
       const trainer = await lockTrainer(id, session);
-      assert(
-        input.profileVisibility !== "PUBLIC" ||
-          trainer.applicationStatus === "APPROVED",
-        "Only approved trainers can be public",
-      );
       before = {
         featured: trainer.featured,
         profileVisibility: trainer.profileVisibility,
       };
       trainer.set(input);
+      if (input.profileVisibility === "PUBLIC") {
+        trainer.applicationStatus = "APPROVED";
+        trainer.identityVerificationStatus = "APPROVED";
+        trainer.credentialVerificationStatus = "APPROVED";
+        await TrainerApplication.updateOne(
+          { trainerId: trainer._id },
+          {
+            $set: {
+              status: "APPROVED",
+              reviewedAt: new Date(),
+              reviewedBy: actor.id,
+              adminNotes: "Approved and published by administrator.",
+            },
+          },
+          { session },
+        );
+      }
       await trainer.save({ session });
       after = input;
     } else if (resource === "reviews" && id) {

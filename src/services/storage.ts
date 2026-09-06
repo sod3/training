@@ -89,22 +89,24 @@ export async function uploadFile(actor: Actor, form: FormData) {
     mime = "image/webp";
   }
   const key = `${String(purpose).toLowerCase()}/${actor.id}/${randomUUID()}.${pdf ? "pdf" : "webp"}`;
-  const client = storage();
-  await client.send(
-    new PutObjectCommand({
-      Bucket: process.env.S3_BUCKET,
-      Key: key,
-      Body: body,
-      ContentType: mime,
-      ServerSideEncryption: "AES256",
-    }),
-  );
+  const client = purpose === "PRIVATE" ? null : storage();
+  if (client)
+    await client.send(
+      new PutObjectCommand({
+        Bucket: process.env.S3_BUCKET,
+        Key: key,
+        Body: body,
+        ContentType: mime,
+        ServerSideEncryption: "AES256",
+      }),
+    );
   try {
     const upload = await Upload.create({
       userId: actor.id,
       key,
       mime,
       size: body.length,
+      data: purpose === "PRIVATE" ? body : undefined,
       purpose: String(purpose),
     });
     return {
@@ -112,9 +114,10 @@ export async function uploadFile(actor: Actor, form: FormData) {
       url: purpose === "PUBLIC" ? `/api/media/${upload._id}` : undefined,
     };
   } catch (error) {
-    await client.send(
-      new DeleteObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key }),
-    );
+    if (client)
+      await client.send(
+        new DeleteObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key }),
+      );
     throw error;
   }
 }
@@ -184,6 +187,50 @@ export async function mediaUrl(id: string, actor: Actor | null) {
     }),
     { expiresIn: 60 },
   );
+}
+export async function mediaResponse(id: string, actor: Actor | null) {
+  objectId.parse(id);
+  const upload = await Upload.findById(id);
+  assert(upload, "File not found", 404);
+  if (upload.purpose !== "PUBLIC") {
+    assert(
+      actor && (String(upload.userId) === actor.id || actor.role === "ADMIN"),
+      "File not found",
+      404,
+    );
+    if (actor.role === "ADMIN") {
+      assert(
+        upload.purpose === "PAYMENT_PROOF" ||
+          (await TrainerCredential.exists({ uploadId: id })) ||
+          (await TrainerProfile.exists({ cnicUploadId: id })),
+        "File not found",
+        404,
+      );
+      await AuditLog.create({
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "VIEW_PRIVATE_DOCUMENT",
+        entityType: "Upload",
+        entityId: id,
+      });
+    }
+  } else {
+    assert(
+      upload.status === "ATTACHED" || actor?.id === String(upload.userId),
+      "File not found",
+      404,
+    );
+  }
+  if (upload.data)
+    return new Response(new Uint8Array(upload.data), {
+      headers: {
+        "Content-Type": upload.mime || "application/octet-stream",
+        "Content-Disposition":
+          upload.purpose === "PRIVATE" ? "attachment" : "inline",
+        "Cache-Control": "private, no-store",
+      },
+    });
+  return Response.redirect(await mediaUrl(id, actor), 307);
 }
 export async function cleanUploads() {
   if (!process.env.S3_BUCKET) return 0;

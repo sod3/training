@@ -38,6 +38,51 @@ export async function trainerAction(
   method: string,
 ) {
   const trainer = await ownTrainer(actor);
+  if (resource === "verification") {
+    const input = z
+      .object({
+        name: z.string().trim().min(2).max(170),
+        phone: z.string().trim().min(7).max(30),
+        cnic: z
+          .string()
+          .trim()
+          .regex(/^\d{5}-\d{7}-\d$/, "Use CNIC format 12345-1234567-1"),
+        uploadId: objectId,
+      })
+      .strict()
+      .parse(data);
+    return mongoose.connection.transaction(async (session) => {
+      const upload = await Upload.findOne({
+        _id: input.uploadId,
+        userId: actor.id,
+        purpose: "PRIVATE",
+        status: "READY",
+      }).session(session);
+      assert(upload, "Upload your CNIC picture first");
+      const user = await User.findById(actor.id).session(session);
+      assert(user, "Trainer account not found", 404);
+      const current = await lockTrainer(trainer._id, session);
+      current.displayName = input.name;
+      current.phone = input.phone;
+      current.cnic = input.cnic;
+      current.cnicUploadId = upload._id;
+      current.identityVerificationStatus = "PENDING";
+      current.applicationStatus = "SUBMITTED";
+      current.profileVisibility = "PRIVATE";
+      await current.save({ session });
+      user.name = input.name;
+      user.phone = input.phone;
+      await user.save({ session });
+      upload.status = "ATTACHED";
+      await upload.save({ session });
+      await TrainerApplication.updateOne(
+        { trainerId: current._id },
+        { $set: { status: "SUBMITTED", submittedAt: new Date(), step: 1 } },
+        { session },
+      );
+      return { message: "Verification details submitted" };
+    });
+  }
   if (resource === "profile") {
     const input = profileSchema.parse(data);
     return mongoose.connection.transaction(async (session) => {

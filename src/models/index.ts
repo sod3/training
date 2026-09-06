@@ -81,6 +81,9 @@ const trainer = new Schema(
     userId: { ...ref("User"), unique: true },
     slug: { type: String, unique: true, required: true },
     displayName: text(170),
+    phone: text(30),
+    cnic: text(20),
+    cnicUploadId: { type: Schema.Types.ObjectId, ref: "Upload" },
     headline: text(),
     biography: text(5000),
     profileImage: text(1000),
@@ -619,6 +622,9 @@ export const Upload = model(
       key: { type: String, unique: true, required: true },
       mime: String,
       size: Number,
+      // Private verification images are also retained in MongoDB so the
+      // verification record is self-contained.
+      data: Buffer,
       purpose: {
         type: String,
         enum: ["PUBLIC", "PRIVATE", "PAYMENT_PROOF"],
