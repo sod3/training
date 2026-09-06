@@ -165,8 +165,14 @@ export async function trainerAction(
           })),
           { session },
         );
+      trainer.availabilityReviewStatus = "APPROVED";
+      trainer.availabilityReviewNotes = "";
+      trainer.availabilityReviewedBy = undefined;
+      trainer.availabilityReviewedAt = undefined;
+      await trainer.save({ session });
       return {
-        message: "Availability saved. Existing reservations remain scheduled.",
+        message:
+          "Availability saved and active immediately. Existing reservations remain scheduled.",
       };
     });
   }

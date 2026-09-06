@@ -187,6 +187,19 @@ export function AdminPanel({
               options: ["PRIVATE", "PUBLIC"],
               value: str(item, "profileVisibility"),
             },
+            {
+              name: "availabilityReviewStatus",
+              label: "Availability review",
+              type: "select",
+              options: ["APPROVED", "UNDER_REVIEW"],
+              value: str(item, "availabilityReviewStatus") || "APPROVED",
+            },
+            {
+              name: "availabilityReviewNotes",
+              label: "Availability review notes",
+              type: "textarea",
+              value: str(item, "availabilityReviewNotes"),
+            },
           ];
         if (section === "trainers") label = "Save trainer";
         if (section === "reviews")

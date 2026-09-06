@@ -22,7 +22,9 @@ import {
 } from "../src/lib/server/security";
 import {
   AuthToken,
+  Conversation,
   Favorite,
+  Message,
   Order,
   Payment,
   Review,
@@ -47,6 +49,7 @@ import {
   createReview,
   favorite,
   ownConversation,
+  sendMessage,
 } from "../src/services/community";
 import { adminAction } from "../src/services/dashboard";
 import { processPaymentEvent, verifyWebhook } from "../src/services/payments";
@@ -418,6 +421,42 @@ test("favorites are unique and conversations are private", async () => {
   assert.equal(await Favorite.countDocuments({ customerId: customer.id }), 1);
   const c = await createConversation(customer, { trainerId });
   assert(c);
+  assert.equal(String(c.trainerUserId), trainerActor.id);
+  await sendMessage(customer, String(c._id), {
+    text: "Hello, I would like to ask about your training plan.",
+    idempotencyKey: randomUUID(),
+  });
+  assert.equal(
+    await Message.countDocuments({
+      conversationId: c._id,
+      senderId: trainerActor.id,
+    }),
+    0,
+  );
+  assert.equal(
+    await Message.countDocuments({
+      conversationId: c._id,
+      senderId: customer.id,
+    }),
+    1,
+  );
+  const legacy = await Conversation.findByIdAndUpdate(
+    c._id,
+    { $unset: { trainerUserId: 1 } },
+    { returnDocument: "after" },
+  );
+  assert(legacy);
+  await sendMessage(customer, String(c._id), {
+    text: "One more question about session times.",
+    idempotencyKey: randomUUID(),
+  });
+  assert.equal(
+    await Message.countDocuments({
+      conversationId: c._id,
+      senderId: customer.id,
+    }),
+    2,
+  );
   await ownConversation(trainerActor, String(c._id));
   await assert.rejects(
     ownConversation(other, String(c._id)),

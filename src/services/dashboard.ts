@@ -441,6 +441,8 @@ export async function dashboardData(
           .limit(100)
           .lean(),
         timezone: trainer.timezone,
+        availabilityReviewStatus: trainer.availabilityReviewStatus,
+        availabilityReviewNotes: trainer.availabilityReviewNotes,
       };
     if (section === "verification" || section === "application")
       return {
@@ -592,6 +594,8 @@ export async function adminAction(
         .object({
           featured: z.boolean(),
           profileVisibility: z.enum(["PUBLIC", "PRIVATE"]),
+          availabilityReviewStatus: z.enum(["APPROVED", "UNDER_REVIEW"]),
+          availabilityReviewNotes: z.string().max(3000),
         })
         .strict()
         .parse(data);
@@ -599,8 +603,11 @@ export async function adminAction(
       before = {
         featured: trainer.featured,
         profileVisibility: trainer.profileVisibility,
+        availabilityReviewStatus: trainer.availabilityReviewStatus,
       };
       trainer.set(input);
+      trainer.availabilityReviewedBy = new mongoose.Types.ObjectId(actor.id);
+      trainer.availabilityReviewedAt = new Date();
       if (input.profileVisibility === "PUBLIC") {
         trainer.applicationStatus = "APPROVED";
         trainer.identityVerificationStatus = "APPROVED";

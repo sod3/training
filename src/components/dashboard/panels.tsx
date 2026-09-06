@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, useApi } from "@/lib/client-api";
 import { ActionForm, UploadForm, type Field } from "./action-form";
 export type Item = Record<string, unknown>;
@@ -591,6 +591,13 @@ export function MessagesPanel({
   const { data: messages, reload: reloadMessages } = useApi<{ items: Item[] }>(
     selected ? `messages/${selected}` : null,
   );
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      reload();
+      if (selected) reloadMessages();
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [reload, reloadMessages, selected]);
   return (
     <div className="message-layout">
       <div className="panel">

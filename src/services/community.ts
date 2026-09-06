@@ -108,7 +108,7 @@ export async function createConversation(actor: Actor, data: unknown) {
   const trainer = await publicTrainer(trainerId);
   return Conversation.findOneAndUpdate(
     { customerId: actor.id, trainerId },
-    { $setOnInsert: { trainerUserId: trainer.userId } },
+    { $set: { trainerUserId: trainer.userId } },
     { upsert: true, returnDocument: "after" },
   ).lean();
 }
@@ -134,10 +134,23 @@ export async function sendMessage(actor: Actor, id: string, data: unknown) {
       );
       return { message: "Message sent" };
     }
-    const recipient =
+    let recipient =
       String(conversation.customerId) === actor.id
         ? conversation.trainerUserId
         : conversation.customerId;
+    if (!recipient) {
+      const trainer = await TrainerProfile.findById(conversation.trainerId)
+        .select("userId")
+        .session(session)
+        .lean();
+      assert(trainer, "Trainer is unavailable", 404);
+      recipient = trainer.userId;
+      await Conversation.updateOne(
+        { _id: conversation._id },
+        { $set: { trainerUserId: recipient } },
+        { session },
+      );
+    }
     assert(
       await User.exists({ _id: recipient, status: "ACTIVE" }).session(session),
       "Recipient is unavailable",
@@ -157,7 +170,10 @@ export async function sendMessage(actor: Actor, id: string, data: unknown) {
           userId: recipient,
           title: "New message",
           body: `A message from ${actor.name}`,
-          href: "/dashboard",
+          href:
+            actor.role === "CUSTOMER"
+              ? "/trainer/messages"
+              : "/dashboard/customer/messages",
         },
       ],
       { session },
