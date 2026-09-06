@@ -11,8 +11,6 @@ export default async function Page({
   const result = await listTrainers({ ...params, limit: 12 });
   const reasons = [
     params.goal && "Matches your goal",
-    params.location && "Serves your area",
-    params.type && `Offers ${params.type} training`,
     params.time &&
       params.time !== "Flexible" &&
       "Has availability at your preferred time",
@@ -37,7 +35,7 @@ export default async function Page({
       ) : (
         <div className="empty-state">
           <h2>No exact matches yet.</h2>
-          <p>Try a broader location or a different schedule.</p>
+          <p>Try a different schedule or broader goals.</p>
         </div>
       )}
       <Link href="/trainers" className="btn outline mt-10">

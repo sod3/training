@@ -70,8 +70,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
           </h1>
           <p>{t.headline}</p>
           <p className="profile-location-line">
-            <MapPin size={14} />
-            {t.locations[0]} · {t.city} <span>Next: {t.nextAvailable}</span>
+            <span>Next available: {t.nextAvailable}</span>
           </p>
         </div>
         <div className="profile-actions">
@@ -206,16 +205,11 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
                 Credentials are trainer-provided and have not been verified.
               </p>
             )}
-            <h3>Places we can train</h3>
+            <h3>Where we train</h3>
             <p className="flex gap-2 items-center">
               <MapPin size={17} />
-              {t.locations.join(" · ")}
+              1-on-1 Online via Video Call
             </p>
-            <div className="choice-chips mt-4">
-              {t.trainingTypes.map((type) => (
-                <span key={type}>{type}</span>
-              ))}
-            </div>
           </section>
           <section className="profile-section" id="packages">
             <p className="eyebrow">START SMALL. BUILD FROM THERE.</p>

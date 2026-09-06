@@ -65,7 +65,6 @@ const tabs = {
     "payouts",
     "reviews",
     "specialties",
-    "locations",
     "content",
     "notifications",
     "support",

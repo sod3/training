@@ -18,10 +18,10 @@ export function HeroSection() {
       </div>
       <div className="container spotter-hero-content">
         <p className="eyebrow hero-enter">
-          <span className="live-dot" /> VERIFIED PERSONAL TRAINING · KARACHI
+          <span className="live-dot" /> VERIFIED ONLINE PERSONAL TRAINING
         </p>
         <h1>
-          {["Your trainer.", "Your schedule.", "Your city."].map((line, i) => (
+          {["Train Better.", "Wherever", "You Are."].map((line, i) => (
             <span className="masked-line" key={line}>
               <span style={{ animationDelay: `${0.08 + i * 0.1}s` }}>
                 {line}
@@ -31,12 +31,12 @@ export function HeroSection() {
         </h1>
         <div className="hero-enter hero-enter-copy">
           <p className="spotter-hero-description">
-            Find a personal trainer who fits your goals, location and the way
+            Find an online personal trainer who fits your goals, availability and the way
             you actually want to train.
           </p>
           <div className="hero-actions">
             <Link href="/match" className="btn lime hero-main-cta">
-              Find my trainer <ArrowRight size={20} />
+              Get Matched <ArrowRight size={20} />
             </Link>
             <Link href="/trainers" className="hero-secondary-link">
               Browse trainers <ArrowRight size={16} />
@@ -50,7 +50,7 @@ export function HeroSection() {
               <Check size={14} /> Clear pricing
             </span>
             <span>
-              <Check size={14} /> Flexible training
+              <Check size={14} /> 1-on-1 Online Sessions
             </span>
           </div>
         </div>
@@ -60,7 +60,7 @@ export function HeroSection() {
           <ArrowDown size={17} /> MEET THE COACHES
         </a>
         <span>
-          <MapPin size={14} /> STARTING IN KARACHI <i /> BUILT AROUND YOU
+          <MapPin size={14} /> 1-ON-1 ONLINE SESSIONS <i /> BUILT AROUND YOU
         </span>
       </div>
     </section>

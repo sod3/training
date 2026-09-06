@@ -16,6 +16,7 @@ import { assert } from "@/lib/server/errors";
 import { appUrl, type Actor } from "@/lib/server/security";
 import { notifyUser } from "@/lib/server/email";
 import { lockTrainer, ownedOrder } from "./bookings";
+import { createMeeting } from "./video";
 
 function configuration() {
   assert(
@@ -313,8 +314,13 @@ export async function reviewManualPayment(
     payment.paidAt = new Date();
     order.paymentStatus = "PAID";
     order.bookingStatus = "CONFIRMED";
+    const meeting = await createMeeting("MOCK");
     held.status = "CONFIRMED";
     held.holdExpiresAt = undefined;
+    held.videoProvider = meeting.videoProvider;
+    held.meetingId = meeting.meetingId;
+    held.meetingUrl = meeting.meetingUrl;
+    held.meetingStatus = meeting.meetingStatus;
     await held.save({ session });
     await payment.save({ session });
     await order.save({ session });
@@ -581,7 +587,12 @@ async function applyPaymentEvent(event: z.infer<typeof eventSchema>) {
       payment.status = "PAID";
       order.paymentStatus = "PAID";
       order.bookingStatus = "CONFIRMED";
+      const meeting = await createMeeting("MOCK");
       held.status = "CONFIRMED";
+      held.videoProvider = meeting.videoProvider;
+      held.meetingId = meeting.meetingId;
+      held.meetingUrl = meeting.meetingUrl;
+      held.meetingStatus = meeting.meetingStatus;
       await held.save({ session });
       for (const id of [order.customerId, trainer.userId])
         await notifyUser(

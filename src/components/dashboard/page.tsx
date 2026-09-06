@@ -17,7 +17,6 @@ const allowed = {
     "payouts",
     "reviews",
     "specialties",
-    "locations",
     "content",
     "notifications",
     "support",

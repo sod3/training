@@ -1,4 +1,4 @@
-export type TrainingType = "home" | "gym" | "outdoor" | "online";
+export type TrainingType = "online";
 
 export interface TrainerPackage {
   id: string;
@@ -22,7 +22,6 @@ export interface Review {
 
 export interface Trainer {
   timezone?: string;
-  city?: string;
   id: string;
   slug: string;
   firstName: string;
@@ -38,7 +37,7 @@ export interface Trainer {
   sessionsCompleted: number;
   experienceYears: number;
   responseTime: string;
-  locations: string[];
+
   trainingTypes: TrainingType[];
   specialties: string[];
   certifications: string[];

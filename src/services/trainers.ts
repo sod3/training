@@ -21,8 +21,7 @@ const querySchema = z.object({
   q: z.string().max(100).optional(),
   search: z.string().max(100).optional(),
   goal: z.string().max(100).optional(),
-  location: z.string().max(100).optional(),
-  type: z.enum(["home", "gym", "outdoor", "online", ""]).optional(),
+  type: z.enum(["online", ""]).optional(),
   price: z.coerce.number().min(0).max(1000000).optional(),
   maxPrice: z.coerce.number().min(0).max(1000000).optional(),
   rating: z.coerce.number().min(0).max(5).optional(),
@@ -133,7 +132,6 @@ export async function presentTrainer(t: ProfileData): Promise<Trainer> {
     sessionsCompleted: completed,
     experienceYears: t.yearsExperience,
     responseTime: "when available",
-    locations: t.serviceAreas,
     trainingTypes,
     specialties: t.specialties,
     certifications: credentials.map((c) => c.title),
@@ -161,7 +159,6 @@ export async function presentTrainer(t: ProfileData): Promise<Trainer> {
     nextAvailableDate,
     availabilityWeekStart,
     timezone: t.timezone,
-    city: t.city,
   };
 }
 export async function listTrainers(raw: Record<string, unknown> = {}) {
@@ -178,7 +175,6 @@ export async function listTrainers(raw: Record<string, unknown> = {}) {
         .slice(0, 3)
         .map((id) => new mongoose.Types.ObjectId(id)),
     };
-  if (q.location) match.serviceAreas = regex(q.location);
   if (q.goal)
     match.$or = [
       { trainingGoals: regex(q.goal) },
@@ -189,7 +185,7 @@ export async function listTrainers(raw: Record<string, unknown> = {}) {
   if (q.q || q.search)
     match.$and = [
       {
-        $or: ["displayName", "headline", "specialties", "serviceAreas"].map(
+        $or: ["displayName", "headline", "specialties"].map(
           (field) => ({ [field]: regex((q.q || q.search)!) }),
         ),
       },

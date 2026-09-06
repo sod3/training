@@ -31,7 +31,6 @@ import { lockTrainer, settings } from "./bookings";
 // Mongoose forwards these options to the driver's withTransaction(). Bound its
 // retry budget below the route's 60-second Vercel limit so failures can be logged.
 const availabilityTransactionOptions = {
-  readConcern: { level: "snapshot" as const },
   writeConcern: { w: "majority" as const },
   timeoutMS: 25000,
 };

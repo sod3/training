@@ -82,13 +82,7 @@ export function Navbar() {
               ))}
             </nav>
             <div className="nav-actions">
-              <Link
-                href="/locations"
-                className="nav-location"
-                aria-label="Explore trainers by location"
-              >
-                <MapPin size={14} /> Karachi
-              </Link>
+
               <Link
                 href={
                   state.role === "visitor"
@@ -143,7 +137,7 @@ export function Navbar() {
                 </div>
               )}
               <Link href="/match" className="btn lime small">
-                Find my trainer <ArrowRight size={16} />
+                Get Matched <ArrowRight size={16} />
               </Link>
             </div>
             <Sheet open={open} onOpenChange={setOpen}>
@@ -177,7 +171,7 @@ export function Navbar() {
                     className="btn"
                     onClick={() => setOpen(false)}
                   >
-                    Find my trainer <ArrowRight size={18} />
+                    Get Matched <ArrowRight size={18} />
                   </Link>
                 </nav>
                 <p className="muted mt-8">

@@ -21,27 +21,6 @@ const questions = [
     options: goals,
     icon: Target,
   },
-  {
-    id: "type",
-    title: "Where do you feel your best?",
-    copy: "Find a coach who can meet you where you’re comfortable.",
-    options: ["home", "gym", "outdoor", "online"],
-    icon: House,
-  },
-  {
-    id: "location",
-    title: "Where in Karachi are you?",
-    copy: "A convenient location makes showing up a little easier.",
-    options: locations,
-    icon: MapPin,
-  },
-  {
-    id: "time",
-    title: "When is your time to move?",
-    copy: "We’ll look for a schedule that works around your day.",
-    options: ["Morning", "Afternoon", "Evening", "Flexible"],
-    icon: Clock,
-  },
 ];
 export function MatchWizard({ initial }: { initial: Record<string, string> }) {
   const [step, setStep] = useState(0);
@@ -85,8 +64,6 @@ export function MatchWizard({ initial }: { initial: Record<string, string> }) {
             <p>A little thought now. A better fit for you.</p>
             {[
               "Matching your goal",
-              "Checking your location",
-              "Comparing availability",
               "Finding your best matches",
             ].map((s, i) => (
               <motion.div

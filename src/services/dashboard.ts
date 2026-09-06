@@ -55,7 +55,6 @@ export const adminCollections = {
   payouts: Payout,
   reviews: Review,
   specialties: Taxonomy,
-  locations: Taxonomy,
   content: Taxonomy,
   support: SupportRequest,
   "audit-logs": AuditLog,
@@ -68,7 +67,6 @@ const searchFields: Record<string, string[]> = {
   bookings: ["bookingNumber"],
   support: ["name", "email", "subject"],
   specialties: ["name"],
-  locations: ["name", "city"],
   content: ["name"],
   reviews: ["customerName", "review"],
 };
@@ -285,11 +283,9 @@ export async function dashboardData(
         ? { role: "CUSTOMER" }
         : section === "specialties"
           ? { kind: "SPECIALTY" }
-          : section === "locations"
-            ? { kind: "LOCATION" }
-            : section === "content"
-              ? { kind: "FAQ" }
-              : {};
+          : section === "content"
+            ? { kind: "FAQ" }
+            : {};
     if (q.status)
       filter[
         section === "bookings"
@@ -665,7 +661,7 @@ export async function adminAction(
         { upsert: true, session, runValidators: true },
       );
       after = input;
-    } else if (["specialties", "locations", "content"].includes(resource)) {
+    } else if (["specialties", "content"].includes(resource)) {
       const input = z
         .object({
           name: z.string().trim().min(2).max(200),
@@ -683,9 +679,7 @@ export async function adminAction(
       const kind =
         resource === "specialties"
           ? "SPECIALTY"
-          : resource === "locations"
-            ? "LOCATION"
-            : "FAQ";
+          : "FAQ";
       if (id) {
         before = await Taxonomy.findOneAndUpdate(
           { _id: id, kind },

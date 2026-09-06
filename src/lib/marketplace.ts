@@ -9,13 +9,10 @@ export const locations = [
   "Bahria Town Karachi",
 ];
 export const goals = [
-  "Lose Weight",
   "Build Muscle",
+  "Lose Weight",
   "Increase Strength",
   "Mobility",
-  "Body Transformation",
-  "Sports Performance",
-  "General Fitness",
 ];
 export const goalTerms: Record<string, string[]> = {
   "lose weight": ["weight loss", "fat loss"],

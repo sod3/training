@@ -73,7 +73,7 @@ export default async function Home() {
               changes everything<span>.</span>
             </h2>
             <Link href="/match" className="btn lime">
-              Find my trainer <ArrowRight size={20} />
+              Get Matched <ArrowRight size={20} />
             </Link>
           </div>
           <p>One good match. A better way to train.</p>

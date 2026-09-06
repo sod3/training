@@ -76,8 +76,7 @@ export function TrainerCard({
         </p>
         <p className="trainer-location">
           <MapPin size={14} />
-          {t.locations[0]}
-          <span>· {t.trainingTypes.slice(0, 2).join(" / ")}</span>
+          1-on-1 Online
         </p>
         <p className="trainer-meta">
           {t.reviewCount} reviews <span>·</span> {t.experienceYears} yrs

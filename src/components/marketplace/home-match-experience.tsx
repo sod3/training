@@ -103,7 +103,7 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
                 </div>
                 <div className="match-preview-meta">
                   <span>
-                    <MapPin size={13} /> {match.locations[0]}
+                    <MapPin size={13} /> 1-on-1 Online
                   </span>
                   <span>From {money(match.basePrice)} / session</span>
                 </div>

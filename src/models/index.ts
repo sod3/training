@@ -72,7 +72,7 @@ export const CustomerProfile = model(
       userId: { ...ref("User"), unique: true },
       fitnessGoals: [String],
       preferredTrainingTypes: [String],
-      preferredLocations: [String],
+      preferredLocations: { type: [String], select: false }, // deprecated
       preferredSchedule: text(),
       fitnessLevel: text(),
       timezone: { type: String, default: "Asia/Karachi" },
@@ -98,10 +98,10 @@ const trainer = new Schema(
     specialties: [String],
     trainingGoals: [String],
     trainingTypes: [
-      { type: String, enum: ["home", "gym", "outdoor", "online"] },
+      { type: String, enum: ["online"] },
     ],
-    serviceAreas: [String],
-    city: text(100),
+    serviceAreas: { type: [String], select: false }, // deprecated
+    city: { type: String, select: false }, // deprecated
     timezone: { type: String, default: "Asia/Karachi" },
     languages: [String],
     identityVerificationStatus: {
@@ -146,7 +146,6 @@ const trainer = new Schema(
 );
 trainer.index({ applicationStatus: 1, profileVisibility: 1, featured: -1 });
 trainer.index({ specialties: 1 });
-trainer.index({ serviceAreas: 1 });
 export const TrainerProfile = model("TrainerProfile", trainer);
 export const TrainerApplication = model(
   "TrainerApplication",
@@ -260,12 +259,10 @@ export const TrainerAvailability = model(
         validate: (zone: string) => DateTime.now().setZone(zone).isValid,
       },
       trainingTypes: {
-        type: [{ type: String, enum: ["home", "gym", "outdoor", "online"] }],
+        type: [{ type: String, enum: ["online"] }],
         required: true,
         validate: (types: string[]) =>
-          types.length >= 1 &&
-          types.length <= 4 &&
-          new Set(types).size === types.length,
+          types.length === 1 && types[0] === "online",
       },
       active: { type: Boolean, default: true },
     },
@@ -308,7 +305,10 @@ const order = new Schema(
     packageId: ref("TrainerPackage"),
     packageSnapshot: { type: snapshot, required: true },
     trainingType: String,
-    trainingAddress: text(1000),
+    trainingAddress: { type: String, select: false }, // deprecated
+    videoProvider: { type: String, enum: ["NONE", "GOOGLE_MEET", "ZOOM", "MOCK"], default: "NONE" },
+    meetingId: text(),
+    meetingUrl: text(1000),
     timezone: String,
     total: money,
     currency: { type: String, default: "PKR" },
@@ -372,7 +372,11 @@ const session = new Schema(
       default: "HELD",
     },
     holdExpiresAt: Date,
-    location: text(1000),
+    location: { type: String, select: false }, // deprecated
+    videoProvider: { type: String, enum: ["NONE", "GOOGLE_MEET", "ZOOM", "MOCK"], default: "NONE" },
+    meetingId: text(),
+    meetingUrl: text(1000),
+    meetingStatus: { type: String, enum: ["PENDING", "CREATED", "FAILED"], default: "PENDING" },
     trainerNotes: { ...text(3000), select: false },
     customerNotes: text(3000),
     completedAt: Date,
@@ -580,7 +584,7 @@ export const Taxonomy = model(
     {
       kind: {
         type: String,
-        enum: ["SPECIALTY", "LOCATION", "FAQ"],
+        enum: ["SPECIALTY", "FAQ"],
         required: true,
       },
       name: text(),

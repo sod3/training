@@ -25,6 +25,7 @@ import {
   generateSlots,
   ownsBooking,
 } from "@/lib/server/rules";
+import { createMeeting } from "./video";
 
 export async function settings(session?: ClientSession) {
   return (
@@ -384,6 +385,7 @@ export async function scheduleSession(actor: Actor, id: string, data: unknown) {
       previous.reminderSentAt = undefined;
       await previous.save({ session });
     } else {
+      const meeting = await createMeeting("MOCK");
       const count = await Session.countDocuments({ orderId: id }).session(
         session,
       );
@@ -398,6 +400,10 @@ export async function scheduleSession(actor: Actor, id: string, data: unknown) {
             end: slot.end,
             location: order.trainingAddress,
             status: "CONFIRMED",
+            videoProvider: meeting.videoProvider,
+            meetingId: meeting.meetingId,
+            meetingUrl: meeting.meetingUrl,
+            meetingStatus: meeting.meetingStatus,
           },
         ],
         { session },

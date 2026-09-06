@@ -21,9 +21,7 @@ export function TrainerSearch({
 }) {
   const [filters, setFilters] = useState({
     q: initial.q || "",
-    location: initial.location || "",
     goal: initial.goal || "",
-    type: initial.type || "",
     availability: initial.availability || "",
     price: initial.price || "5000",
     rating: initial.rating || "0",
@@ -47,9 +45,7 @@ export function TrainerSearch({
   const clear = () => {
     setFilters({
       q: "",
-      location: "",
       goal: "",
-      type: "",
       availability: "",
       price: "5000",
       rating: "0",
@@ -80,18 +76,7 @@ export function TrainerSearch({
         <h3>Refine your search</h3>
         <button onClick={clear}>Reset</button>
       </div>
-      <label className="field">
-        Location
-        <select
-          value={filters.location}
-          onChange={(e) => set("location", e.target.value)}
-        >
-          <option value="">All of Karachi</option>
-          {locations.map((l) => (
-            <option key={l}>{l}</option>
-          ))}
-        </select>
-      </label>
+
       <label className="field">
         Your goal
         <select
@@ -104,21 +89,7 @@ export function TrainerSearch({
           ))}
         </select>
       </label>
-      <fieldset className="filter-group">
-        <legend>Train your way</legend>
-        <div className="choice-chips">
-          {["home", "gym", "outdoor", "online"].map((t) => (
-            <button
-              aria-pressed={filters.type === t}
-              className={filters.type === t ? "selected" : ""}
-              key={t}
-              onClick={() => set("type", filters.type === t ? "" : t)}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </fieldset>
+
       <label className="field">
         Up to {money(Number(filters.price))} / session
         <input
@@ -196,25 +167,14 @@ export function TrainerSearch({
             onChange={(e) => set("q", e.target.value)}
           />
           <span>
-            <MapPin size={15} /> Karachi
+            1-on-1 Online
           </span>
         </div>
         <div className="search-layout">
           <div className="desktop-filter-bar compact-filter-bar">
             {!open && (
               <>
-                <label className="field">
-                  Location
-                  <select
-                    value={filters.location}
-                    onChange={(e) => set("location", e.target.value)}
-                  >
-                    <option value="">All of Karachi</option>
-                    {locations.map((l) => (
-                      <option key={l}>{l}</option>
-                    ))}
-                  </select>
-                </label>
+
                 <label className="field">
                   Goal
                   <select
@@ -251,18 +211,7 @@ export function TrainerSearch({
                     <option value="week">This week</option>
                   </select>
                 </label>
-                <label className="field">
-                  Training type
-                  <select
-                    value={filters.type}
-                    onChange={(e) => set("type", e.target.value)}
-                  >
-                    <option value="">Any setting</option>
-                    {["home", "gym", "outdoor", "online"].map((t) => (
-                      <option key={t}>{t}</option>
-                    ))}
-                  </select>
-                </label>
+
               </>
             )}
           </div>
@@ -270,9 +219,7 @@ export function TrainerSearch({
             <div className="result-toolbar">
               <div>
                 <h2>
-                  {filters.location
-                    ? `Personal trainers in ${filters.location}`
-                    : "Meet your next coach"}
+                  Meet your next coach
                 </h2>
                 <p aria-live="polite">
                   {data?.total || 0} trainers · Prices shown per session

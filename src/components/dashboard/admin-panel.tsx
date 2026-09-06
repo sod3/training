@@ -77,7 +77,7 @@ export function AdminPanel({
   items: Item[];
   reload: () => void;
 }) {
-  const taxonomy = ["specialties", "locations", "content"].includes(section);
+  const taxonomy = ["specialties", "content"].includes(section);
   const taxonomyFields = (item: Item): Field[] => [
     { name: "name", label: "Name", value: str(item, "name"), required: true },
     {
@@ -109,10 +109,8 @@ export function AdminPanel({
             Add{" "}
             {section === "content"
               ? "FAQ"
-              : section === "locations"
-                ? "location"
-                : "specialty"}
-          </h2>
+              : "content page"
+            }</h2>
           <ActionForm
             endpoint={`admin/${section}`}
             fields={taxonomyFields({})}

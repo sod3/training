@@ -84,11 +84,7 @@ export function ProfilePanel({
         label: "Fitness goals, separated by commas",
         value: String(preferences.fitnessGoals || ""),
       },
-      {
-        name: "preferredLocations",
-        label: "Preferred locations, separated by commas",
-        value: String(preferences.preferredLocations || ""),
-      },
+
       {
         name: "preferredTrainingTypes",
         label: "Training types, separated by commas",
@@ -124,7 +120,6 @@ export function ProfilePanel({
             ...(role === "customer"
               ? {
                   fitnessGoals: csv(v.fitnessGoals),
-                  preferredLocations: csv(v.preferredLocations),
                   preferredTrainingTypes: csv(v.preferredTrainingTypes),
                 }
               : {}),
