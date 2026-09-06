@@ -40,9 +40,9 @@ function storage() {
 function hasStorageConfig() {
   return Boolean(
     process.env.S3_BUCKET &&
-      process.env.S3_REGION &&
-      process.env.S3_ACCESS_KEY_ID &&
-      process.env.S3_SECRET_ACCESS_KEY,
+    process.env.S3_REGION &&
+    process.env.S3_ACCESS_KEY_ID &&
+    process.env.S3_SECRET_ACCESS_KEY,
   );
 }
 export async function uploadFile(actor: Actor, form: FormData) {
@@ -145,14 +145,23 @@ export async function attachPublic(
   });
   assert(upload, "Upload not found", 404);
   const url = `/api/media/${upload._id}`;
-  if (data.field === "avatar")
+  if (data.field === "avatar") {
     await User.updateOne({ _id: actor.id }, { $set: { avatar: url } });
-  else {
+    // Trainers use their account photo as the public profile photo unless
+    // they have uploaded a dedicated trainer image. Keep both surfaces in
+    // sync so the account upload is not unexpectedly invisible publicly.
+    if (actor.role === "TRAINER")
+      await TrainerProfile.updateOne(
+        { userId: actor.id, profileImage: { $in: [null, ""] } },
+        { $set: { profileImage: url } },
+      );
+  } else {
     assert(actor.role === "TRAINER", "Trainer access required", 403);
-    await TrainerProfile.updateOne(
+    const result = await TrainerProfile.updateOne(
       { userId: actor.id },
       { $set: { [data.field]: url } },
     );
+    assert(result.matchedCount === 1, "Trainer profile not found", 404);
   }
   upload.status = "ATTACHED";
   await upload.save();

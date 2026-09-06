@@ -109,7 +109,7 @@ export function ProfilePanel({
               : {}),
           })}
         />
-        <UploadForm purpose="PUBLIC" field="avatar" />
+        <UploadForm purpose="PUBLIC" field="avatar" onUploaded={reload} />
       </section>
       {role === "trainer" && (
         <section className="panel">
@@ -176,8 +176,12 @@ export function ProfilePanel({
               languages: csv(v.languages),
             })}
           />
-          <UploadForm purpose="PUBLIC" field="profileImage" />
-          <UploadForm purpose="PUBLIC" field="coverImage" />
+          <UploadForm
+            purpose="PUBLIC"
+            field="profileImage"
+            onUploaded={reload}
+          />
+          <UploadForm purpose="PUBLIC" field="coverImage" onUploaded={reload} />
         </section>
       )}
     </>

@@ -29,7 +29,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
   const { data: availability, error: slotError } = useApi<{
     slots: { start: string; label: string }[];
   }>(
-    t.packages.length
+    t.packages.length && t.trainingTypes.length
       ? `trainers/${t.id}/availability?${new URLSearchParams({ date, packageId: t.packages[0].id, type: t.trainingTypes[0] })}`
       : null,
   );
@@ -312,6 +312,12 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
                 </button>
               ))}
             </div>
+            {!t.trainingTypes.length && (
+              <p className="fine-print">
+                Availability will appear after this trainer adds a training
+                type.
+              </p>
+            )}
             {slotError && <p role="alert">{slotError}</p>}
             {!times.length && (
               <p className="fine-print">

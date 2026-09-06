@@ -43,32 +43,38 @@ type ProfileData = mongoose.InferSchemaType<typeof TrainerProfile.schema> & {
   _id: mongoose.Types.ObjectId;
 };
 export async function presentTrainer(t: ProfileData): Promise<Trainer> {
-  const [packages, reviews, credentials, completed, stats] = await Promise.all([
-    TrainerPackage.find({ trainerId: t._id, active: true })
-      .sort({ sortOrder: 1, price: 1 })
-      .limit(30)
-      .lean(),
-    Review.find({ trainerId: t._id, status: "VISIBLE" })
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .lean(),
-    TrainerCredential.find({
-      trainerId: t._id,
-      type: "CERTIFICATION",
-      verificationStatus: "APPROVED",
-      $or: [{ expiryDate: null }, { expiryDate: { $gt: new Date() } }],
-    })
-      .select("title")
-      .limit(20)
-      .lean(),
-    Session.countDocuments({ trainerId: t._id, status: "COMPLETED" }),
-    Review.aggregate<{ average: number; count: number }>([
-      { $match: { trainerId: t._id, status: "VISIBLE" } },
-      {
-        $group: { _id: null, average: { $avg: "$rating" }, count: { $sum: 1 } },
-      },
-    ]),
-  ]);
+  const [packages, reviews, credentials, completed, stats, account] =
+    await Promise.all([
+      TrainerPackage.find({ trainerId: t._id, active: true })
+        .sort({ sortOrder: 1, price: 1 })
+        .limit(30)
+        .lean(),
+      Review.find({ trainerId: t._id, status: "VISIBLE" })
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean(),
+      TrainerCredential.find({
+        trainerId: t._id,
+        type: "CERTIFICATION",
+        verificationStatus: "APPROVED",
+        $or: [{ expiryDate: null }, { expiryDate: { $gt: new Date() } }],
+      })
+        .select("title")
+        .limit(20)
+        .lean(),
+      Session.countDocuments({ trainerId: t._id, status: "COMPLETED" }),
+      Review.aggregate<{ average: number; count: number }>([
+        { $match: { trainerId: t._id, status: "VISIBLE" } },
+        {
+          $group: {
+            _id: null,
+            average: { $avg: "$rating" },
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      User.findById(t.userId).select("avatar").lean(),
+    ]);
   let nextAvailable = "No open times this week";
   if (packages.length && t.trainingTypes.length)
     for (let offset = 0; offset < 7; offset++) {
@@ -95,7 +101,7 @@ export async function presentTrainer(t: ProfileData): Promise<Trainer> {
     slug: t.slug,
     firstName,
     lastName: last.join(" "),
-    profileImage: t.profileImage || "/avatar.svg",
+    profileImage: t.profileImage || account?.avatar || "/avatar.svg",
     coverImage: t.coverImage || undefined,
     headline: t.headline,
     bio: t.biography,
