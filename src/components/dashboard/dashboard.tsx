@@ -21,6 +21,7 @@ import {
   type Item,
 } from "./panels";
 import { BookingList, StartConversation } from "./bookings-panel";
+import { ReviewComposer } from "./review-composer";
 const tabs = {
   customer: [
     "overview",
@@ -48,6 +49,7 @@ const tabs = {
     "payouts",
     "profile",
     "verification",
+    "application",
     "notifications",
     "security",
   ],
@@ -64,6 +66,7 @@ const tabs = {
     "refunds",
     "payouts",
     "reviews",
+    "categories",
     "specialties",
     "content",
     "notifications",
@@ -308,9 +311,20 @@ export function Dashboard({
                         required: true,
                       },
                       {
+                        name: "newEmail",
+                        label: "New email address (optional)",
+                        type: "email",
+                        value: str(record(data.profile), "normalizedEmail"),
+                        hint: "Email verification is not required. This becomes your sign-in email immediately.",
+                      },
+                      {
                         name: "newPassword",
-                        label:
-                          "New password (leave empty to only revoke sessions)",
+                        label: "New password (optional)",
+                        type: "password",
+                      },
+                      {
+                        name: "confirmPassword",
+                        label: "Confirm new password",
                         type: "password",
                       },
                       {
@@ -321,7 +335,9 @@ export function Dashboard({
                     ]}
                     transform={(v) => ({
                       ...v,
+                      newEmail: v.newEmail || undefined,
                       newPassword: v.newPassword || undefined,
+                      confirmPassword: v.newPassword ? v.confirmPassword : undefined,
                       revokeSessions: true,
                     })}
                     confirmation="This change will sign out all sessions. Account deletion requests deactivate your account immediately."
@@ -364,10 +380,40 @@ export function Dashboard({
                     )}
                   </>
                 )}
-              {["verification", "application"].includes(tab) &&
-                selectedRole === "trainer" && (
-                  <VerificationPanel data={data} reload={reload} />
-                )}
+              {tab === "verification" && selectedRole === "trainer" && (
+                <VerificationPanel data={data} reload={reload} />
+              )}
+              {tab === "application" && selectedRole === "trainer" && (() => {
+                const application = record(data.application);
+                const trainer = record(data.trainer);
+                const applicationStatus = str(application, "status") || str(trainer, "applicationStatus") || "DRAFT";
+                const editable = ["DRAFT", "ACTION_REQUIRED", "REJECTED"].includes(applicationStatus);
+                return (
+                  <section className="panel application-status-panel">
+                    <p className="eyebrow">TRAINER APPLICATION</p>
+                    <div className="panel-title">
+                      <h2>{applicationStatus.replaceAll("_", " ")}</h2>
+                      <span className="status">{applicationStatus}</span>
+                    </div>
+                    <p>
+                      {applicationStatus === "APPROVED"
+                        ? "Your trainer application is approved. Continue managing your public profile, services and availability from the dashboard."
+                        : ["SUBMITTED", "UNDER_REVIEW"].includes(applicationStatus)
+                          ? "Your complete application has been submitted. You can review your verification status while the Spotter admin team checks your profile, identity and certification."
+                          : "Complete every onboarding step before submitting your application for admin review."}
+                    </p>
+                    {str(application, "adminNotes") && (
+                      <div className="payment-notice"><strong>Admin feedback</strong><p>{str(application, "adminNotes")}</p></div>
+                    )}
+                    {editable && (
+                      <Link className="btn mt-5" href="/trainer/onboarding">Continue onboarding →</Link>
+                    )}
+                    {["SUBMITTED", "UNDER_REVIEW"].includes(applicationStatus) && (
+                      <Link className="btn outline mt-5" href="/trainer/verification">View verification status →</Link>
+                    )}
+                  </section>
+                );
+              })()}
               {tab === "messages" && (
                 <MessagesPanel data={data} reload={update} />
               )}
@@ -382,53 +428,16 @@ export function Dashboard({
               {tab === "reviews" && selectedRole !== "admin" && (
                 <>
                   {items.map((r) => (
-                    <article className="panel" key={str(r, "_id")}>
-                      <h3>{"★".repeat(num(r, "rating"))}</h3>
-                      <p>{str(r, "review")}</p>
-                      <small>
-                        {str(r, "status")} · {date(r.createdAt)}
-                      </small>
+                    <article className="panel review-card" key={str(r, "_id")}>
+                      <div className="review-card-head">
+                        <div className="review-stars" aria-label={`${num(r, "rating")} out of 5 stars`}>{"★".repeat(num(r, "rating"))}<span>{"★".repeat(Math.max(0, 5 - num(r, "rating")))}</span></div>
+                        <span className="status">Verified booking</span>
+                      </div>
+                      <blockquote>{str(r, "review")}</blockquote>
+                      <small>{str(r, "status")} · {date(r.createdAt)}</small>
                     </article>
                   ))}
-                  {selectedRole === "customer" &&
-                    rows(data.eligible).length > 0 && (
-                      <section className="panel">
-                        <h2>Share your experience</h2>
-                        <ActionForm
-                          endpoint="reviews"
-                          fields={[
-                            {
-                              name: "orderId",
-                              label: "Completed booking",
-                              type: "select",
-                              options: [
-                                ...new Set(
-                                  rows(data.eligible).map((s) =>
-                                    str(s, "orderId"),
-                                  ),
-                                ),
-                              ],
-                            },
-                            {
-                              name: "rating",
-                              label: "Rating (1–5)",
-                              type: "number",
-                              value: 5,
-                              min: 1,
-                              max: 5,
-                            },
-                            {
-                              name: "review",
-                              label: "Your experience",
-                              type: "textarea",
-                              required: true,
-                            },
-                          ]}
-                          label="Publish review"
-                          onDone={reload}
-                        />
-                      </section>
-                    )}
+                  {selectedRole === "customer" && <ReviewComposer eligible={data.eligible} onDone={reload} />}
                 </>
               )}
               {["saved", "favorites", "trainers"].includes(tab) &&
@@ -542,7 +551,7 @@ export function Dashboard({
                     </p>
                     {selectedRole === "customer" && (
                       <Link href="/trainers" className="btn outline">
-                        Find a trainer →
+                        Browse trainers →
                       </Link>
                     )}
                   </div>

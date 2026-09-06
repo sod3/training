@@ -9,6 +9,7 @@ import {
   TrainerCredential,
   TrainerPackage,
   TrainerProfile,
+  Taxonomy,
   Upload,
   User,
 } from "@/models";
@@ -27,6 +28,7 @@ import {
   timezone,
 } from "@/lib/server/validation";
 import { lockTrainer, settings } from "./bookings";
+import { DEFAULT_CATEGORIES, DEFAULT_LANGUAGES, DEFAULT_SPECIALTIES } from "@/lib/catalog";
 
 // Mongoose forwards these options to the driver's withTransaction(). Bound its
 // retry budget below the route's 60-second Vercel limit so failures can be logged.
@@ -34,6 +36,21 @@ const availabilityTransactionOptions = {
   writeConcern: { w: "majority" as const },
   timeoutMS: 25000,
 };
+
+async function assertMenuValues(category: string, specialties: string[], languages: string[], session: mongoose.ClientSession) {
+  const [allCategories, allSpecialties] = await Promise.all([
+    Taxonomy.find({ kind: "CATEGORY" }).select("name active").session(session).lean(),
+    Taxonomy.find({ kind: "SPECIALTY" }).select("name active").session(session).lean(),
+  ]);
+  const activeCategories = allCategories.filter((value) => value.active).map((value) => value.name);
+  const activeSpecialties = allSpecialties.filter((value) => value.active).map((value) => value.name);
+  const categories = new Set(allCategories.length ? activeCategories : [...DEFAULT_CATEGORIES]);
+  const specialtyMenu = new Set(allSpecialties.length ? activeSpecialties : [...DEFAULT_SPECIALTIES]);
+  const languageMenu = new Set<string>(DEFAULT_LANGUAGES);
+  assert(categories.has(category), "Choose a valid active training category");
+  assert(specialties.length > 0 && specialties.every((value) => specialtyMenu.has(value)), "Choose specialties from the available menu");
+  assert(languages.length > 0 && languages.every((value) => languageMenu.has(value as typeof DEFAULT_LANGUAGES[number])), "Choose languages from the available menu");
+}
 
 export async function ownTrainer(actor: Actor) {
   assert(actor.role === "TRAINER", "Trainer access required", 403);
@@ -67,66 +84,85 @@ export async function trainerAction(
       .strict()
       .parse(data);
     return mongoose.connection.transaction(async (session) => {
+      const current = await lockTrainer(trainer._id, session);
       const upload = await Upload.findOne({
         _id: input.uploadId,
         userId: actor.id,
         purpose: "PRIVATE",
-        status: "READY",
+        status: { $in: ["READY", "ATTACHED"] },
       }).session(session);
       assert(upload, "Upload your CNIC picture first");
+      assert(upload.status === "READY" || String(current.cnicUploadId || "") === String(upload._id), "This identity upload is already attached elsewhere", 409);
       const user = await User.findById(actor.id).session(session);
       assert(user, "Trainer account not found", 404);
-      const current = await lockTrainer(trainer._id, session);
-      current.displayName = input.name;
+      current.legalName = input.name;
       current.phone = input.phone;
       current.cnic = input.cnic;
       current.cnicUploadId = upload._id;
       current.identityVerificationStatus = "PENDING";
-      current.applicationStatus = "SUBMITTED";
-      current.profileVisibility = "PRIVATE";
+      const wasApproved = current.applicationStatus === "APPROVED";
+      if (wasApproved) {
+        current.applicationStatus = "ACTION_REQUIRED";
+        current.profileVisibility = "PRIVATE";
+      }
       await current.save({ session });
-      user.name = input.name;
+      const existingIdentity = await TrainerCredential.findOne({
+        trainerId: current._id,
+        type: "IDENTITY",
+      }).session(session);
+      if (existingIdentity) {
+        existingIdentity.title = "CNIC identity document";
+        existingIdentity.issuingOrganization = "NADRA";
+        existingIdentity.credentialNumber = input.cnic;
+        existingIdentity.uploadId = upload._id;
+        existingIdentity.verificationStatus = "PENDING";
+        existingIdentity.adminNotes = "";
+        existingIdentity.verifiedAt = undefined;
+        existingIdentity.verifiedBy = undefined;
+        await existingIdentity.save({ session });
+      } else {
+        await TrainerCredential.create([{
+          trainerId: current._id,
+          type: "IDENTITY",
+          title: "CNIC identity document",
+          issuingOrganization: "NADRA",
+          credentialNumber: input.cnic,
+          uploadId: upload._id,
+          verificationStatus: "PENDING",
+        }], { session });
+      }
       user.phone = input.phone;
       await user.save({ session });
       upload.status = "ATTACHED";
       await upload.save({ session });
       await TrainerApplication.updateOne(
         { trainerId: current._id },
-        { $set: { status: "SUBMITTED", submittedAt: new Date(), step: 1 } },
+        {
+          $set: wasApproved
+            ? { status: "ACTION_REQUIRED", adminNotes: "Identity details changed and require re-verification." }
+            : { status: "DRAFT" },
+          $max: { step: 2 },
+          ...(wasApproved ? {} : { $unset: { submittedAt: 1 } }),
+        },
         { session },
       );
-      return { message: "Verification details submitted" };
+      return { message: "Identity details saved for verification" };
     });
   }
   if (resource === "profile") {
     const input = profileSchema.parse(data);
     return mongoose.connection.transaction(async (session) => {
       const current = await lockTrainer(trainer._id, session);
-      if (
-        current.displayName !== input.displayName &&
-        current.applicationStatus === "APPROVED"
-      ) {
-        current.identityVerificationStatus = "PENDING";
-        current.applicationStatus = "ACTION_REQUIRED";
-        current.profileVisibility = "PRIVATE";
-        await TrainerApplication.updateOne(
-          { trainerId: current._id },
-          {
-            $set: {
-              status: "ACTION_REQUIRED",
-              adminNotes:
-                "Your display name changed. Resubmit identity documents for review.",
-            },
-          },
-          { session },
-        );
-      }
+      await assertMenuValues(input.category, input.specialties, input.languages, session);
       if (input.timezone !== current.timezone)
         assert(
           !(await Session.exists({
             trainerId: current._id,
-            status: { $in: ["HELD", "CONFIRMED"] },
             end: { $gt: new Date() },
+            $or: [
+              { status: "CONFIRMED" },
+              { status: "HELD", holdExpiresAt: { $gt: new Date() } },
+            ],
           }).session(session)),
           "Timezone cannot change while upcoming reservations exist",
         );
@@ -135,6 +171,11 @@ export async function trainerAction(
       await TrainerAvailability.updateMany(
         { trainerId: current._id },
         { $set: { timezone: input.timezone } },
+        { session },
+      );
+      await TrainerApplication.updateOne(
+        { trainerId: current._id },
+        { $max: { step: 1 } },
         { session },
       );
       return { message: "Profile saved" };
@@ -160,6 +201,7 @@ export async function trainerAction(
       );
       await TrainerPackage.create({ ...input, trainerId: trainer._id });
     }
+    await TrainerApplication.updateOne({ trainerId: trainer._id }, { $max: { step: 4 } });
     return { message: "Package saved" };
   }
   if (resource === "availability") {
@@ -229,6 +271,11 @@ export async function trainerAction(
               { session, runValidators: true },
             ),
         );
+        await TrainerApplication.updateOne(
+          { trainerId: current._id },
+          { $max: { step: 5 } },
+          { session },
+        );
         return {
           message:
             "Availability saved and active immediately. Existing reservations remain scheduled.",
@@ -255,9 +302,12 @@ export async function trainerAction(
         assert(
           !(await Session.exists({
             trainerId: trainer._id,
-            status: { $in: ["CONFIRMED", "HELD"] },
             start: { $lt: new Date(input.end) },
             end: { $gt: new Date(input.start) },
+            $or: [
+              { status: "CONFIRMED" },
+              { status: "HELD", holdExpiresAt: { $gt: new Date() } },
+            ],
           }).session(session)),
           "This period contains reservations. Resolve those bookings before blocking it.",
           409,
@@ -273,14 +323,25 @@ export async function trainerAction(
     const input = z
       .object({
         uploadId: objectId,
-        type: z.enum(["IDENTITY", "CERTIFICATION"]),
-        title: z.string().max(200).optional(),
-        issuingOrganization: z.string().max(200).optional(),
-        credentialNumber: z.string().max(200).optional(),
+        type: z.literal("CERTIFICATION"),
+        title: z.string().trim().min(2).max(200),
+        issuingOrganization: z.string().trim().min(2).max(200),
+        credentialNumber: z.string().trim().max(200).optional(),
+        issueDate: z.string().date().optional(),
         expiryDate: z.string().date().optional(),
       })
       .strict()
       .parse(data);
+    if (input.issueDate && input.expiryDate)
+      assert(
+        new Date(input.expiryDate).getTime() >= new Date(input.issueDate).getTime(),
+        "Expiry date cannot be before issue date",
+      );
+    if (input.expiryDate)
+      assert(
+        new Date(`${input.expiryDate}T23:59:59.999Z`).getTime() > Date.now(),
+        "Upload a certification that has not expired",
+      );
     return mongoose.connection.transaction(async (session) => {
       await lockTrainer(trainer._id, session);
       const upload = await Upload.findOne({
@@ -291,18 +352,61 @@ export async function trainerAction(
       }).session(session);
       assert(upload, "Document is not available");
       assert(
-        (await TrainerCredential.countDocuments({
-          trainerId: trainer._id,
-        }).session(session)) < 40,
+        (await TrainerCredential.countDocuments({ trainerId: trainer._id }).session(session)) < 40,
         "Credential limit reached",
       );
-      await TrainerCredential.create([{ ...input, trainerId: trainer._id }], {
-        session,
-      });
+      await TrainerCredential.create(
+        [
+          {
+            ...input,
+            issueDate: input.issueDate ? new Date(input.issueDate) : undefined,
+            expiryDate: input.expiryDate ? new Date(input.expiryDate) : undefined,
+            trainerId: trainer._id,
+          },
+        ],
+        { session },
+      );
+      await TrainerApplication.updateOne(
+        { trainerId: trainer._id },
+        { $max: { step: 3 } },
+        { session },
+      );
       upload.status = "ATTACHED";
       await upload.save({ session });
-      return { message: "Credential submitted for review" };
+      return { message: "Certification submitted for review" };
     });
+  }
+  if (resource === "meeting" && id) {
+    objectId.parse(id);
+    const input = z
+      .object({ meetingUrl: z.string().trim().url().max(1000) })
+      .strict()
+      .parse(data);
+    const parsed = new URL(input.meetingUrl);
+    assert(parsed.protocol === "https:", "Meeting link must use HTTPS");
+    const appointment = await Session.findOne({
+      _id: id,
+      trainerId: trainer._id,
+      status: "CONFIRMED",
+      start: { $gt: new Date() },
+    });
+    assert(appointment, "Upcoming confirmed session not found", 404);
+    appointment.meetingUrl = input.meetingUrl;
+    appointment.meetingStatus = "CREATED";
+    appointment.videoProvider = parsed.hostname === "meet.google.com"
+      ? "GOOGLE_MEET"
+      : parsed.hostname.includes("zoom")
+        ? "ZOOM"
+        : "LINK";
+    appointment.meetingId = "";
+    await appointment.save();
+    await notifyUser(
+      appointment.customerId,
+      "Session link ready",
+      "Your trainer added the private video link for your upcoming session.",
+      "/dashboard/customer/bookings",
+    );
+    return { message: "Private session link saved" };
   }
   if (resource === "application") {
     const input = z
@@ -327,10 +431,18 @@ export async function trainerAction(
           "Applications are currently closed",
         );
         assert(
-          current.biography.length >= 50 &&
+          current.displayName.length >= 2 &&
+            current.biography.length >= 100 &&
             current.headline &&
-            current.specialties.length,
-          "Complete your professional profile first",
+            current.category &&
+            current.specialties.length &&
+            current.languages.length &&
+            current.profileImage &&
+            current.phone &&
+            current.legalName &&
+            current.cnic &&
+            current.cnicUploadId,
+          "Complete your profile and identity details first",
         );
         assert(
           await TrainerPackage.exists({
@@ -361,7 +473,7 @@ export async function trainerAction(
           actor.id,
           "Application received",
           "Your trainer application is ready for our review team.",
-          "/trainer/verification",
+          "/trainer/application",
           session,
         );
         const admins = await User.find({ role: "ADMIN", status: "ACTIVE" })
@@ -382,9 +494,10 @@ export async function trainerAction(
           $set: {
             step: input.step,
             ...(input.submit
-              ? { status: "SUBMITTED", submittedAt: new Date() }
+              ? { status: "SUBMITTED", submittedAt: new Date(), adminNotes: "" }
               : {}),
           },
+          ...(input.submit ? { $unset: { reviewedAt: 1, reviewedBy: 1 } } : {}),
         },
         { session },
       );
@@ -425,6 +538,30 @@ export async function reviewApplication(
       "Application must first be submitted",
     );
     if (input.status === "APPROVED") {
+      assert(
+        trainer.displayName.length >= 2 &&
+          trainer.headline &&
+          trainer.biography.length >= 100 &&
+          trainer.category &&
+          trainer.specialties.length > 0 &&
+          trainer.languages.length > 0 &&
+          trainer.profileImage &&
+          trainer.phone &&
+          trainer.cnic &&
+          trainer.cnicUploadId,
+        "Trainer profile or identity details are incomplete",
+        409,
+      );
+      assert(
+        await TrainerPackage.exists({ trainerId: trainer._id, active: true }).session(session),
+        "Trainer needs at least one active package before approval",
+        409,
+      );
+      assert(
+        await TrainerAvailability.exists({ trainerId: trainer._id, active: true }).session(session),
+        "Trainer needs active availability before approval",
+        409,
+      );
       for (const type of ["IDENTITY", "CERTIFICATION"])
         assert(
           await TrainerCredential.exists({

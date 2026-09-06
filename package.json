@@ -1,5 +1,5 @@
 {
-  "name": "traner",
+  "name": "spotter",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -17,11 +17,8 @@
     "db:seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1127.0",
-    "@aws-sdk/s3-request-presigner": "^3.1127.0",
     "@base-ui/react": "^1.8.0",
     "@hookform/resolvers": "^5.9.1",
-    "@sfpy/node-core": "^0.3.5",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.2.5",
@@ -31,7 +28,6 @@
     "luxon": "^3.7.2",
     "mongoose": "^9.9.5",
     "next": "16.3.4",
-    "nodemailer": "^10.0.0",
     "react": "19.2.8",
     "react-day-picker": "^10.0.1",
     "react-dom": "19.2.8",
@@ -48,7 +44,6 @@
     "@tailwindcss/postcss": "^4",
     "@types/luxon": "^3.7.5",
     "@types/node": "^20",
-    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

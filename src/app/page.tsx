@@ -11,6 +11,26 @@ import { getFeaturedTrainers } from "@/lib/services/trainers";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
+  const baseUrl = (process.env.APP_URL || "https://training-seven-taupe.vercel.app").replace(/\/$/, "");
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${baseUrl}/#organization`,
+        name: "Spotter",
+        url: baseUrl,
+        description: "Online marketplace for discovering and booking verified personal trainers.",
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${baseUrl}/#website`,
+        url: baseUrl,
+        name: "Spotter",
+        publisher: { "@id": `${baseUrl}/#organization` },
+      },
+    ],
+  };
   let trainers: import("@/types/trainer").Trainer[] = [];
   let unavailable = false;
   try {
@@ -20,6 +40,10 @@ export default async function Home() {
   }
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }}
+      />
       <HeroSection />
       <section className="section container featured-section" id="trainers">
         <Reveal>

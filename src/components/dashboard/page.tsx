@@ -16,6 +16,7 @@ const allowed = {
     "refunds",
     "payouts",
     "reviews",
+    "categories",
     "specialties",
     "content",
     "notifications",

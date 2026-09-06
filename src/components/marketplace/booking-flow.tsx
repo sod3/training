@@ -1,17 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, useApi } from "@/lib/client-api";
 import { useStore } from "./store";
 import { money } from "@/lib/marketplace";
 import type { Trainer } from "@/types/trainer";
-export function BookingFlow({
-  params,
-}: {
-  params: Record<string, string>;
-  checkout?: boolean;
-}) {
+
+export function BookingFlow({ params }: { params: Record<string, string>; checkout?: boolean }) {
   const { data, error, loading } = useApi<{ trainer: Trainer }>(
     params.trainer ? `trainers/${encodeURIComponent(params.trainer)}` : null,
   );
@@ -19,9 +15,7 @@ export function BookingFlow({
     return (
       <div className="container section empty-state">
         <h1>Choose your trainer first.</h1>
-        <Link href="/trainers" className="btn">
-          Find a trainer →
-        </Link>
+        <Link href="/trainers" className="btn">Browse trainers →</Link>
       </div>
     );
   if (error)
@@ -33,34 +27,18 @@ export function BookingFlow({
       </div>
     );
   if (loading || !data)
-    return (
-      <div className="container section" role="status">
-        <h1>Getting ready for your next session.</h1>
-        <p>Loading trainer details…</p>
-      </div>
-    );
+    return <div className="container section" role="status"><h1>Getting your booking ready.</h1><p>Loading trainer details…</p></div>;
   return <Checkout trainer={data.trainer} params={params} />;
 }
-function Checkout({
-  trainer: t,
-  params,
-}: {
-  trainer: Trainer;
-  params: Record<string, string>;
-}) {
+
+function Checkout({ trainer: t, params }: { trainer: Trainer; params: Record<string, string> }) {
   const router = useRouter();
   const { state } = useStore();
   const [step, setStep] = useState(0);
-  const [packageId, setPackage] = useState(
-    params.package || t.packages[0]?.id || "",
-  );
-  const [type, setType] = useState(params.type || "gym");
+  const [packageId, setPackage] = useState(params.package || t.packages[0]?.id || "");
   const [date, setDate] = useState(params.date || "");
   const [start, setStart] = useState(params.time || "");
-  const [address, setAddress] = useState(params.address || "");
-  const [paymentMethod, setPaymentMethod] = useState<"JAZZCASH" | "EASYPAISA">(
-    "JAZZCASH",
-  );
+  const [paymentMethod, setPaymentMethod] = useState<"JAZZCASH" | "EASYPAISA">("JAZZCASH");
   const [payerName, setPayerName] = useState("");
   const [transactionId, setTransactionId] = useState("");
   const [proof, setProof] = useState<File | null>(null);
@@ -69,259 +47,181 @@ function Checkout({
   const [orderId, setOrderId] = useState("");
   const [key] = useState(() => crypto.randomUUID());
   const pkg = t.packages.find((p) => p.id === packageId);
-  const {
-    data,
-    loading,
-    error: availabilityError,
-  } = useApi<{ slots: { start: string; label: string }[] }>(
+  const { data, loading, error: availabilityError } = useApi<{ slots: { start: string; label: string }[] }>(
     date && packageId
-      ? `trainers/${t.id}/availability?${new URLSearchParams({ date, packageId, type })}`
+      ? `trainers/${t.id}/availability?${new URLSearchParams({ date, packageId })}`
       : null,
   );
-  const { data: paymentAccounts } = useApi<{
-    accountName: string;
-    jazzcash: string;
-    easypaisa: string;
-  }>("payment-methods");
-  const resume = `/checkout?${new URLSearchParams({ trainer: t.slug, package: packageId, type, date, time: start, address })}`;
+  const {
+    data: paymentAccounts,
+    loading: paymentMethodsLoading,
+    error: paymentMethodsError,
+  } = useApi<{ accountName: string; jazzcash: string; easypaisa: string; configured: boolean }>("payment-methods");
+  const availablePaymentMethods = ([
+    ["JAZZCASH", paymentAccounts?.jazzcash],
+    ["EASYPAISA", paymentAccounts?.easypaisa],
+  ] as const).filter(([, number]) => Boolean(number));
+  const selectedPaymentNumber = paymentMethod === "JAZZCASH" ? paymentAccounts?.jazzcash : paymentAccounts?.easypaisa;
+  useEffect(() => {
+    if (paymentMethod === "JAZZCASH" && !paymentAccounts?.jazzcash && paymentAccounts?.easypaisa)
+      setPaymentMethod("EASYPAISA");
+    if (paymentMethod === "EASYPAISA" && !paymentAccounts?.easypaisa && paymentAccounts?.jazzcash)
+      setPaymentMethod("JAZZCASH");
+  }, [paymentAccounts?.easypaisa, paymentAccounts?.jazzcash, paymentMethod]);
+  const resume = `/checkout?${new URLSearchParams({ trainer: t.slug, package: packageId, date, time: start })}`;
+  const localSlot = start
+    ? new Date(start).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+    : "Choose a time";
+  const trainerSlot = start && t.timezone
+    ? new Date(start).toLocaleString("en", { timeZone: t.timezone, dateStyle: "medium", timeStyle: "short" })
+    : "";
+
   return (
     <div className="container section booking-page">
       <div className="page-heading">
-        <p className="eyebrow">A LITTLE TIME FOR YOU</p>
-        <h1>Your next good decision.</h1>
-        <p>
-          Train with {t.firstName} {t.lastName}.
-        </p>
+        <p className="eyebrow">LIVE ONLINE TRAINING</p>
+        <h1>Book your session.</h1>
+        <p>Train online with {t.firstName} {t.lastName}, from wherever you are.</p>
       </div>
       <div className="checkout-steps">
-        {["Package", "Schedule", "Details", "Payment"].map((s, i) => (
-          <span className={step === i ? "active" : ""} key={s}>
-            {i + 1}. {s}
-          </span>
+        {["Package", "Schedule", "Payment"].map((label, index) => (
+          <span className={step === index ? "active" : ""} key={label}>{index + 1}. {label}</span>
         ))}
       </div>
       <div className="production-checkout">
         <section className="panel">
           {step === 0 && (
             <>
-              <h2>Find your rhythm.</h2>
+              <h2>Choose your training plan.</h2>
+              <p>All Spotter sessions are delivered online, one-to-one with your trainer.</p>
               <div className="package-grid">
                 {t.packages.map((p) => (
                   <button
+                    type="button"
                     key={p.id}
                     className={`package-card ${p.id === packageId ? "popular" : ""}`}
                     aria-pressed={p.id === packageId}
-                    onClick={() => {
-                      setPackage(p.id);
-                      setStart("");
-                    }}
+                    onClick={() => { setPackage(p.id); setStart(""); }}
                   >
                     <h3>{p.title}</h3>
                     <strong>{money(p.price)}</strong>
-                    <p>
-                      {p.sessions} sessions · {p.duration} minutes
-                    </p>
+                    <p>{p.sessions} sessions · {p.duration} minutes</p>
                     <p>{p.description}</p>
                   </button>
                 ))}
               </div>
-              <fieldset className="filter-group">
-                <legend>How would you like to train?</legend>
-                <div className="choice-chips">
-                  {["gym", "home", "outdoor", "online"].map((value) => (
+            </>
+          )}
+
+          {step === 1 && (
+            <>
+              <h2>Choose a real available time.</h2>
+              <label className="field">
+                Date
+                <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setStart(""); }} />
+              </label>
+              <p><strong>Times are shown in your device timezone.</strong>{t.timezone ? ` Trainer schedule: ${t.timezone}.` : ""}</p>
+              {loading && <p role="status">Checking live availability…</p>}
+              {availabilityError && <p role="alert" className="form-error">{availabilityError}</p>}
+              <div className="choice-chips">
+                {data?.slots.map((slot) => (
+                  <button
+                    type="button"
+                    key={slot.start}
+                    className={start === slot.start ? "selected" : ""}
+                    onClick={() => setStart(slot.start)}
+                    title={t.timezone ? `Trainer time: ${new Date(slot.start).toLocaleTimeString("en", { timeZone: t.timezone, hour: "numeric", minute: "2-digit" })}` : undefined}
+                  >
+                    {new Date(slot.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                  </button>
+                ))}
+              </div>
+              {data && !data.slots.length && <p>No open times on this date. Choose another day.</p>}
+              {start && (
+                <div className="payment-notice">
+                  <strong>{localSlot} — your time</strong>
+                  {trainerSlot && <p>{trainerSlot} — trainer time</p>}
+                </div>
+              )}
+              <p>For multi-session packages, this reserves the first session. You can schedule remaining sessions from your dashboard after payment approval.</p>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <h2>Pay with JazzCash or EasyPaisa.</h2>
+              <p>Transfer the total to the account below, then submit your transaction ID and screenshot. An admin verifies the transfer before confirming the booking.</p>
+              {paymentMethodsLoading ? (
+                <p role="status">Loading payment account details…</p>
+              ) : paymentMethodsError ? (
+                <div className="empty-state compact" role="alert">
+                  <h3>We could not load payment details.</h3>
+                  <p>{paymentMethodsError}</p>
+                </div>
+              ) : !paymentAccounts?.configured ? (
+                <div className="empty-state compact" role="alert">
+                  <h3>Manual payments are temporarily unavailable.</h3>
+                  <p>The Spotter payment account numbers have not been configured. No booking will be created until a payment method is available.</p>
+                </div>
+              ) : (
+                <div className="payment-method-cards">
+                  {availablePaymentMethods.map(([method, number]) => (
                     <button
-                      key={value}
-                      className={type === value ? "selected" : ""}
-                      onClick={() => {
-                        setType(value);
-                        setStart("");
-                      }}
+                      type="button"
+                      key={method}
+                      className={`package-card ${paymentMethod === method ? "popular" : ""}`}
+                      aria-pressed={paymentMethod === method}
+                      onClick={() => setPaymentMethod(method)}
                     >
-                      {value}
+                      <strong>{method === "JAZZCASH" ? "JazzCash" : "EasyPaisa"}</strong>
+                      <span>{number}</span>
+                      <small>Account: {paymentAccounts?.accountName || "Spotter Training"}</small>
                     </button>
                   ))}
                 </div>
-              </fieldset>
-            </>
-          )}
-          {step === 1 && (
-            <>
-              <h2>A time that fits.</h2>
-              <label className="field">
-                Choose a date
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => {
-                    setDate(e.target.value);
-                    setStart("");
-                  }}
-                />
-              </label>
-              <p>All times shown in {t.timezone}.</p>
-              {loading && <p role="status">Checking availability…</p>}
-              {availabilityError && <p role="alert">{availabilityError}</p>}
-              <div className="choice-chips">
-                {data?.slots.map((s) => (
-                  <button
-                    key={s.start}
-                    className={start === s.start ? "selected" : ""}
-                    onClick={() => setStart(s.start)}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-              {data && !data.slots.length && (
-                <p>No open times on this date. Try another day.</p>
               )}
-            </>
-          )}
-          {step === 2 && (
-            <>
-              <h2>Make it yours.</h2>
-              {type === "home" ? (
-                <label className="field">
-                  Training address
-                  <textarea
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    maxLength={1000}
-                  />
-                </label>
-              ) : (
-                <p>
-                  Your trainer will coordinate the {type} session details with
-                  you through messages.
-                </p>
-              )}
-              <p>
-                For a multi-session package, this reserves your first
-                appointment. Schedule the remaining sessions in your dashboard
-                after payment.
-              </p>
-            </>
-          )}
-          {step === 3 && (
-            <>
-              <h2>Pay in two simple steps.</h2>
-              <p>
-                Transfer the total to JazzCash or EasyPaisa, then send the
-                screenshot and transaction details below. An admin checks the
-                transfer and confirms your booking.
-              </p>
-              <div className="payment-method-cards">
-                {(["JAZZCASH", "EASYPAISA"] as const).map((method) => (
-                  <button
-                    key={method}
-                    type="button"
-                    className={`package-card ${paymentMethod === method ? "popular" : ""}`}
-                    aria-pressed={paymentMethod === method}
-                    onClick={() => setPaymentMethod(method)}
-                  >
-                    <strong>
-                      {method === "JAZZCASH" ? "JazzCash" : "EasyPaisa"}
-                    </strong>
-                    <span>
-                      {method === "JAZZCASH"
-                        ? paymentAccounts?.jazzcash || "Add JazzCash number"
-                        : paymentAccounts?.easypaisa || "Add EasyPaisa number"}
-                    </span>
-                    <small>
-                      Account:{" "}
-                      {paymentAccounts?.accountName || "Spotter Training"}
-                    </small>
-                  </button>
-                ))}
-              </div>
               <div className="payment-notice">
-                <strong>Pay {money(pkg?.price || 0)} now</strong>
-                <p>
-                  Use the receiving number shown above. Keep your transaction ID
-                  and screenshot ready. Your slot stays held while the admin
-                  reviews the proof.
-                </p>
+                <strong>Pay {money(pkg?.price || 0)}</strong>
+                <p>After you submit valid payment proof, Spotter keeps this reservation pending while an admin reviews it.</p>
               </div>
-              <label className="field">
-                Name used for the transfer
-                <input
-                  value={payerName}
-                  onChange={(e) => setPayerName(e.target.value)}
-                  maxLength={120}
-                  required
-                />
-              </label>
-              <label className="field">
-                Transaction ID
-                <input
-                  value={transactionId}
-                  onChange={(e) => setTransactionId(e.target.value)}
-                  maxLength={120}
-                  required
-                />
-              </label>
+              <label className="field">Name used for transfer<input value={payerName} onChange={(e) => setPayerName(e.target.value)} maxLength={120} /></label>
+              <label className="field">Transaction ID<input value={transactionId} onChange={(e) => setTransactionId(e.target.value)} maxLength={120} /></label>
               <label className="field">
                 Payment screenshot
-                <input
-                  type="file"
-                  accept=".jpg,.jpeg,.png,.webp"
-                  onChange={(e) => setProof(e.target.files?.[0] || null)}
-                  required
-                />
+                <input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(e) => setProof(e.target.files?.[0] || null)} />
                 <small>JPG, PNG, or WebP up to 4 MB.</small>
               </label>
-              <p>
-                Free cancellation until the window shown in your reservation.
-                Late cancellations forfeit the affected session’s portion of the
-                package.
-              </p>
+              <p>Cancellation and refund outcomes follow the policy saved with your booking.</p>
               {state.role === "visitor" ? (
-                <Link
-                  className="btn"
-                  href={`/login?next=${encodeURIComponent(resume)}`}
-                >
-                  Sign in to finish booking →
-                </Link>
+                <Link className="btn" href={`/login?next=${encodeURIComponent(resume)}`}>Sign in to finish booking →</Link>
+              ) : state.role !== "customer" ? (
+                <div className="empty-state compact" role="alert">
+                  <h3>Customer account required.</h3>
+                  <p>Trainer and admin accounts cannot place customer bookings. Sign in with a customer account to continue.</p>
+                </div>
               ) : (
                 <button
+                  type="button"
                   className="btn"
-                  disabled={busy}
+                  disabled={busy || !selectedPaymentNumber || !payerName.trim() || !transactionId.trim() || !proof || !start || !packageId}
                   onClick={async () => {
                     setBusy(true);
                     setError("");
                     try {
                       let id = orderId;
                       if (!id) {
-                        const order = await api<{ _id: string }>("bookings", {
-                          packageId,
-                          start,
-                          trainingType: type,
-                          address,
-                          idempotencyKey: key,
-                        });
+                        const order = await api<{ _id: string }>("bookings", { packageId, start, idempotencyKey: key });
                         id = order._id;
                         setOrderId(id);
                       }
-                      if (!proof)
-                        throw new Error("Upload your payment screenshot first");
+                      if (!proof) throw new Error("Upload your payment screenshot first");
                       const upload = new FormData();
                       upload.set("file", proof);
                       upload.set("purpose", "PAYMENT_PROOF");
-                      const uploadResponse = await fetch("/api/uploads", {
-                        method: "POST",
-                        body: upload,
-                      });
+                      const uploadResponse = await fetch("/api/uploads", { method: "POST", body: upload });
                       const uploadResult = await uploadResponse.json();
-                      if (!uploadResponse.ok)
-                        throw new Error(
-                          uploadResult.error || "Screenshot upload failed",
-                        );
-                      await api(`bookings/${id}/pay`, {
-                        method: paymentMethod,
-                        payerName,
-                        transactionId,
-                        proofUploadId: uploadResult.id,
-                      });
+                      if (!uploadResponse.ok) throw new Error(uploadResult.error || "Screenshot upload failed");
+                      await api(`bookings/${id}/pay`, { method: paymentMethod, payerName: payerName.trim(), transactionId: transactionId.trim(), proofUploadId: uploadResult.id });
                       router.push(`/booking/success?id=${id}`);
                     } catch (e) {
                       setError((e as Error).message);
@@ -330,79 +230,38 @@ function Checkout({
                     }
                   }}
                 >
-                  {busy
-                    ? "Sending payment proof…"
-                    : "Submit payment for review →"}
+                  {busy ? "Submitting payment proof…" : "Submit payment for review →"}
                 </button>
               )}
-              {orderId && (
-                <Link
-                  className="text-link mt-4"
-                  href={`/booking/success?id=${orderId}`}
-                >
-                  View reservation and payment status
-                </Link>
-              )}
+              {orderId && <Link className="text-link mt-4" href={`/booking/success?id=${orderId}`}>View reservation and payment status</Link>}
             </>
           )}
-          {error && (
-            <p role="alert" className="form-error">
-              {error}
-            </p>
-          )}
+
+          {error && <p role="alert" className="form-error">{error}</p>}
           <div className="workspace-actions">
-            {step > 0 && (
+            {step > 0 && <button type="button" className="btn outline" onClick={() => setStep(step - 1)} disabled={busy}>Back</button>}
+            {step < 2 && (
               <button
-                className="btn outline"
-                onClick={() => setStep(step - 1)}
-                disabled={busy}
-              >
-                Back
-              </button>
-            )}
-            {step < 3 && (
-              <button
+                type="button"
                 className="btn"
-                disabled={
-                  !pkg ||
-                  (step === 1 &&
-                    (!start || !data?.slots.some((s) => s.start === start))) ||
-                  (step === 2 && type === "home" && address.length < 10) ||
-                  (step === 3 &&
-                    (!payerName.trim() || !transactionId.trim() || !proof))
-                }
+                disabled={!pkg || (step === 1 && (!start || !data?.slots.some((slot) => slot.start === start)))}
                 onClick={() => setStep(step + 1)}
-              >
-                Continue →
-              </button>
+              >Continue →</button>
             )}
           </div>
         </section>
+
         <aside className="panel order-summary">
-          <p className="eyebrow">YOUR TRAINING PLAN</p>
-          <h2>
-            {t.firstName} {t.lastName}
-          </h2>
+          <p className="eyebrow">YOUR ONLINE TRAINING PLAN</p>
+          <h2>{t.firstName} {t.lastName}</h2>
           <h3>{pkg?.title || "Select a package"}</h3>
-          <p>
-            {pkg?.sessions || 0} sessions · {pkg?.duration || 0} minutes
-          </p>
-          <p>{type}</p>
-          <p>
-            {start
-              ? new Date(start).toLocaleString("en-PK", {
-                  timeZone: t.timezone,
-                })
-              : "Choose a time"}
-          </p>
+          <p>{pkg?.sessions || 0} sessions · {pkg?.duration || 0} minutes</p>
+          <p>Live online · 1-on-1</p>
+          <p>{localSlot}</p>
+          {trainerSlot && start && <small>Trainer time: {trainerSlot}</small>}
           <strong className="order-total">{money(pkg?.price || 0)}</strong>
-          <p>
-            Final price and terms are calculated and saved by Spotter before
-            payment.
-          </p>
-          <Link href="/cancellation" className="text-link">
-            Cancellation policy →
-          </Link>
+          <p>Price, service terms and cancellation policy are snapshotted into the booking before payment.</p>
+          <Link href="/cancellation" className="text-link">Cancellation policy →</Link>
         </aside>
       </div>
     </div>

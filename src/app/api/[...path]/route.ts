@@ -45,11 +45,7 @@ import {
   dashboardData,
   requestPayout,
 } from "@/services/dashboard";
-import {
-  processPaymentEvent,
-  reconcilePayment,
-  submitManualPayment,
-} from "@/services/payments";
+import { submitManualPayment } from "@/services/payments";
 import {
   attachPublic,
   cleanUploads,
@@ -57,9 +53,10 @@ import {
   uploadFile,
 } from "@/services/storage";
 import { trainerAction } from "@/services/trainer-management";
-import { getTrainerBySlug, listTrainers } from "@/services/trainers";
+import { getTrainerBySlug, listTrainers, matchTrainers } from "@/services/trainers";
 import { notifyUser } from "@/lib/server/email";
 import { exportData } from "@/services/export";
+import { DEFAULT_CATEGORIES, DEFAULT_SPECIALTIES } from "@/lib/catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -100,13 +97,16 @@ async function handle(request: Request, context: Context) {
         unreadMessages,
       });
     }
-    if (root === "payment-methods" && method === "GET")
+    if (root === "payment-methods" && method === "GET") {
+      const jazzcash = process.env.JAZZCASH_ACCOUNT_NUMBER?.trim() || "";
+      const easypaisa = process.env.EASYPAISA_ACCOUNT_NUMBER?.trim() || "";
       return json({
-        accountName: process.env.PAYMENT_ACCOUNT_NAME || "Spotter Training",
-        jazzcash: process.env.JAZZCASH_ACCOUNT_NUMBER || "Add JazzCash number",
-        easypaisa:
-          process.env.EASYPAISA_ACCOUNT_NUMBER || "Add EasyPaisa number",
+        accountName: process.env.PAYMENT_ACCOUNT_NAME?.trim() || "Spotter Training",
+        jazzcash,
+        easypaisa,
+        configured: Boolean(jazzcash || easypaisa),
       });
+    }
     operation = "MongoDB.connect";
     await connectDB();
     operation = "request.dispatch";
@@ -140,16 +140,6 @@ async function handle(request: Request, context: Context) {
       const cleaned = await cleanUploads();
       return json({ expired, cleaned, emailDelivery: "disabled" });
     }
-    if (root === "payments" && id === "webhook" && method === "POST") {
-      const raw = await request.text();
-      assert(raw.length <= 65536, "Request too large", 413);
-      return json(
-        await processPaymentEvent(
-          raw,
-          request.headers.get("x-sfpy-signature") || "",
-        ),
-      );
-    }
     if (method === "GET") {
       if (root === "trainers" && !id) return json(await listTrainers(params));
       if (root === "trainers" && id && !action) {
@@ -163,7 +153,6 @@ async function handle(request: Request, context: Context) {
           .object({
             date: z.string(),
             packageId: objectId,
-            type: z.enum(["home", "gym", "outdoor", "online"]).optional(),
             days: z.coerce.number().int().min(1).max(7).default(1),
           })
           .parse(params);
@@ -190,14 +179,26 @@ async function handle(request: Request, context: Context) {
               ),
             });
       }
-      if (root === "catalog")
+      if (root === "match" && !id) return json(await matchTrainers(params));
+      if (root === "catalog") {
+        const configured = await Taxonomy.find({ kind: { $in: ["CATEGORY", "SPECIALTY", "FAQ"] } })
+          .sort({ sortOrder: 1, name: 1 })
+          .limit(300)
+          .select("kind name slug body active sortOrder")
+          .lean();
+        const configuredCategories = configured.filter((item) => item.kind === "CATEGORY");
+        const configuredSpecialties = configured.filter((item) => item.kind === "SPECIALTY");
+        const items = configured.filter((item) => item.active);
         return json({
-          items: await Taxonomy.find({ active: true })
-            .sort({ sortOrder: 1 })
-            .limit(300)
-            .select("kind name slug city body")
-            .lean(),
+          items,
+          categories: configuredCategories.length
+            ? configuredCategories.filter((item) => item.active).map((item) => item.name)
+            : [...DEFAULT_CATEGORIES],
+          specialties: configuredSpecialties.length
+            ? configuredSpecialties.filter((item) => item.active).map((item) => item.name)
+            : [...DEFAULT_SPECIALTIES],
         });
+      }
       if (root === "media" && id) return mediaResponse(id, await currentUser());
       operation = "authentication.requireUser";
       const user = await requireUser(
@@ -349,10 +350,6 @@ async function handle(request: Request, context: Context) {
       if (action === "pay") {
         await rateLimit(`payment:${user.id}`, 10, 15);
         return json(await submitManualPayment(user, id, data));
-      }
-      if (action === "reconcile") {
-        await rateLimit(`reconcile:${user.id}`, 15, 15);
-        return json(await reconcilePayment(user, id));
       }
     }
     if (root === "sessions" && id)

@@ -1,158 +1,56 @@
-# Availability production repair
+# Online availability — production behavior
 
-## Reproduced root cause
+Spotter is an **online-only** personal-training marketplace. Availability is a recurring weekly schedule in each trainer's IANA timezone. There are no location, area, gym/home/outdoor or training-mode fields in availability.
 
-The installed Mongoose 9.9.5 throws this error in `Model.create()` when a session
-and more than one document are supplied without `ordered: true`:
+## Weekly schedule write flow
 
+`POST /api/trainer/availability` (and `PATCH`) accepts the complete desired schedule:
+
+```json
+{
+  "rules": [
+    { "dayOfWeek": 1, "startTime": "09:00", "endTime": "12:00" },
+    { "dayOfWeek": 3, "startTime": "16:00", "endTime": "20:00" }
+  ]
+}
 ```
-MongooseError: Cannot call `create()` with a session and multiple documents unless `ordered: true` is set
-```
 
-`trainerAction()` supplied an array of weekly windows with only `{ session }`.
-A two-window integration test reproduced the exception against a MongoDB replica
-set before the fix. Single-window saves do not trigger this particular failure.
-The replacement now uses `{ session, ordered: true }`. Changing the subsequent
-trainer profile update cannot fix an exception thrown before that update runs.
+The backend validates weekday and `HH:mm` values, rejects duplicate/overlapping windows, and replaces the trainer's rules transactionally. Removing one window means omitting it from the replacement array; removing all windows sends `{ "rules": [] }`. Existing confirmed sessions are never deleted when recurring availability changes.
 
-## Request and database flow
+The original production 503 was caused by a Mongoose multi-document create inside a transaction without the required ordered behavior. The current implementation performs the replacement safely in a transaction and keeps booking/reservation state independent of recurring rules.
 
-1. The Node.js catch-all route awaits `connectDB()`. `MONGODB_URI` is server-only,
-   checked at request time, and never returned in a response. Concurrent cold
-   requests share a pending connection; warm requests reuse the default Mongoose
-   connection and pool. Failed attempts and disconnects do not leave a resolved,
-   stale connection promise cached. Queries do not silently buffer before connection.
-2. The write route checks origin, parses bounded JSON, validates the session cookie
-   against `AuthSession`, and loads an active `User` with matching session version.
-   `requireUser(["TRAINER"])` enforces authorization before the write rate limit.
-3. `ownTrainer()` validates the actor ObjectId and loads `TrainerProfile` by
-   **userId**, not by treating the user's ID as a trainer profile ID. Models reuse
-   `mongoose.models` and are registered on the same default connection.
-4. Zod accepts only the weekly rule fields. Each has an integer weekday 0–6,
-   HH:mm local times, and unique supported training types. The server rejects
-   equal start/end, duplicate windows and overlapping windows, including overnight
-   and Saturday-to-Sunday overlaps. Adjacent windows are allowed. Overlapping
-   training modes should be combined in one window's `trainingTypes` array.
-5. A transaction increments the trainer revision first, serializing availability
-   changes with booking operations. It checks the stored IANA timezone, deletes
-   the trainer's old rules, inserts the new rules sequentially, and updates only
-   review metadata. Mongoose independently validates stored fields. Failure rolls
-   back deletion, insertion and metadata together. Existing sessions are untouched.
-   The driver's transaction/retry budget is 25 seconds, below the route's 60-second limit.
-6. `GET /api/trainer/availability` reloads that trainer's rules in a stable order.
-   Responses use `Cache-Control: no-store`; the UI reloads after saving.
+## Public slots
 
-## Public profile availability
+Public slots are generated server-side from:
 
-Weekly rules and the trainer profile previously had separate `trainingTypes`
-arrays. The public profile checked only `TrainerProfile.trainingTypes`, while the
-trainer availability editor wrote only `TrainerAvailability.trainingTypes`. A
-legacy/approved trainer could therefore have saved `gym` hours but an empty profile
-array. The browser skipped its availability request and displayed both “adds a
-training type” and “No slots” at once; a direct request was also filtered out by
-the server-side profile array.
+- the trainer's weekly rules and timezone;
+- dated availability exceptions/time off;
+- confirmed/completed/no-show sessions;
+- active unexpired checkout holds;
+- platform booking-notice and horizon rules.
 
-The public trainer presenter now derives effective training types from both the
-profile and active weekly rules. Saving a schedule also merges its selected types
-into the profile for future consistency. Slot authorization is based on the actual
-weekly/detailed availability records. A public request without `type` returns the
-union of every selected training type, de-duplicated by start time, and tells the
-client which types support each slot. Checkout receives one compatible type when
-the visitor selects a time.
+`GET /api/trainers/:trainerId/availability` requires an active package so slot duration comes from real package data. The customer sees generated dates/times; checkout sends only the package ID, selected UTC start instant and idempotency key.
 
-The profile initializes its date from the server's actual first available date.
-Previously it compared a formatted value such as `Mon, 7 Sep · 9:00 AM` with the
-word `Today`, which could never succeed and defaulted the calendar to tomorrow.
-Loading, missing-package, missing-hours, API-error and genuinely-empty-date states
-are now mutually exclusive, so contradictory messages no longer render together.
+All booking timestamps are stored as UTC instants. Trainer weekly rules remain local wall-clock values in the trainer's IANA timezone. Customer-facing interfaces render session instants in the customer's browser/local timezone where appropriate.
 
-The public trainer card now displays the complete next seven days instead of a
-single “Choose a date” control. `GET /api/trainers/:id/availability` accepts
-`days=7` and returns groups containing the local date, local day label and every
-bookable start time. The server loads the trainer, settings, weekly rules, dated
-exceptions and reservations once for the whole range, then calculates each day
-from that shared snapshot. Empty days are omitted from the card; when the entire
-week is empty, one clear empty state is shown. Selecting a time carries that
-group's date and a compatible training type into checkout.
+## Concurrency
 
-The existing UI uses **schedule replacement**, not individual slot CRUD URLs:
+Availability display is advisory; the database booking transaction is authoritative. Booking locks the trainer and re-checks overlap immediately before creating the held session. This prevents two simultaneous customers from successfully reserving overlapping exclusive sessions.
 
-- Add/edit: `POST /api/trainer/availability` with `{ "rules": [...] }` containing
-  the complete desired schedule. `PATCH` accepts the same replacement payload.
-- Delete a window: omit it from the replacement array. Delete all: `{ "rules": [] }`.
-- Reload: `GET /api/trainer/availability` or refresh the trainer availability page.
+## Cron
 
-Weekly rules are recurring wall-clock times in the trainer's timezone, not dated
-UTC instants. An end time earlier than the start means the next day. Dated
-exceptions and reservations remain MongoDB dates/UTC instants; existing slot
-generation tests cover midnight and daylight-saving transitions.
+The Vercel Hobby deployment uses the daily cron in `vercel.json`. Correctness does **not** depend on minute-by-minute cleanup: request-time slot generation ignores expired holds by timestamp, and booking re-checks conflicts transactionally. The cron performs eventual cleanup/reminders once it runs.
 
-An additional cold-start defect was removed: importing all models previously
-called `Payment.collection.createIndex()` before connecting, without awaiting it.
-The unique sparse transaction ID index is now declared in the schema and created
-by the explicit index migration instead of an unhandled import-time write.
+## Release verification
 
-## Errors and logs
+Before production deployment run, where the environment permits:
 
-Input/Zod/Mongoose validation and cast errors return 400; authentication and role
-errors retain 401/403; missing trainer records return 404; duplicates, overlaps and
-version conflicts return 409. Unexpected database/application errors return 500.
-Unsupported weekly-write methods return 405. Rate limiting remains 429.
-
-Every handled failure emits `Spotter request failed` with structured JSON: request
-ID, method, route, failing operation, status, original error name, message, stack,
-numeric MongoDB code, error labels, causes and nested validation errors when present.
-MongoDB URIs and configured secrets are redacted. Request bodies, cookies,
-authorization headers and query documents are not logged. A safe message and
-correlating request ID are returned to the frontend; raw database errors stay server-side.
-Transient transaction errors are rethrown unchanged so the driver can retry;
-only the final rejected request is logged.
-
-## Deployment and verification
-
-Check the actual Vercel project's **Production** environment, not only local `.env`:
-
-- `MONGODB_URI`: Atlas/another transaction-capable replica set or sharded cluster,
-  correctly escaped credentials, correct existing database, and network access
-  from Vercel. Do not rename the database as part of this repair. A URI with no
-  database path uses MongoDB's default database unless otherwise configured.
-- `AUTH_SECRET`: at least 32 characters, matching the existing deployment.
-- `APP_URL`: the canonical HTTPS production origin (the route also supports the
-  existing Vercel production/deployment URL fallback).
-- Database user permissions must permit reads, inserts, deletes and updates on
-  Spotter's existing database. Run `npm run db:indexes` using the intended database
-  and migration permissions; do not run migrations on every request.
-
-`npm run db:check` is read-only: it reports configuration booleans, connectivity,
-transaction topology, model connection identity and collection presence. Inject
-the target environment to check it; without that, it checks local `.env` only.
-It does not prove production write permissions. The local check during this repair
-passed connectivity/topology/model checks; the local URI has no explicit database path.
-No URI or credential value is printed.
-
-Validate a release with:
-
-```
+```bash
 npm test
 npm run lint
+npm run typecheck
 npm run build
 npm run test:e2e
 ```
 
-The browser suite starts the optimized production build against an isolated MongoDB
-replica set. Its availability test signs in as a trainer, adds two windows, edits
-one, deletes one and then all, and hard-reloads after every save. It also checks
-401/403/400/409 HTTP responses and persistence following rejected writes. Backend
-tests exercise partial-write rollback, concurrent replacements, reservation
-preservation, model validation, reconnection and log redaction.
-
-After deploying this source to the correct Vercel project, repeat those UI actions
-using a dedicated trainer test account and check both Network responses and Vercel
-function logs. Confirm another trainer's schedule and existing reservations remain
-unchanged. Use test windows and remove them afterward. Local production-build tests
-are not a substitute for this final deployment check.
-
-At the time of this repair, the workspace had no linked Vercel project, the Vercel
-CLI had no saved credentials, and no signed-in browser session was available.
-Deployment, Vercel environment inspection and live CRUD verification therefore
-require access to the production project and an authenticated trainer test session.
+Then verify on staging/production with dedicated test accounts: save/edit/delete weekly windows, open the public profile, attempt overlapping bookings from two customers, submit a manual JazzCash/EasyPaisa proof, approve it as Admin, and verify exactly one confirmed session remains.

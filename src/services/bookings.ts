@@ -25,7 +25,6 @@ import {
   generateSlots,
   ownsBooking,
 } from "@/lib/server/rules";
-import { createMeeting } from "./video";
 
 export async function settings(session?: ClientSession) {
   return (
@@ -361,7 +360,6 @@ export async function scheduleSession(actor: Actor, id: string, data: unknown) {
       previous.reminderSentAt = undefined;
       await previous.save({ session });
     } else {
-      const meeting = await createMeeting("MOCK");
       const count = await Session.countDocuments({ orderId: id }).session(
         session,
       );
@@ -375,10 +373,10 @@ export async function scheduleSession(actor: Actor, id: string, data: unknown) {
             start: slot.start,
             end: slot.end,
             status: "CONFIRMED",
-            videoProvider: meeting.videoProvider,
-            meetingId: meeting.meetingId,
-            meetingUrl: meeting.meetingUrl,
-            meetingStatus: meeting.meetingStatus,
+            videoProvider: "NONE",
+            meetingId: "",
+            meetingUrl: "",
+            meetingStatus: "PENDING",
           },
         ],
         { session },
@@ -535,15 +533,18 @@ export async function completeSession(actor: Actor, id: string, data: unknown) {
       orderId: order._id,
       status: "CONFIRMED",
     }).session(session);
-    if (!active && order.remainingSessions === 0) {
+    const bookingCompleted = !active && order.remainingSessions === 0;
+    if (bookingCompleted) {
       order.bookingStatus = "COMPLETED";
       await order.save({ session });
     }
     await notifyUser(
       order.customerId,
-      "Session completed",
-      "Thank you for training. You can now share your experience.",
-      "/dashboard/customer/reviews",
+      bookingCompleted ? "Booking completed" : "Session completed",
+      bookingCompleted
+        ? "Your coaching booking is complete. You can now share a verified review."
+        : "Your session is complete. Schedule any remaining sessions from your bookings dashboard.",
+      bookingCompleted ? "/dashboard/customer/reviews" : "/dashboard/customer/bookings",
       session,
     );
     return { message: "Session updated" };

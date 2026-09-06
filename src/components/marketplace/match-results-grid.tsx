@@ -1,62 +1,42 @@
 "use client";
-import { useState } from "react";
-import { Check } from "lucide-react";
-import { Trainer } from "@/types/trainer";
+
+import { Check, Sparkles } from "lucide-react";
+import type { Trainer } from "@/types/trainer";
 import { TrainerCard } from "./trainer-card";
+
 export function MatchResultsGrid({
   matches,
+  label = "Best Matches for You",
 }: {
-  matches: (Trainer & { reasons: string[] })[];
+  matches: Trainer[];
+  label?: string;
 }) {
-  const [sort, setSort] = useState("recommended");
-  const sorted = [...matches].sort((a, b) =>
-    sort === "rating"
-      ? b.rating - a.rating
-      : sort === "closest"
-        ? (a.distanceKm || 0) - (b.distanceKm || 0)
-        : sort === "soon"
-          ? Number(b.nextAvailable.startsWith("Today")) -
-            Number(a.nextAvailable.startsWith("Today"))
-          : (b.matchScore || 0) - (a.matchScore || 0),
-  );
+  if (!matches.length) return null;
   return (
-    <>
+    <section className="mt-10" aria-label={label}>
       <div className="result-toolbar">
-        <p className="muted text-sm">
-          A match is a starting point. Get to know your coach.
-        </p>
-        <div className="result-controls">
-          <select
-            aria-label="Sort your matches"
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-          >
-            <option value="recommended">Recommended</option>
-            <option value="rating">Highest rated</option>
-
-            <option value="soon">Available soonest</option>
-          </select>
+        <div>
+          <p className="eyebrow"><Sparkles size={14} /> PERSONALIZED RESULTS</p>
+          <h2>{label}</h2>
         </div>
       </div>
       <div className="trainer-grid">
-        {sorted.map((t) => (
-          <div key={t.id}>
-            <TrainerCard trainer={t} />
+        {matches.map((trainer) => (
+          <div key={trainer.id}>
+            <TrainerCard trainer={trainer} />
             <div className="match-reasons">
-              {t.reasons.length ? (
-                t.reasons.map((r) => (
-                  <span key={r}>
-                    <Check size={13} />
-                    {r}
-                  </span>
+              {typeof trainer.matchScore === "number" && <strong>{trainer.matchScore}% match</strong>}
+              {(trainer.matchReasons || []).length ? (
+                trainer.matchReasons!.map((reason) => (
+                  <span key={reason}><Check size={13} />{reason}</span>
                 ))
               ) : (
-                <span>Explore this coach’s approach and schedule.</span>
+                <span>Explore this trainer’s approach and current schedule.</span>
               )}
             </div>
           </div>
         ))}
       </div>
-    </>
+    </section>
   );
 }

@@ -9,7 +9,6 @@ import {
   Notification,
   Order,
   Review,
-  Session,
   SupportRequest,
   TrainerProfile,
   User,
@@ -18,7 +17,7 @@ import { assert } from "@/lib/server/errors";
 import { notifyUser } from "@/lib/server/email";
 import { type Actor, checkPassword, hashPassword } from "@/lib/server/security";
 import { canReviewTrainer } from "@/lib/server/rules";
-import { objectId, password, timezone } from "@/lib/server/validation";
+import { email, objectId, password, timezone } from "@/lib/server/validation";
 import { publicTrainer } from "./bookings";
 
 export async function favorite(actor: Actor, data: unknown) {
@@ -55,13 +54,13 @@ export async function createReview(actor: Actor, data: unknown) {
   return mongoose.connection.transaction(async (session) => {
     const order = await Order.findById(input.orderId).session(session);
     assert(order, "Booking not found", 404);
-    const count = await Session.countDocuments({
-      orderId: order._id,
-      status: "COMPLETED",
-    }).session(session);
     assert(
-      canReviewTrainer(actor.id, String(order.customerId), count),
-      "Only the customer of a completed session can review",
+      canReviewTrainer(
+        actor.id,
+        String(order.customerId),
+        order.bookingStatus === "COMPLETED" ? 1 : 0,
+      ),
+      "Only the customer of a completed booking can review",
       403,
     );
     await Review.create(
@@ -214,7 +213,6 @@ export async function accountAction(
         fitnessGoals: z.array(z.string().max(100)).max(20).default([]),
         preferredSchedule: z.string().max(200).default(""),
         timezone: timezone.default("Asia/Karachi"),
-        emailNotifications: z.boolean().default(true),
       })
       .strict()
       .parse(data);
@@ -238,7 +236,6 @@ export async function accountAction(
             fitnessGoals: input.fitnessGoals,
             preferredSchedule: input.preferredSchedule,
             timezone: input.timezone,
-            notificationPreferences: { email: input.emailNotifications },
           },
         },
         { upsert: true },
@@ -250,10 +247,16 @@ export async function accountAction(
       .object({
         currentPassword: z.string().max(72),
         newPassword: password.optional(),
+        confirmPassword: z.string().max(72).optional(),
+        newEmail: z.union([email, z.literal("")]).optional(),
         deleteAccount: z.boolean().default(false),
         revokeSessions: z.boolean().default(false),
       })
       .strict()
+      .refine((value) => !value.newPassword || value.newPassword === value.confirmPassword, {
+        path: ["confirmPassword"],
+        message: "Passwords do not match",
+      })
       .parse(data);
     const user = await User.findById(actor.id).select("+passwordHash");
     assert(
@@ -268,6 +271,12 @@ export async function accountAction(
     const passwordHash = input.newPassword
       ? await hashPassword(input.newPassword)
       : undefined;
+    if (input.newEmail && input.newEmail !== user.normalizedEmail)
+      assert(
+        !(await User.exists({ normalizedEmail: input.newEmail, _id: { $ne: user._id } })),
+        "That email address is already in use",
+        409,
+      );
     await mongoose.connection.transaction(async (session) => {
       if (input.deleteAccount) {
         user.status = "DISABLED";
@@ -288,6 +297,10 @@ export async function accountAction(
         );
       }
       if (passwordHash) user.passwordHash = passwordHash;
+      if (input.newEmail) {
+        user.normalizedEmail = input.newEmail;
+        user.emailVerified = true;
+      }
       user.sessionVersion++;
       await user.save({ session });
       await AuthSession.deleteMany({ userId: actor.id }, { session });

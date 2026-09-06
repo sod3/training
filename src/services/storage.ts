@@ -1,11 +1,4 @@
 import { randomUUID } from "node:crypto";
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import sharp from "sharp";
 import {
   AuditLog,
@@ -18,33 +11,6 @@ import { assert } from "@/lib/server/errors";
 import { type Actor } from "@/lib/server/security";
 import { objectId } from "@/lib/server/validation";
 
-function storage() {
-  assert(
-    process.env.S3_BUCKET &&
-      process.env.S3_REGION &&
-      process.env.S3_ACCESS_KEY_ID &&
-      process.env.S3_SECRET_ACCESS_KEY,
-    "File storage is not configured",
-    503,
-  );
-  return new S3Client({
-    region: process.env.S3_REGION,
-    ...(process.env.S3_ENDPOINT ? { endpoint: process.env.S3_ENDPOINT } : {}),
-    forcePathStyle: !!process.env.S3_ENDPOINT,
-    credentials: {
-      accessKeyId: process.env.S3_ACCESS_KEY_ID,
-      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
-    },
-  });
-}
-function hasStorageConfig() {
-  return Boolean(
-    process.env.S3_BUCKET &&
-    process.env.S3_REGION &&
-    process.env.S3_ACCESS_KEY_ID &&
-    process.env.S3_SECRET_ACCESS_KEY,
-  );
-}
 export async function uploadFile(actor: Actor, form: FormData) {
   const file = form.get("file");
   const purpose = form.get("purpose");
@@ -55,9 +21,9 @@ export async function uploadFile(actor: Actor, form: FormData) {
   );
   assert(
     purpose === "PUBLIC" ||
-      purpose === "PAYMENT_PROOF" ||
-      actor.role === "TRAINER",
-    "Only trainers upload verification documents",
+      (purpose === "PRIVATE" && actor.role === "TRAINER") ||
+      (purpose === "PAYMENT_PROOF" && actor.role === "CUSTOMER"),
+    "You cannot upload that file type",
     403,
   );
   assert(
@@ -97,41 +63,21 @@ export async function uploadFile(actor: Actor, form: FormData) {
     mime = "image/webp";
   }
   const key = `${String(purpose).toLowerCase()}/${actor.id}/${randomUUID()}.${pdf ? "pdf" : "webp"}`;
-  // Keep uploads functional on deployments without object storage. MongoDB is
-  // already used for private documents and mediaResponse can serve the same
-  // stored bytes for public and payment-proof uploads. When S3 is configured,
-  // use it to keep binary data out of MongoDB.
-  const client = hasStorageConfig() ? storage() : null;
-  if (client)
-    await client.send(
-      new PutObjectCommand({
-        Bucket: process.env.S3_BUCKET,
-        Key: key,
-        Body: body,
-        ContentType: mime,
-        ServerSideEncryption: "AES256",
-      }),
-    );
-  try {
-    const upload = await Upload.create({
-      userId: actor.id,
-      key,
-      mime,
-      size: body.length,
-      data: client ? undefined : body,
-      purpose: String(purpose),
-    });
-    return {
-      id: String(upload._id),
-      url: purpose === "PUBLIC" ? `/api/media/${upload._id}` : undefined,
-    };
-  } catch (error) {
-    if (client)
-      await client.send(
-        new DeleteObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key }),
-      );
-    throw error;
-  }
+  // Spotter stores new uploads directly in MongoDB. This keeps public media,
+  // trainer verification evidence and payment proof on the same protected
+  // database-backed path requested for this deployment.
+  const upload = await Upload.create({
+    userId: actor.id,
+    key,
+    mime,
+    size: body.length,
+    data: body,
+    purpose: String(purpose),
+  });
+  return {
+    id: String(upload._id),
+    url: purpose === "PUBLIC" ? `/api/media/${upload._id}` : undefined,
+  };
 }
 export async function attachPublic(
   actor: Actor,
@@ -167,48 +113,6 @@ export async function attachPublic(
   await upload.save();
   return { url };
 }
-export async function mediaUrl(id: string, actor: Actor | null) {
-  objectId.parse(id);
-  const upload = await Upload.findById(id);
-  assert(upload, "File not found", 404);
-  if (upload.purpose !== "PUBLIC") {
-    assert(
-      actor && (String(upload.userId) === actor.id || actor.role === "ADMIN"),
-      "File not found",
-      404,
-    );
-    if (actor.role === "ADMIN") {
-      assert(
-        upload.purpose === "PAYMENT_PROOF" ||
-          (await TrainerCredential.exists({ uploadId: id })),
-        "File not found",
-        404,
-      );
-      await AuditLog.create({
-        actorId: actor.id,
-        actorRole: actor.role,
-        action: "VIEW_PRIVATE_DOCUMENT",
-        entityType: "Upload",
-        entityId: id,
-      });
-    }
-  } else
-    assert(
-      upload.status === "ATTACHED" || actor?.id === String(upload.userId),
-      "File not found",
-      404,
-    );
-  return getSignedUrl(
-    storage(),
-    new GetObjectCommand({
-      Bucket: process.env.S3_BUCKET,
-      Key: upload.key,
-      ResponseContentDisposition:
-        upload.purpose !== "PUBLIC" ? "attachment" : "inline",
-    }),
-    { expiresIn: 60 },
-  );
-}
 export async function mediaResponse(id: string, actor: Actor | null) {
   objectId.parse(id);
   const upload = await Upload.findById(id);
@@ -242,28 +146,26 @@ export async function mediaResponse(id: string, actor: Actor | null) {
       404,
     );
   }
-  if (upload.data)
-    return new Response(new Uint8Array(upload.data), {
-      headers: {
-        "Content-Type": upload.mime || "application/octet-stream",
-        "Content-Disposition":
-          upload.purpose === "PRIVATE" ? "attachment" : "inline",
-        "Cache-Control": "private, no-store",
-      },
-    });
-  return Response.redirect(await mediaUrl(id, actor), 307);
+  assert(upload.data, "File data is unavailable", 410);
+  return new Response(new Uint8Array(upload.data), {
+    headers: {
+      "Content-Type": upload.mime || "application/octet-stream",
+      "Content-Disposition":
+        upload.purpose === "PRIVATE" && upload.mime === "application/pdf"
+          ? "attachment"
+          : "inline",
+      "Cache-Control":
+        upload.purpose === "PUBLIC"
+          ? "public, max-age=86400, immutable"
+          : "private, no-store",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
 }
 export async function cleanUploads() {
-  if (!process.env.S3_BUCKET) return 0;
-  const abandoned = await Upload.find({
+  const result = await Upload.deleteMany({
     status: "READY",
     createdAt: { $lt: new Date(Date.now() - 86400000) },
-  }).limit(50);
-  for (const file of abandoned) {
-    await storage().send(
-      new DeleteObjectCommand({ Bucket: process.env.S3_BUCKET, Key: file.key }),
-    );
-    await file.deleteOne();
-  }
-  return abandoned.length;
+  });
+  return result.deletedCount ?? 0;
 }

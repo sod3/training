@@ -5,7 +5,7 @@ import { X, Columns3 } from "lucide-react";
 import { useStore } from "@/components/marketplace/store";
 import { useApi } from "@/lib/client-api";
 import type { Trainer } from "@/types/trainer";
-import { money } from "@/lib/marketplace";
+import { localAvailabilityLabel, money } from "@/lib/marketplace";
 export default function Page() {
   const { state, update } = useStore();
   const { data, error } = useApi<{ trainers: Trainer[] }>(
@@ -68,7 +68,7 @@ export default function Page() {
                     ["Experience", `${t.experienceYears} years`],
                     ["Specialties", t.specialties.join(", ")],
 
-                    ["Next available", t.nextAvailable],
+                    ["Next available", localAvailabilityLabel(t)],
                     [
                       "Verification",
                       t.verifiedCredentials
@@ -86,7 +86,7 @@ export default function Page() {
                   href={`/booking?trainer=${t.slug}`}
                   className="btn w-full"
                 >
-                  Book trial ↗
+                  Book online session ↗
                 </Link>
                 <Link href={`/trainers/${t.slug}`} className="text-link mt-4">
                   View profile →

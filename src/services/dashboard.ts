@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   AuditLog,
   AuthSession,
+  AuthToken,
   Conversation,
   CustomerProfile,
   Favorite,
@@ -29,11 +30,12 @@ import {
 } from "@/models";
 import { assert } from "@/lib/server/errors";
 import { databaseOperation } from "@/lib/server/diagnostics";
-import { type Actor } from "@/lib/server/security";
+import { appUrl, hashToken, randomToken, type Actor } from "@/lib/server/security";
 import { objectId, settingsSchema } from "@/lib/server/validation";
 import { lockTrainer, settings } from "./bookings";
 import { ownTrainer, reviewApplication } from "./trainer-management";
-import { approveRefund, reviewManualPayment } from "./payments";
+import { reviewManualPayment, reviewManualRefund } from "./payments";
+import { DEFAULT_CATEGORIES, DEFAULT_LANGUAGES, DEFAULT_SPECIALTIES } from "@/lib/catalog";
 
 const listQuery = z.object({
   page: z.coerce.number().int().min(1).max(10000).default(1),
@@ -54,6 +56,7 @@ export const adminCollections = {
   refunds: Refund,
   payouts: Payout,
   reviews: Review,
+  categories: Taxonomy,
   specialties: Taxonomy,
   content: Taxonomy,
   support: SupportRequest,
@@ -63,13 +66,31 @@ export const adminCollections = {
 const searchFields: Record<string, string[]> = {
   users: ["name", "normalizedEmail"],
   customers: ["name", "normalizedEmail"],
-  trainers: ["displayName", "city"],
+  trainers: ["displayName", "headline", "category", "specialties"],
   bookings: ["bookingNumber"],
   support: ["name", "email", "subject"],
+  categories: ["name"],
   specialties: ["name"],
   content: ["name"],
   reviews: ["customerName", "review"],
 };
+
+async function catalogOptions() {
+  const items = await Taxonomy.find({ kind: { $in: ["CATEGORY", "SPECIALTY"] } })
+    .sort({ sortOrder: 1, name: 1 })
+    .select("kind name active")
+    .lean();
+  const configuredCategories = items.filter((item) => item.kind === "CATEGORY");
+  const configuredSpecialties = items.filter((item) => item.kind === "SPECIALTY");
+  const categories = configuredCategories.filter((item) => item.active).map((item) => item.name);
+  const specialties = configuredSpecialties.filter((item) => item.active).map((item) => item.name);
+  return {
+    categories: configuredCategories.length ? categories : [...DEFAULT_CATEGORIES],
+    specialties: configuredSpecialties.length ? specialties : [...DEFAULT_SPECIALTIES],
+    languages: [...DEFAULT_LANGUAGES],
+  };
+}
+
 export async function dashboardData(
   actor: Actor,
   section: string,
@@ -91,7 +112,12 @@ export async function dashboardData(
     section === "earnings"
   ) {
     const since = new Date(Date.now() - q.days * 86400000);
-    const zone = trainer?.timezone || "Asia/Karachi";
+    const customerProfile =
+      actor.role === "CUSTOMER"
+        ? await CustomerProfile.findOne({ userId: actor.id }).select("timezone").lean()
+        : null;
+    const requestedZone = trainer?.timezone || customerProfile?.timezone || "Asia/Karachi";
+    const zone = DateTime.now().setZone(requestedZone).isValid ? requestedZone : "UTC";
     const today = DateTime.now().setZone(zone).startOf("day");
     const [
       bookings,
@@ -234,6 +260,7 @@ export async function dashboardData(
         .lean(),
       preferences: await CustomerProfile.findOne({ userId: actor.id }).lean(),
       trainer: trainer?.toObject(),
+      ...(actor.role === "TRAINER" ? { catalog: await catalogOptions() } : {}),
     };
   }
   if (section === "notifications")
@@ -281,8 +308,10 @@ export async function dashboardData(
     const filter: Record<string, unknown> =
       section === "customers"
         ? { role: "CUSTOMER" }
-        : section === "specialties"
-          ? { kind: "SPECIALTY" }
+        : section === "categories"
+          ? { kind: "CATEGORY" }
+          : section === "specialties"
+            ? { kind: "SPECIALTY" }
           : section === "content"
             ? { kind: "FAQ" }
             : {};
@@ -319,6 +348,50 @@ export async function dashboardData(
         .toArray(),
       model.collection.countDocuments(filter),
     ]);
+    if (section === "verification") {
+      const trainerIds = items.map((item) => item.trainerId).filter(Boolean);
+      const trainers = await TrainerProfile.find({ _id: { $in: trainerIds } })
+        .select("userId displayName legalName phone cnic cnicUploadId category specialties yearsExperience identityVerificationStatus credentialVerificationStatus applicationStatus profileVisibility")
+        .lean();
+      const trainerMap = new Map(trainers.map((row) => [String(row._id), row]));
+      const userIds = trainers.map((row) => row.userId).filter(Boolean);
+      const accounts = await User.find({ _id: { $in: userIds } })
+        .select("name normalizedEmail phone status")
+        .lean();
+      const accountMap = new Map(accounts.map((row) => [String(row._id), row]));
+      return {
+        items: items.map((item) => {
+          const trainerProfile = trainerMap.get(String(item.trainerId));
+          return {
+            ...item,
+            trainer: trainerProfile,
+            account: trainerProfile ? accountMap.get(String(trainerProfile.userId)) : undefined,
+          };
+        }),
+        total,
+        page: q.page,
+      };
+    }
+    if (section === "applications") {
+      const trainerIds = items.map((item) => item.trainerId).filter(Boolean);
+      const trainers = await TrainerProfile.find({ _id: { $in: trainerIds } }).lean();
+      const trainerMap = new Map(trainers.map((row) => [String(row._id), row]));
+      return {
+        items: await Promise.all(items.map(async (item) => {
+          const trainerProfile = trainerMap.get(String(item.trainerId));
+          if (!trainerProfile) return item;
+          const [account, credentials, packages, availability] = await Promise.all([
+            User.findById(trainerProfile.userId).select("name normalizedEmail phone status").lean(),
+            TrainerCredential.find({ trainerId: trainerProfile._id }).sort({ type: 1, createdAt: -1 }).lean(),
+            TrainerPackage.find({ trainerId: trainerProfile._id }).sort({ sortOrder: 1 }).lean(),
+            TrainerAvailability.find({ trainerId: trainerProfile._id }).sort({ dayOfWeek: 1, startTime: 1 }).lean(),
+          ]);
+          return { ...item, account, trainer: trainerProfile, credentials, packages, availability };
+        })),
+        total,
+        page: q.page,
+      };
+    }
     if (section === "payments") {
       const orderIds = items.map((item) => item.orderId).filter(Boolean);
       const orders = await Order.find({ _id: { $in: orderIds } })
@@ -396,13 +469,45 @@ export async function dashboardData(
       .skip(skip)
       .limit(20)
       .lean();
-    const eligible =
-      actor.role === "CUSTOMER"
-        ? await Session.find({ customerId: actor.id, status: "COMPLETED" })
-            .select("orderId")
-            .limit(100)
-            .lean()
-        : [];
+    let eligible: unknown[] = [];
+    if (actor.role === "CUSTOMER") {
+      const completedOrders = await Order.find({
+        customerId: actor.id,
+        bookingStatus: "COMPLETED",
+      })
+        .select("bookingNumber trainerId packageSnapshot updatedAt")
+        .sort({ updatedAt: -1 })
+        .limit(200)
+        .lean();
+      const completedOrderIds = completedOrders.map((order) => order._id);
+      const reviewed = await Review.find({
+        customerId: actor.id,
+        orderId: { $in: completedOrderIds },
+      })
+        .select("orderId")
+        .lean();
+      const reviewedIds = new Set(reviewed.map((row) => String(row.orderId)));
+      const availableOrders = completedOrders.filter(
+        (order) => !reviewedIds.has(String(order._id)),
+      );
+      const trainerIds = availableOrders
+        .map((order) => order.trainerId)
+        .filter(Boolean);
+      const trainers = await TrainerProfile.find({ _id: { $in: trainerIds } })
+        .select("displayName")
+        .lean();
+      const trainerMap = new Map(
+        trainers.map((row) => [String(row._id), row.displayName]),
+      );
+      eligible = availableOrders.map((order) => ({
+        orderId: String(order._id),
+        bookingNumber: order.bookingNumber,
+        trainerName:
+          trainerMap.get(String(order.trainerId)) || "Your trainer",
+        packageName: order.packageSnapshot?.name || "Online coaching",
+        completedAt: order.updatedAt,
+      }));
+    }
     return {
       items,
       total: await Review.countDocuments(scope),
@@ -447,13 +552,13 @@ export async function dashboardData(
       };
     if (section === "verification" || section === "application")
       return {
-        application: await TrainerApplication.findOne({
-          trainerId: trainer._id,
-        }).lean(),
-        credentials: await TrainerCredential.find({ trainerId: trainer._id })
-          .limit(40)
-          .lean(),
+        application: await TrainerApplication.findOne({ trainerId: trainer._id }).lean(),
+        credentials: await TrainerCredential.find({ trainerId: trainer._id }).limit(40).lean(),
         trainer: trainer.toObject(),
+        account: await User.findById(actor.id).select("name normalizedEmail phone avatar").lean(),
+        packages: await TrainerPackage.find({ trainerId: trainer._id }).sort({ sortOrder: 1 }).limit(30).lean(),
+        rules: await TrainerAvailability.find({ trainerId: trainer._id }).sort({ dayOfWeek: 1, startTime: 1 }).lean(),
+        catalog: await catalogOptions(),
       };
     if (section === "clients") {
       const ids = await Order.distinct("customerId", {
@@ -529,7 +634,18 @@ export async function adminAction(
     return reviewApplication(actor, id, data);
   if (resource === "payments" && id)
     return reviewManualPayment(actor, id, data);
-  if (resource === "refunds" && id) return approveRefund(actor, id);
+  if (resource === "refunds" && id) return reviewManualRefund(actor, id, data);
+  if (resource === "password-resets" && id) {
+    const account = await User.findById(id).select("role status").lean();
+    assert(account && account.role !== "ADMIN" && account.status === "ACTIVE", "Account cannot be reset here", 403);
+    const token = randomToken();
+    await mongoose.connection.transaction(async (session) => {
+      await AuthToken.deleteMany({ userId: id, kind: "RESET" }, { session });
+      await AuthToken.create([{ userId: id, kind: "RESET", tokenHash: hashToken(token), expiresAt: new Date(Date.now() + 30 * 60 * 1000) }], { session });
+      await AuditLog.create([{ actorId: actor.id, actorRole: actor.role, action: "ISSUE_PASSWORD_RESET", entityType: "User", entityId: id }], { session });
+    });
+    return { message: "One-time password reset link created. It expires in 30 minutes.", resetUrl: `${appUrl()}/reset-password?token=${token}` };
+  }
   return mongoose.connection.transaction(async (session) => {
     let before: unknown;
     let after: unknown;
@@ -568,27 +684,52 @@ export async function adminAction(
         "Expired credentials cannot be approved",
       );
       const trainer = await lockTrainer(credential.trainerId, session);
+      const wasApprovedTrainer = trainer.applicationStatus === "APPROVED";
       before = { status: credential.verificationStatus };
       credential.verificationStatus = input.status;
       credential.adminNotes = input.notes;
       credential.verifiedAt = new Date();
       credential.verifiedBy = new mongoose.Types.ObjectId(actor.id);
       await credential.save({ session });
-      if (input.status === "REJECTED") {
-        trainer[
-          credential.type === "IDENTITY"
-            ? "identityVerificationStatus"
-            : "credentialVerificationStatus"
-        ] = "PENDING";
+
+      const [identityApproved, certificationApproved] = await Promise.all([
+        TrainerCredential.exists({
+          trainerId: trainer._id,
+          type: "IDENTITY",
+          verificationStatus: "APPROVED",
+        }).session(session),
+        TrainerCredential.exists({
+          trainerId: trainer._id,
+          type: "CERTIFICATION",
+          verificationStatus: "APPROVED",
+          $or: [{ expiryDate: null }, { expiryDate: { $gt: new Date() } }],
+        }).session(session),
+      ]);
+      trainer.identityVerificationStatus = identityApproved ? "APPROVED" : "PENDING";
+      trainer.credentialVerificationStatus = certificationApproved ? "APPROVED" : "PENDING";
+
+      const rejectionRequiresAction =
+        input.status === "REJECTED" &&
+        (!wasApprovedTrainer || credential.type === "IDENTITY" || !certificationApproved);
+      if (rejectionRequiresAction) {
         trainer.profileVisibility = "PRIVATE";
         trainer.applicationStatus = "ACTION_REQUIRED";
-        await trainer.save({ session });
         await TrainerApplication.updateOne(
           { trainerId: trainer._id },
           { $set: { status: "ACTION_REQUIRED", adminNotes: input.notes } },
           { session },
         );
       }
+      await trainer.save({ session });
+      await Notification.create(
+        [{
+          userId: trainer.userId,
+          title: `${credential.type === "IDENTITY" ? "Identity" : "Certification"} verification ${input.status.toLowerCase()}`,
+          body: input.notes,
+          href: "/trainer/verification",
+        }],
+        { session },
+      );
       after = input;
     } else if (resource === "trainers" && id) {
       const input = z
@@ -606,26 +747,17 @@ export async function adminAction(
         profileVisibility: trainer.profileVisibility,
         availabilityReviewStatus: trainer.availabilityReviewStatus,
       };
+      if (input.profileVisibility === "PUBLIC")
+        assert(
+          trainer.applicationStatus === "APPROVED" &&
+            trainer.identityVerificationStatus === "APPROVED" &&
+            trainer.credentialVerificationStatus === "APPROVED",
+          "Approve the trainer application and verification evidence before publishing",
+          409,
+        );
       trainer.set(input);
       trainer.availabilityReviewedBy = new mongoose.Types.ObjectId(actor.id);
       trainer.availabilityReviewedAt = new Date();
-      if (input.profileVisibility === "PUBLIC") {
-        trainer.applicationStatus = "APPROVED";
-        trainer.identityVerificationStatus = "APPROVED";
-        trainer.credentialVerificationStatus = "APPROVED";
-        await TrainerApplication.updateOne(
-          { trainerId: trainer._id },
-          {
-            $set: {
-              status: "APPROVED",
-              reviewedAt: new Date(),
-              reviewedBy: actor.id,
-              adminNotes: "Approved and published by administrator.",
-            },
-          },
-          { session },
-        );
-      }
       await trainer.save({ session });
       after = input;
     } else if (resource === "reviews" && id) {
@@ -661,7 +793,7 @@ export async function adminAction(
         { upsert: true, session, runValidators: true },
       );
       after = input;
-    } else if (["specialties", "content"].includes(resource)) {
+    } else if (["categories", "specialties", "content"].includes(resource)) {
       const input = z
         .object({
           name: z.string().trim().min(2).max(200),
@@ -669,7 +801,6 @@ export async function adminAction(
             .string()
             .regex(/^[a-z0-9-]+$/)
             .max(200),
-          city: z.string().max(200).default(""),
           body: z.string().max(3000).default(""),
           active: z.boolean().default(true),
           sortOrder: z.number().int().min(0).max(1000).default(0),
@@ -677,9 +808,11 @@ export async function adminAction(
         .strict()
         .parse(data);
       const kind =
-        resource === "specialties"
-          ? "SPECIALTY"
-          : "FAQ";
+        resource === "categories"
+          ? "CATEGORY"
+          : resource === "specialties"
+            ? "SPECIALTY"
+            : "FAQ";
       if (id) {
         before = await Taxonomy.findOneAndUpdate(
           { _id: id, kind },

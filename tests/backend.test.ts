@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { createHmac, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { DateTime } from "luxon";
@@ -34,6 +34,7 @@ import {
   TrainerPackage,
   TrainerProfile,
   Transaction,
+  Upload,
   User,
   models,
 } from "../src/models";
@@ -52,12 +53,13 @@ import {
   sendMessage,
 } from "../src/services/community";
 import { adminAction } from "../src/services/dashboard";
-import { processPaymentEvent, verifyWebhook } from "../src/services/payments";
+import { submitManualPayment } from "../src/services/payments";
 import { trainerAction } from "../src/services/trainer-management";
 let db: MongoMemoryReplSet;
 let customer: Actor;
 let other: Actor;
 let trainerActor: Actor;
+let adminActor: Actor;
 let trainerId: string;
 let packageId: string;
 let day: string;
@@ -67,10 +69,6 @@ before(
     process.env.AUTH_SECRET =
       "integration-test-secret-that-is-not-for-production";
     process.env.APP_URL = "https://spotter.test";
-    process.env.SAFEPAY_ENVIRONMENT = "sandbox";
-    process.env.SAFEPAY_API_KEY = "integration-merchant";
-    process.env.SAFEPAY_SECRET_KEY = "integration-secret";
-    process.env.SAFEPAY_WEBHOOK_SECRET = "integration-webhook";
     db = await MongoMemoryReplSet.create({
       replSet: { count: 1, storageEngine: "wiredTiger" },
     });
@@ -102,6 +100,7 @@ before(
     customer = await makeUser("customer", "CUSTOMER");
     other = await makeUser("other", "CUSTOMER");
     trainerActor = await makeUser("trainer", "TRAINER");
+    adminActor = await makeUser("admin", "ADMIN");
     const trainer = await TrainerProfile.create({
       userId: trainerActor.id,
       slug: "test-trainer",
@@ -372,55 +371,61 @@ test("booking retries preserve snapshots and do not create duplicate orders", as
     /Idempotency key/,
   );
 });
-test("signed payment webhook is idempotent, verifies amount and confirms sessions", async () => {
+test("manual JazzCash payment proof requires admin approval and confirms the booking exactly once", async () => {
   const order = await Order.findOne({ bookingStatus: "PENDING_PAYMENT" });
   assert(order);
-  await Payment.updateOne(
-    { orderId: order._id },
-    { $set: { providerId: "track-integration" } },
-  );
-  const event = {
-    token: "event-integration",
-    version: "2.0.0",
-    merchant_api_key: "integration-merchant",
-    type: "payment.succeeded",
-    data: {
-      tracker: "track-integration",
-      amount: order.total,
-      currency: "PKR",
-    },
-  };
-  const sign = (raw: string) =>
-    createHmac("sha512", process.env.SAFEPAY_WEBHOOK_SECRET!)
-      .update(raw)
-      .digest("hex");
-  assert(!verifyWebhook(JSON.stringify(event), "bad", "secret"));
-  const wrong = JSON.stringify({
-    ...event,
-    data: { ...event.data, amount: 1 },
+  const proof = await Upload.create({
+    userId: customer.id,
+    key: `payment_proof/${customer.id}/${randomUUID()}.webp`,
+    mime: "image/webp",
+    size: 4,
+    data: Buffer.from([1, 2, 3, 4]),
+    purpose: "PAYMENT_PROOF",
   });
-  await assert.rejects(
-    processPaymentEvent(wrong, sign(wrong)),
-    /amount mismatch/,
-  );
-  const raw = JSON.stringify(event);
-  await processPaymentEvent(raw, sign(raw));
-  await processPaymentEvent(raw, sign(raw));
+  const submitted = await submitManualPayment(customer, String(order._id), {
+    method: "JAZZCASH",
+    payerName: "Customer Test",
+    transactionId: `JC-${randomUUID()}`,
+    proofUploadId: String(proof._id),
+  });
+  assert.equal(submitted.status, "SUBMITTED");
+  const payment = await Payment.findOne({ orderId: order._id });
+  assert(payment);
+  assert.equal(payment.status, "SUBMITTED");
+  assert.equal((await Upload.findById(proof._id))?.status, "ATTACHED");
+
+  await adminAction(adminActor, "payments", String(payment._id), {
+    decision: "APPROVE",
+    notes: "JazzCash transfer verified against the submitted proof.",
+  });
   assert.equal(
     await Transaction.countDocuments({ orderId: order._id, kind: "SALE" }),
     1,
   );
   assert.equal((await Order.findById(order._id))?.bookingStatus, "CONFIRMED");
+  assert.equal((await Payment.findById(payment._id))?.status, "PAID");
   assert.equal(
     await Session.countDocuments({ orderId: order._id, status: "CONFIRMED" }),
     1,
   );
+  await assert.rejects(
+    adminAction(adminActor, "payments", String(payment._id), {
+      decision: "APPROVE",
+      notes: "Duplicate review attempt.",
+    }),
+    /not awaiting review/,
+  );
+  assert.equal(
+    await Transaction.countDocuments({ orderId: order._id, kind: "SALE" }),
+    1,
+  );
+
   const next = DateTime.fromISO(start).plus({ hours: 3 }).toUTC().toISO()!;
   await scheduleSession(customer, String(order._id), { start: next });
   assert.equal((await Order.findById(order._id))?.remainingSessions, 6);
   assert.equal(await Session.countDocuments({ orderId: order._id }), 2);
 });
-test("reviews require a completed owned session and cannot be duplicated", async () => {
+test("reviews require a completed owned booking and cannot be duplicated", async () => {
   const order = await Order.findOne({ bookingStatus: "CONFIRMED" });
   assert(order);
   const input = {
@@ -428,12 +433,12 @@ test("reviews require a completed owned session and cannot be duplicated", async
     rating: 5,
     review: "Careful and thoughtful training session.",
   };
-  await assert.rejects(createReview(customer, input), /completed session/);
-  await Session.updateOne(
-    { orderId: order._id },
-    { $set: { status: "COMPLETED" } },
+  await assert.rejects(createReview(customer, input), /completed booking/);
+  await Order.updateOne(
+    { _id: order._id },
+    { $set: { bookingStatus: "COMPLETED" } },
   );
-  await assert.rejects(createReview(other, input), /completed session/);
+  await assert.rejects(createReview(other, input), /completed booking/);
   await createReview(customer, input);
   await assert.rejects(createReview(customer, input));
   assert.equal(await Review.countDocuments({ orderId: order._id }), 1);

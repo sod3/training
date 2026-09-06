@@ -51,6 +51,23 @@ export function BookingList({
                   </p>
                   <span className="status">{str(s, "status")}</span>
                 </div>
+                {role === "customer" && s.status === "CONFIRMED" && str(s, "meetingUrl") && (
+                  <a className="btn small" href={str(s, "meetingUrl")} target="_blank" rel="noreferrer">Join online session</a>
+                )}
+                {role === "customer" && s.status === "CONFIRMED" && !str(s, "meetingUrl") && (
+                  <span className="status">Session link pending</span>
+                )}
+                {role === "trainer" && s.status === "CONFIRMED" && (
+                  <div className="meeting-link-editor">
+                    {str(s, "meetingUrl") && <a className="text-link" href={str(s, "meetingUrl")} target="_blank" rel="noreferrer">Open current session link →</a>}
+                    <ActionForm
+                      endpoint={`trainer/meeting/${str(s, "_id")}`}
+                      fields={[{ name: "meetingUrl", label: "Private video link", value: str(s, "meetingUrl"), required: true, hint: "Paste a real HTTPS Google Meet, Zoom or other private video-session URL." }]}
+                      label={str(s, "meetingUrl") ? "Update session link" : "Add session link"}
+                      onDone={reload}
+                    />
+                  </div>
+                )}
                 {role === "customer" && s.status === "CONFIRMED" && (
                   <button
                     className="btn outline small"

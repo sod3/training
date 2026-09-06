@@ -17,7 +17,7 @@ export function Footer() {
           <Logo />
           <nav aria-label="Footer navigation">
             {[
-              ["Find a Trainer", "/trainers"],
+              ["Browse Trainers", "/trainers"],
               ["For Trainers", "/become-a-trainer"],
               ["About", "/about"],
               ["Contact", "/contact"],

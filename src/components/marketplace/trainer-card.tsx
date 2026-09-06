@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   Heart,
-  MapPin,
+  Video,
   Star,
   BadgeCheck,
   ArrowUpRight,
@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Trainer } from "@/types/trainer";
 import { useStore } from "./store";
-import { money } from "@/lib/marketplace";
+import { localAvailabilityLabel, money } from "@/lib/marketplace";
 import { VerifiedBadge } from "./verified-badge";
 export function TrainerCard({
   trainer: t,
@@ -56,7 +56,7 @@ export function TrainerCard({
         </button>
         <span className="photo-availability">
           <i />
-          {t.nextAvailable}
+          {localAvailabilityLabel(t)}
         </span>
       </div>
       <div className="trainer-content">
@@ -68,14 +68,14 @@ export function TrainerCard({
             </h3>
           </Link>
           <span>
-            <Star size={13} fill="currentColor" /> {t.rating.toFixed(1)}
+            {t.reviewCount ? <><Star size={13} fill="currentColor" /> {t.rating.toFixed(1)}</> : "No reviews yet"}
           </span>
         </div>
         <p className="trainer-specialty">
           {t.headline.replace(/Certified | Coach| Specialist/g, "")}
         </p>
-        <p className="trainer-location">
-          <MapPin size={14} />
+        <p className="trainer-online-line">
+          <Video size={14} />
           1-on-1 Online
         </p>
         <p className="trainer-meta">

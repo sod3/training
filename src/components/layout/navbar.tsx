@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, ArrowRight, Menu, MapPin } from "lucide-react";
+import { ArrowUpRight, ArrowRight, Menu } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import {
   Sheet,

@@ -3,23 +3,28 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowRight, Check, MapPin, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Sparkles, Video } from "lucide-react";
 import type { Trainer } from "@/types/trainer";
 import { matchesGoal, money } from "@/lib/marketplace";
 import { Reveal } from "@/components/motion/reveal";
 
 const featuredGoals = [
-  "Build Muscle",
-  "Lose Weight",
-  "Increase Strength",
-  "Mobility",
+  "Strength & Muscle",
+  "Fat Loss & General Fitness",
+  "Mobility & Functional Fitness",
 ];
 
 export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
   const [goal, setGoal] = useState(featuredGoals[0]);
+  const trainerGoals = useMemo(
+    () => Array.from(new Set(trainers.map((trainer) => trainer.category).filter((value): value is string => Boolean(value)))).slice(0, 3),
+    [trainers],
+  );
+  const availableGoals = trainerGoals.length ? trainerGoals : featuredGoals;
+  const effectiveGoal = availableGoals.includes(goal) ? goal : availableGoals[0];
   const match = useMemo(
-    () => trainers.find((trainer) => matchesGoal(trainer, goal)) ?? trainers[0],
-    [goal, trainers],
+    () => trainers.find((trainer) => matchesGoal(trainer, effectiveGoal)) ?? trainers[0],
+    [effectiveGoal, trainers],
   );
 
   return (
@@ -37,7 +42,7 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
             </h2>
             <p>
               Tell Spotter what matters to you. We narrow the field around your
-              goal, location, preferred setting and schedule.
+              goal, experience level, preferred schedule and budget.
             </p>
           </div>
         </Reveal>
@@ -54,23 +59,23 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
               role="group"
               aria-label="Choose a fitness goal"
             >
-              {featuredGoals.map((item) => (
+              {availableGoals.map((item) => (
                 <button
                   key={item}
                   type="button"
-                  className={goal === item ? "selected" : ""}
-                  aria-pressed={goal === item}
+                  className={effectiveGoal === item ? "selected" : ""}
+                  aria-pressed={effectiveGoal === item}
                   onClick={() => setGoal(item)}
                 >
                   <span>{item}</span>
                   <span className="match-choice-dot">
-                    {goal === item ? <Check size={13} /> : null}
+                    {effectiveGoal === item ? <Check size={13} /> : null}
                   </span>
                 </button>
               ))}
             </div>
             <Link
-              href={`/match?${new URLSearchParams({ goal }).toString()}`}
+              href={`/match?${new URLSearchParams({ goal: effectiveGoal }).toString()}`}
               className="btn home-match-cta"
             >
               Continue matching <ArrowRight size={17} />
@@ -83,7 +88,7 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
           {match && (
             <div className="match-preview-card" aria-live="polite">
               <div className="match-preview-kicker">
-                <Sparkles size={15} /> Featured coach for {goal.toLowerCase()}
+                <Sparkles size={15} /> Featured coach for {effectiveGoal.toLowerCase()}
               </div>
               <div className="match-preview-media">
                 <Image
@@ -103,7 +108,7 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
                 </div>
                 <div className="match-preview-meta">
                   <span>
-                    <MapPin size={13} /> 1-on-1 Online
+                    <Video size={13} /> 1-on-1 Online
                   </span>
                   <span>From {money(match.basePrice)} / session</span>
                 </div>

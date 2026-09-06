@@ -18,7 +18,8 @@ const exports = {
     fields: [
       "displayName",
       "slug",
-      "city",
+      "category",
+      "specialties",
       "applicationStatus",
       "profileVisibility",
       "createdAt",

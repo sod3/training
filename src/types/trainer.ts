@@ -35,7 +35,8 @@ export interface Trainer {
   sessionsCompleted: number;
   experienceYears: number;
   responseTime: string;
-
+  category?: string;
+  languages?: string[];
 
   specialties: string[];
   certifications: string[];
@@ -43,8 +44,9 @@ export interface Trainer {
   reviews: Review[];
   basePrice: number;
   nextAvailable: string;
+  nextAvailableAt?: string;
   nextAvailableDate?: string;
   availabilityWeekStart: string;
   matchScore?: number;
-  distanceKm?: number;
+  matchReasons?: string[];
 }

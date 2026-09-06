@@ -1,56 +1,13 @@
-import { randomBytes } from "node:crypto";
+/**
+ * Video rooms are deliberately not auto-generated. A trainer may attach a real
+ * HTTPS Google Meet, Zoom, or other private meeting link to a confirmed session.
+ * This helper only classifies an already-created URL; it never fabricates one.
+ */
+export type VideoProvider = "NONE" | "GOOGLE_MEET" | "ZOOM" | "LINK";
 
-export type VideoProvider = "NONE" | "GOOGLE_MEET" | "ZOOM" | "MOCK";
-
-export type MeetingContext = {
-  trainerName: string;
-  customerName: string;
-  start: Date;
-  end: Date;
-  durationMinutes: number;
-};
-
-export type MeetingDetails = {
-  videoProvider: VideoProvider;
-  meetingId: string;
-  meetingUrl: string;
-  meetingStatus: "PENDING" | "CREATED" | "FAILED";
-};
-
-export async function createMeeting(
-  provider: VideoProvider,
-  context?: Partial<MeetingContext>,
-): Promise<MeetingDetails> {
-  // In a real implementation, this would call the respective provider's API.
-  // For the initial production release, we use a mock/internal URL system
-  // that can be upgraded later.
-  
-  const meetingId = randomBytes(16).toString("hex");
-  
-  if (provider === "GOOGLE_MEET") {
-    // Generate a placeholder format for Google Meet
-    const code = `${randomBytes(2).toString("hex")}-${randomBytes(2).toString("hex")}-${randomBytes(2).toString("hex")}`;
-    return {
-      videoProvider: "GOOGLE_MEET",
-      meetingId,
-      meetingUrl: `https://meet.google.com/${code}`,
-      meetingStatus: "CREATED",
-    };
-  }
-
-  // Fallback to MOCK provider which directs to our internal video room (if built)
-  // or simply serves as a placeholder.
-  return {
-    videoProvider: "MOCK",
-    meetingId,
-    meetingUrl: `https://spotter.training/session/${meetingId}`,
-    meetingStatus: "CREATED",
-  };
-}
-
-export async function cancelMeeting(
-  provider: VideoProvider,
-  meetingId: string,
-): Promise<void> {
-  // Call provider API to cancel the meeting if necessary
+export function classifyMeetingUrl(url: string): Exclude<VideoProvider, "NONE"> {
+  const host = new URL(url).hostname.toLowerCase();
+  if (host === "meet.google.com" || host.endsWith(".meet.google.com")) return "GOOGLE_MEET";
+  if (host === "zoom.us" || host.endsWith(".zoom.us")) return "ZOOM";
+  return "LINK";
 }

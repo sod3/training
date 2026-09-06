@@ -16,7 +16,7 @@ export function TrainerApplication() {
         className="btn mt-6"
         href={
           state.role === "trainer"
-            ? "/trainer/verification"
+            ? "/trainer/onboarding"
             : "/signup?role=trainer"
         }
       >

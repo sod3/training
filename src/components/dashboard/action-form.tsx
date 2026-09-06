@@ -21,6 +21,7 @@ export type Field = {
   required?: boolean;
   min?: number;
   max?: number;
+  step?: number;
   hint?: string;
 };
 export function ActionForm({
@@ -31,6 +32,7 @@ export function ActionForm({
   transform,
   confirmation,
   method = "POST",
+  disabled = false,
 }: {
   endpoint: string;
   fields: Field[];
@@ -39,6 +41,7 @@ export function ActionForm({
   transform?: (data: Record<string, unknown>) => unknown;
   confirmation?: string;
   method?: string;
+  disabled?: boolean;
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -48,7 +51,7 @@ export function ActionForm({
       className="workspace-form"
       onSubmit={async (e) => {
         e.preventDefault();
-        if (pending || (confirmation && !window.confirm(confirmation))) return;
+        if (pending || disabled || (confirmation && !window.confirm(confirmation))) return;
         const form = e.currentTarget;
         const values = new FormData(form);
         const input: Record<string, unknown> = {};
@@ -136,6 +139,7 @@ export function ActionForm({
               required={field.required}
               min={field.min}
               max={field.max}
+              step={field.step}
               maxLength={field.type === "password" ? 72 : 5000}
             />
           )}
@@ -148,7 +152,7 @@ export function ActionForm({
         </p>
       )}
       {success && <p role="status">{success}</p>}
-      <button className="btn small" disabled={pending}>
+      <button className="btn small" disabled={pending || disabled}>
         {pending ? "Saving…" : label}
       </button>
     </form>

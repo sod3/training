@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api, useApi } from "@/lib/client-api";
 import { ActionForm, UploadForm, type Field } from "./action-form";
+import { DEFAULT_CATEGORIES, PREFERRED_TIMES } from "@/lib/catalog";
 export type Item = Record<string, unknown>;
 export const str = (item: Item, key: string) => String(item[key] ?? "");
 export const num = (item: Item, key: string) => Number(item[key] || 0);
@@ -37,8 +38,7 @@ export const amount = (value: unknown) =>
   );
 export const date = (value: unknown) =>
   value
-    ? new Date(String(value)).toLocaleString("en-PK", {
-        timeZone: "Asia/Karachi",
+    ? new Date(String(value)).toLocaleString(undefined, {
         dateStyle: "medium",
         timeStyle: "short",
       })
@@ -77,24 +77,20 @@ export function ProfilePanel({
         name: "fitnessGoals",
         label: "Fitness goals",
         type: "checkbox-group",
-        options: ["Weight Loss", "Muscle Gain", "Flexibility", "Endurance", "Sports Performance"],
+        options: [...DEFAULT_CATEGORIES],
         value: preferences.fitnessGoals as string[] || [],
       },
       {
         name: "preferredSchedule",
-        label: "Preferred schedule",
-        value: str(preferences, "preferredSchedule"),
+        label: "Preferred training time",
+        type: "select",
+        options: [...PREFERRED_TIMES],
+        value: str(preferences, "preferredSchedule") || PREFERRED_TIMES[0],
       },
       {
         name: "timezone",
         label: "Timezone",
         value: str(preferences, "timezone") || "Asia/Karachi",
-      },
-      {
-        name: "emailNotifications",
-        label: "Email notifications",
-        type: "checkbox",
-        value: record(preferences.notificationPreferences).email !== false,
       },
     );
   return (
@@ -145,43 +141,44 @@ export function ProfilePanel({
               {
                 name: "yearsExperience",
                 label: "Years of experience",
-                type: "number",
-                value: num(trainer, "yearsExperience"),
-                min: 0,
-                max: 80,
+                type: "select",
+                options: Array.from({ length: 31 }, (_, i) => String(i)),
+                value: String(num(trainer, "yearsExperience")),
+              },
+              {
+                name: "category",
+                label: "Main training category",
+                type: "select",
+                options: (record(data.catalog).categories as string[]) || [],
+                value: str(trainer, "category"),
+                required: true,
               },
               {
                 name: "specialties",
                 label: "Specialties",
                 type: "checkbox-group",
-                options: ["Weight Loss", "Muscle Gain", "Yoga", "Pilates", "Strength Training", "Rehabilitation"],
-                value: trainer.specialties as string[] || [],
-              },
-              {
-                name: "trainingGoals",
-                label: "Training Goals",
-                type: "checkbox-group",
-                options: ["Weight Loss", "Muscle Gain", "Flexibility", "Endurance", "Sports Performance"],
-                value: trainer.trainingGoals as string[] || [],
+                options: (record(data.catalog).specialties as string[]) || [],
+                value: (trainer.specialties as string[]) || [],
               },
               {
                 name: "languages",
                 label: "Languages",
                 type: "checkbox-group",
-                options: ["English", "Urdu", "Punjabi", "Sindhi", "Pashto"],
-                value: trainer.languages as string[] || [],
+                options: (record(data.catalog).languages as string[]) || [],
+                value: (trainer.languages as string[]) || [],
               },
-              { name: "city", label: "City", value: str(trainer, "city") },
               {
                 name: "timezone",
                 label: "Timezone",
                 value: str(trainer, "timezone") || "Asia/Karachi",
+                hint: "Use a valid IANA timezone, for example Asia/Karachi or Europe/London.",
               },
             ]}
             transform={(v) => ({
               ...v,
+              yearsExperience: Number(v.yearsExperience),
               specialties: v.specialties,
-              trainingGoals: v.trainingGoals,
+              trainingGoals: [String(v.category)],
               languages: v.languages,
             })}
           />
@@ -245,6 +242,7 @@ export function PackagesPanel({
               value: num(edit, "sessionDuration") || 60,
               min: 15,
               max: 180,
+              step: 15,
             },
             {
               name: "price",
@@ -475,11 +473,8 @@ export function VerificationPanel({
   return (
     <>
       <section className="panel">
-        <h2>Simple verification</h2>
-      <p>
-        Send these four details once. An admin will review and publish your
-        profile.
-      </p>
+        <h2>Identity verification</h2>
+      <p>Keep your legal name, phone number and CNIC current. Changing approved identity details sends them back for admin review; it does not submit the full application automatically.</p>
       <span className="status">
         {str(application, "status") || "Not submitted"}
       </span>
@@ -526,7 +521,7 @@ export function VerificationPanel({
           <input
             name="name"
             required
-            defaultValue={str(trainer, "displayName")}
+            defaultValue={str(trainer, "legalName") || str(trainer, "displayName")}
             maxLength={170}
           />
         </label>
@@ -561,7 +556,7 @@ export function VerificationPanel({
         </label>
         {message && <p role="status">{message}</p>}
         <button className="btn" disabled={busy}>
-          {busy ? "Submitting…" : "Submit verification"}
+          {busy ? "Saving…" : "Save identity details"}
         </button>
       </form>
       {str(trainer, "cnicUploadId") && (
@@ -575,7 +570,7 @@ export function VerificationPanel({
       </section>
       <section className="panel">
         <h2>Certificates & Credentials</h2>
-        <p>Add 1 or more images. Fields are optional.</p>
+        <p>Add professional qualifications for admin review. Title and issuing organization are required.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
           {rows(data.credentials).filter(c => str(c, "type") === "CERTIFICATION").map((cred) => (
              <div key={str(cred, "_id")} style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
@@ -611,8 +606,11 @@ export function VerificationPanel({
                 {
                   uploadId: uploaded.id,
                   type: "CERTIFICATION",
-                  title: values.get("title") || "",
-                  issuingOrganization: values.get("issuingOrganization") || "",
+                  title: values.get("title"),
+                  issuingOrganization: values.get("issuingOrganization"),
+                  credentialNumber: values.get("credentialNumber") || undefined,
+                  issueDate: values.get("issueDate") || undefined,
+                  expiryDate: values.get("expiryDate") || undefined,
                 },
               );
               setMessage(result.message);
@@ -630,13 +628,16 @@ export function VerificationPanel({
             <input name="file" type="file" required accept=".jpg,.jpeg,.png,.webp,.pdf" />
           </label>
           <label className="field">
-            Title (optional)
-            <input name="title" maxLength={200} />
+            Certificate / qualification title
+            <input name="title" required maxLength={200} />
           </label>
           <label className="field">
-            Issuing Organization (optional)
-            <input name="issuingOrganization" maxLength={200} />
+            Issuing organization
+            <input name="issuingOrganization" required maxLength={200} />
           </label>
+          <label className="field">Credential / licence number<input name="credentialNumber" maxLength={200} /></label>
+          <label className="field">Issue date<input name="issueDate" type="date" /></label>
+          <label className="field">Expiry date (if applicable)<input name="expiryDate" type="date" /></label>
           <button className="btn small outline" disabled={busy}>
             {busy ? "Uploading…" : "Upload Certificate"}
           </button>

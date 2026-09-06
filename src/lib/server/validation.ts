@@ -46,10 +46,9 @@ export const profileSchema = z
     headline: z.string().trim().max(200),
     biography: z.string().trim().max(5000),
     yearsExperience: z.number().int().min(0).max(80),
+    category: z.string().trim().min(2).max(120),
     specialties: words,
-    trainingGoals: words,
-
-    city: z.string().max(100),
+    trainingGoals: words.default([]),
     timezone,
     languages: words,
   })

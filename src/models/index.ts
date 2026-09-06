@@ -74,7 +74,6 @@ export const CustomerProfile = model(
       preferredSchedule: text(),
       fitnessLevel: text(),
       timezone: { type: String, default: "Asia/Karachi" },
-      notificationPreferences: { email: { type: Boolean, default: true } },
     },
     options,
   ),
@@ -84,6 +83,7 @@ const trainer = new Schema(
     userId: { ...ref("User"), unique: true },
     slug: { type: String, unique: true, required: true },
     displayName: text(170),
+    legalName: text(170),
     phone: text(30),
     cnic: text(20),
     cnicUploadId: { type: Schema.Types.ObjectId, ref: "Upload" },
@@ -93,9 +93,9 @@ const trainer = new Schema(
     coverImage: text(1000),
     gallery: [String],
     yearsExperience: { type: Number, min: 0, max: 80, default: 0 },
+    category: text(120),
     specialties: [String],
     trainingGoals: [String],
-    city: { type: String, select: false }, // deprecated
     timezone: { type: String, default: "Asia/Karachi" },
     languages: [String],
     identityVerificationStatus: {
@@ -139,6 +139,7 @@ const trainer = new Schema(
   options,
 );
 trainer.index({ applicationStatus: 1, profileVisibility: 1, featured: -1 });
+trainer.index({ category: 1 });
 trainer.index({ specialties: 1 });
 export const TrainerProfile = model("TrainerProfile", trainer);
 export const TrainerApplication = model(
@@ -291,7 +292,7 @@ const order = new Schema(
     trainerId: ref("TrainerProfile"),
     packageId: ref("TrainerPackage"),
     packageSnapshot: { type: snapshot, required: true },
-    videoProvider: { type: String, enum: ["NONE", "GOOGLE_MEET", "ZOOM", "MOCK"], default: "NONE" },
+    videoProvider: { type: String, enum: ["NONE", "GOOGLE_MEET", "ZOOM", "LINK"], default: "NONE" },
     meetingId: text(),
     meetingUrl: text(1000),
     timezone: String,
@@ -357,7 +358,7 @@ const session = new Schema(
       default: "HELD",
     },
     holdExpiresAt: Date,
-    videoProvider: { type: String, enum: ["NONE", "GOOGLE_MEET", "ZOOM", "MOCK"], default: "NONE" },
+    videoProvider: { type: String, enum: ["NONE", "GOOGLE_MEET", "ZOOM", "LINK"], default: "NONE" },
     meetingId: text(),
     meetingUrl: text(1000),
     meetingStatus: { type: String, enum: ["PENDING", "CREATED", "FAILED"], default: "PENDING" },
@@ -415,18 +416,6 @@ export const Payment = model(
       },
       initiationStartedAt: Date,
       paidAt: Date,
-    },
-    options,
-  ),
-);
-export const WebhookEvent = model(
-  "WebhookEvent",
-  new Schema(
-    {
-      eventKey: { type: String, unique: true, required: true },
-      providerId: String,
-      type: String,
-      processedAt: Date,
     },
     options,
   ),
@@ -568,12 +557,11 @@ export const Taxonomy = model(
     {
       kind: {
         type: String,
-        enum: ["SPECIALTY", "FAQ"],
+        enum: ["CATEGORY", "SPECIALTY", "FAQ"],
         required: true,
       },
       name: text(),
       slug: { type: String, unique: true, required: true },
-      city: text(),
       body: text(3000),
       active: { type: Boolean, default: true },
       sortOrder: { type: Number, default: 0 },
@@ -674,22 +662,6 @@ export const Upload = model(
     options,
   ),
 );
-export const EmailJob = model(
-  "EmailJob",
-  new Schema(
-    {
-      to: { type: String, required: true },
-      subject: String,
-      encryptedBody: { type: String, required: true, select: false },
-      attempts: { type: Number, default: 0 },
-      nextAttemptAt: { type: Date, default: Date.now },
-      leaseUntil: Date,
-      sentAt: Date,
-      failedAt: Date,
-    },
-    options,
-  ),
-);
 export const models = {
   User,
   CustomerProfile,
@@ -702,7 +674,6 @@ export const models = {
   Order,
   Session,
   Payment,
-  WebhookEvent,
   Transaction,
   Refund,
   Payout,
@@ -719,5 +690,4 @@ export const models = {
   AuthToken,
   RateLimit,
   Upload,
-  EmailJob,
 };

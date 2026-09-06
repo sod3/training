@@ -19,13 +19,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Spotter — Find Personal Trainers Near You",
+    default: "Spotter | Verified Online Personal Trainers",
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
-  metadataBase: new URL("https://training-seven-taupe.vercel.app"),
+  metadataBase: new URL(process.env.APP_URL || "https://training-seven-taupe.vercel.app"),
+  keywords: ["online personal trainer", "online fitness coach", "1-on-1 online training", "verified personal trainers", "live online fitness coaching"],
   openGraph: {
-    title: "Spotter — Find Personal Trainers Near You",
+    title: "Spotter | Verified Online Personal Trainers",
     description: siteConfig.description,
     siteName: "Spotter",
     type: "website",
@@ -34,13 +35,13 @@ export const metadata: Metadata = {
         url: "/images/coaching.webp",
         width: 1672,
         height: 941,
-        alt: "Personal training, made personal",
+        alt: "Live one-to-one online personal training with Spotter",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Spotter — Find Personal Trainers Near You",
+    title: "Spotter | Verified Online Personal Trainers",
     description: siteConfig.description,
     images: ["/images/coaching.webp"],
   },

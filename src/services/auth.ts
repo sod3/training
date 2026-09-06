@@ -4,6 +4,8 @@ import {
   AuthSession,
   AuthToken,
   CustomerProfile,
+  Notification,
+  SupportRequest,
   TrainerApplication,
   TrainerProfile,
   User,
@@ -18,7 +20,6 @@ import {
   homeFor,
   rateLimit,
   requestIp,
-  requireUser,
 } from "@/lib/server/security";
 import {
   email,
@@ -66,6 +67,11 @@ export async function authAction(
   if (action === "signup") {
     const input = signupSchema.parse(data);
     await rateLimit(`signup:${input.email}`, 3, 60);
+    assert(
+      !(await User.exists({ normalizedEmail: input.email })),
+      "An account with this email already exists",
+      409,
+    );
     const passwordHash = await hashPassword(input.password);
     const user = await mongoose.connection.transaction(async (session) => {
       const [user] = await User.create(
@@ -104,7 +110,7 @@ export async function authAction(
       return user;
     });
     await createSession(user);
-    return { redirect: homeFor(user.role) };
+    return { redirect: user.role === "TRAINER" ? "/trainer/onboarding" : homeFor(user.role) };
   }
   if (action === "login") {
     const input = loginSchema.parse(data);
@@ -127,6 +133,13 @@ export async function authAction(
     user.lastLoginAt = new Date();
     await user.save();
     await createSession(user);
+    if (user.role === "TRAINER") {
+      const trainer = await TrainerProfile.findOne({ userId: user._id }).select("applicationStatus").lean();
+      if (trainer && ["DRAFT", "ACTION_REQUIRED", "REJECTED"].includes(trainer.applicationStatus))
+        return { redirect: "/trainer/onboarding" };
+      if (trainer && ["SUBMITTED", "UNDER_REVIEW"].includes(trainer.applicationStatus))
+        return { redirect: "/trainer/application" };
+    }
     return { redirect: homeFor(user.role) };
   }
   if (action === "forgot-password") {
@@ -135,22 +148,43 @@ export async function authAction(
     const user = await User.findOne({
       normalizedEmail: input.email,
       status: "ACTIVE",
-    });
-    return {
-      message: user
-        ? "Email delivery is disabled. Contact support to reset your password."
-        : "If an account exists for this email, contact support for help.",
-    };
-  }
-  if (action === "resend-verification") {
-    const user = await requireUser();
-    await rateLimit(`verify:${user.id}`, 3, 60);
+      role: { $ne: "ADMIN" },
+    }).select("name normalizedEmail");
+    if (user) {
+      const recent = await SupportRequest.exists({
+        userId: user._id,
+        subject: "Account recovery request",
+        status: { $in: ["OPEN", "IN_PROGRESS"] },
+        createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      });
+      if (!recent) {
+        await SupportRequest.create({
+          userId: user._id,
+          name: user.name,
+          email: user.normalizedEmail,
+          subject: "Account recovery request",
+          message:
+            "The account owner requested a password reset from the sign-in screen. Verify the user before issuing the one-time reset link from Admin > Users or Customers.",
+          status: "OPEN",
+        });
+        const admins = await User.find({ role: "ADMIN", status: "ACTIVE" }).select("_id").lean();
+        if (admins.length)
+          await Notification.insertMany(
+            admins.map((admin) => ({
+              userId: admin._id,
+              title: "Account recovery request",
+              body: `${user.name} requested help resetting their password. Verify the account before issuing a one-time link.`,
+              href: "/admin/support",
+            })),
+          );
+      }
+    }
     return {
       message:
-        "Email verification is disabled. Your account is already active.",
+        "If an active account exists for that email, a secure recovery request has been sent to Spotter support. After verification, an administrator can issue a one-time reset link.",
     };
   }
-  if (action === "reset-password" || action === "verify-email") {
+  if (action === "reset-password") {
     const input = z
       .object({
         token: z.string().regex(/^[a-f\d]{64}$/),
@@ -159,11 +193,10 @@ export async function authAction(
       })
       .strict()
       .parse(data);
-    if (action === "reset-password")
-      assert(
-        input.password && input.password === input.confirmPassword,
-        "Passwords do not match",
-      );
+    assert(
+      input.password && input.password === input.confirmPassword,
+      "Passwords do not match",
+    );
     const passwordHash = input.password
       ? await hashPassword(input.password)
       : undefined;
@@ -171,32 +204,20 @@ export async function authAction(
       const token = await AuthToken.findOneAndDelete(
         {
           tokenHash: hashToken(input.token),
-          kind: action === "reset-password" ? "RESET" : "VERIFY",
+          kind: "RESET",
           expiresAt: { $gt: new Date() },
         },
         { session },
       );
       assert(token, "This link is invalid or expired");
-      if (action === "reset-password") {
-        await User.updateOne(
-          { _id: token.userId },
-          { $set: { passwordHash }, $inc: { sessionVersion: 1 } },
-          { session },
-        );
-        await AuthSession.deleteMany({ userId: token.userId }, { session });
-      } else
-        await User.updateOne(
-          { _id: token.userId },
-          { $set: { emailVerified: true } },
-          { session },
-        );
+      await User.updateOne(
+        { _id: token.userId },
+        { $set: { passwordHash }, $inc: { sessionVersion: 1 } },
+        { session },
+      );
+      await AuthSession.deleteMany({ userId: token.userId }, { session });
     });
-    return {
-      message:
-        action === "reset-password"
-          ? "Password updated. Sign in with your new password."
-          : "Your email is verified.",
-    };
+    return { message: "Password updated. Sign in with your new password." };
   }
   assert(false, "Not found", 404);
 }

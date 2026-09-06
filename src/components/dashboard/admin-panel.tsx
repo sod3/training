@@ -1,5 +1,7 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
+import { api } from "@/lib/client-api";
 import { ActionForm, type Field } from "./action-form";
 import { amount, date, num, rows, str, type Item } from "./panels";
 export function AdminSettings({
@@ -77,7 +79,7 @@ export function AdminPanel({
   items: Item[];
   reload: () => void;
 }) {
-  const taxonomy = ["specialties", "content"].includes(section);
+  const taxonomy = ["categories", "specialties", "content"].includes(section);
   const taxonomyFields = (item: Item): Field[] => [
     { name: "name", label: "Name", value: str(item, "name"), required: true },
     {
@@ -86,7 +88,6 @@ export function AdminPanel({
       value: str(item, "slug"),
       required: true,
     },
-    { name: "city", label: "City", value: str(item, "city") },
     { name: "body", label: "Text", type: "textarea", value: str(item, "body") },
     {
       name: "active",
@@ -107,10 +108,7 @@ export function AdminPanel({
         <section className="panel">
           <h2>
             Add{" "}
-            {section === "content"
-              ? "FAQ"
-              : "content page"
-            }</h2>
+            {section === "content" ? "FAQ" : section === "categories" ? "category" : "specialty"}</h2>
           <ActionForm
             endpoint={`admin/${section}`}
             fields={taxonomyFields({})}
@@ -250,19 +248,35 @@ export function AdminPanel({
               hint: "Add a reason when rejecting a payment.",
             },
           ];
+        if (section === "refunds" && str(item, "status") === "REQUESTED") {
+          label = "Review refund request";
+          fields = [
+            { name: "decision", label: "Decision", type: "select", options: ["APPROVE", "REJECT"], required: true },
+            { name: "notes", label: "Review notes", type: "textarea", hint: "A reason is required when rejecting." },
+          ];
+        }
+        if (section === "refunds" && str(item, "status") === "APPROVED") {
+          label = "Record manual refund";
+          fields = [
+            { name: "decision", label: "Action", type: "select", options: ["MARK_REFUNDED"], required: true, value: "MARK_REFUNDED" },
+            { name: "reference", label: "JazzCash / EasyPaisa refund reference", required: true },
+            { name: "notes", label: "Internal notes", type: "textarea" },
+          ];
+        }
         if (taxonomy) fields = taxonomyFields(item);
-        if (section === "refunds") label = "Approve refund";
         return (
           <article className="panel" key={id}>
             <div className="panel-title">
               <h3>
-                {str(item, "name") ||
-                  str(item, "displayName") ||
-                  str(item, "bookingNumber") ||
-                  str(item, "title") ||
-                  str(item, "subject") ||
-                  str(item, "action") ||
-                  `${section} · ${id.slice(-8)}`}
+                {(section === "verification" && str((item.trainer as Item) || {}, "displayName")
+                  ? `${str((item.trainer as Item) || {}, "displayName")} · ${str(item, "type") || "credential"}`
+                  : str(item, "name") ||
+                    str(item, "displayName") ||
+                    str(item, "bookingNumber") ||
+                    str(item, "title") ||
+                    str(item, "subject") ||
+                    str(item, "action") ||
+                    `${section} · ${id.slice(-8)}`)}
               </h3>
               <span className="status">
                 {str(item, "status") ||
@@ -271,14 +285,65 @@ export function AdminPanel({
                   str(item, "bookingStatus")}
               </span>
             </div>
+            {section === "verification" && (() => {
+              const trainer = (item.trainer as Item) || {};
+              const account = (item.account as Item) || {};
+              return (
+                <div className="admin-verification-summary">
+                  <div>
+                    <span>Public name</span>
+                    <strong>{str(trainer, "displayName") || "—"}</strong>
+                  </div>
+                  <div>
+                    <span>Legal name</span>
+                    <strong>{str(trainer, "legalName") || "—"}</strong>
+                  </div>
+                  <div>
+                    <span>Email</span>
+                    <strong>{str(account, "normalizedEmail") || "—"}</strong>
+                  </div>
+                  <div>
+                    <span>Phone</span>
+                    <strong>{str(trainer, "phone") || str(account, "phone") || "—"}</strong>
+                  </div>
+                  <div>
+                    <span>CNIC</span>
+                    <strong>{str(trainer, "cnic") || "—"}</strong>
+                  </div>
+                  <div>
+                    <span>Category</span>
+                    <strong>{str(trainer, "category") || "—"}</strong>
+                  </div>
+                  <div>
+                    <span>Application</span>
+                    <strong>{str(trainer, "applicationStatus") || "—"}</strong>
+                  </div>
+                </div>
+              );
+            })()}
             <RecordDetails item={item} />
             {section === "verification" && (
-              <a
-                className="btn outline small"
-                href={`/api/media/${str(item, "uploadId")}`}
-              >
-                Download private evidence
-              </a>
+              <div className="admin-evidence-links">
+                <a
+                  className="btn outline small"
+                  href={`/api/media/${str(item, "uploadId")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open submitted evidence
+                </a>
+                {str((item.trainer as Item) || {}, "cnicUploadId") &&
+                  str((item.trainer as Item) || {}, "cnicUploadId") !== str(item, "uploadId") && (
+                    <a
+                      className="btn outline small"
+                      href={`/api/media/${str((item.trainer as Item) || {}, "cnicUploadId")}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open CNIC document
+                    </a>
+                  )}
+              </div>
             )}
             {section === "trainers" && str(item, "cnicUploadId") && (
               <a
@@ -299,9 +364,17 @@ export function AdminPanel({
               </a>
             )}
             {section === "applications" && (
-              <Link className="text-link" href="/admin/verification">
-                Review credential evidence →
-              </Link>
+              <div className="admin-evidence-links">
+                {str((item.trainer as Item) || {}, "cnicUploadId") && (
+                  <a className="btn outline small" href={`/api/media/${str((item.trainer as Item) || {}, "cnicUploadId")}`} target="_blank" rel="noreferrer">View CNIC document</a>
+                )}
+                {rows(item.credentials).map((credential) => (
+                  <a key={str(credential, "_id")} className="btn outline small" href={`/api/media/${str(credential, "uploadId")}`} target="_blank" rel="noreferrer">
+                    {str(credential, "type") === "IDENTITY" ? "Identity evidence" : str(credential, "title") || "Certification"}
+                  </a>
+                ))}
+                <Link className="text-link" href="/admin/verification">Review all credential evidence →</Link>
+              </div>
             )}
             {section === "payments" && item.status === "SUBMITTED" && (
               <p>
@@ -311,17 +384,17 @@ export function AdminPanel({
             )}
             {section === "refunds" && item.status === "APPROVED" && (
               <p>
-                Issue the approved amount in Safepay. The signed refund webhook
-                will reconcile the payment and ledger.
+                This marketplace uses manual payments. Send the approved refund through the appropriate payment channel and record the transfer reference for your audit trail.
               </p>
             )}
-            {(fields.length > 0 ||
-              (section === "refunds" && item.status === "REQUESTED")) && (
+            {["users", "customers"].includes(section) && str(item, "role") !== "ADMIN" && (
+              <PasswordResetControl userId={id} />
+            )}
+            {fields.length > 0 && (
               <div className={section === "trainers" ? "mt-5" : "mt-5"}>
                 {section === "trainers" && (
                   <p className="muted">
-                    Set Visibility to PUBLIC to approve and publish this trainer
-                    immediately.
+                    Visibility can be PUBLIC only after the application, identity and certification checks are approved.
                   </p>
                 )}
                 <ActionForm
@@ -339,6 +412,42 @@ export function AdminPanel({
     </>
   );
 }
+function PasswordResetControl({ userId }: { userId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [resetUrl, setResetUrl] = useState("");
+  const [message, setMessage] = useState("");
+  return (
+    <div className="admin-reset-control">
+      <button
+        className="btn outline small"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setMessage("");
+          try {
+            const result = await api<{ message: string; resetUrl: string }>(`admin/password-resets/${userId}`, {});
+            setMessage(result.message);
+            setResetUrl(result.resetUrl);
+          } catch (error) {
+            setMessage((error as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? "Creating…" : "Create password reset link"}
+      </button>
+      {message && <small>{message}</small>}
+      {resetUrl && (
+        <div className="reset-link-box">
+          <input readOnly value={resetUrl} aria-label="One-time password reset link" />
+          <button className="text-link" onClick={() => navigator.clipboard.writeText(resetUrl)}>Copy</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function RecordDetails({ item }: { item: Item }) {
   const hidden = [
     "__v",

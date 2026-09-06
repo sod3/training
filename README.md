@@ -1,51 +1,90 @@
-# Spotter
+# SPOTTER
 
-Spotter is a production marketplace for discovering and booking personal trainers. The Next.js 16 App Router application uses MongoDB/Mongoose, server-side sessions, Zod validation, manual JazzCash/EasyPaisa payment review, private document storage, and responsive customer, trainer, and administrator workspaces.
+Spotter is an **online-only personal-training marketplace** built with Next.js, MongoDB/Mongoose and TypeScript. Customers discover approved trainers, use a short matching flow, book real availability, submit manual JazzCash/EasyPaisa payment proof, message trainers, attend sessions through trainer-provided private meeting links, and review completed bookings.
 
-## Setup
+## Product rules
 
-```sh
-npm install
-Copy-Item .env.example .env
-npm run dev
-```
+- No public areas, cities, distance, “near me”, home/gym/outdoor or in-person training flows.
+- Trainer discovery is based on approved real trainer data, categories, specialties, availability and price.
+- Filter options are generated only from currently approved, active, bookable trainers.
+- Trainers select filterable category/specialty/language values from controlled menus rather than inventing new filter values.
+- Trainer applications stay `DRAFT` until profile, photo, CNIC/identity, certification, active service/package and weekly availability are complete and the trainer explicitly submits.
+- Identity, certification and profile approval are separate trust decisions.
+- Customer reviews require an eligible completed booking.
+- Notifications are in-app only for this deployment; no email-verification flow is required.
+- Upload bytes are stored in MongoDB by design and protected by authorization.
 
-Fill the values in `.env` before using the database, file uploads, or payments. The local `.env` contains a generated development `AUTH_SECRET`; replace it with a new secret for each deployed environment.
+## Trainer onboarding
 
-MongoDB must be a replica set (MongoDB Atlas supplies this) because checkout and booking updates use transactions. Set `MONGODB_URI` and run:
+Trainer signup creates a secure account and immediately redirects to `/trainer/onboarding`:
 
-```sh
+1. Professional profile + profile photo
+2. Identity details + CNIC document
+3. Professional certification
+4. Services & pricing
+5. Weekly online availability
+6. Review & submit
+
+Normal profile/service/availability details can be edited later from the trainer dashboard. Sensitive identity or credential changes return the relevant verification status to review when required. Existing paid bookings preserve historical price/duration snapshots.
+
+## Authentication and recovery
+
+Sessions are database-backed secure cookies with server-side RBAC. Email verification is intentionally not used. Signed-in users can change their email or password from Security after confirming the current password; this revokes existing sessions.
+
+The public “forgot password” form creates a non-enumerating account-recovery support request. After verifying the account owner, an administrator can issue a one-time 30-minute reset URL from the Users/Customers admin screen. The reset token is stored only as a hash and is single-use.
+
+## Manual payments
+
+Checkout uses the configured manual receivers only:
+
+- `JAZZCASH_ACCOUNT_NUMBER`
+- `EASYPAISA_ACCOUNT_NUMBER`
+- `PAYMENT_ACCOUNT_NAME`
+
+The customer creates a temporary booking hold, transfers funds, enters payer/transaction details and uploads proof. Submitting proof extends the reservation review window up to 24 hours (never beyond the session start). An administrator approves or rejects the proof. Approval creates one SALE transaction and confirms the held session transactionally. Browser redirects are never treated as payment confirmation.
+
+Refunds are also operationally manual and have an audited admin status/reference workflow.
+
+## Required environment
+
+Copy `.env.example` and set production values:
+
+- `MONGODB_URI` — a transaction-capable MongoDB replica set/Atlas deployment
+- `AUTH_SECRET` — at least 32 cryptographically random characters
+- `APP_URL` — canonical HTTPS website origin
+- `ADMIN_EMAIL` / `ADMIN_PASSWORD` — one-time admin bootstrap configuration
+- `PAYMENT_ACCOUNT_NAME`
+- at least one of `JAZZCASH_ACCOUNT_NUMBER`, `EASYPAISA_ACCOUNT_NUMBER`
+- `CRON_SECRET`
+
+Uploads intentionally require no S3 configuration.
+
+## Database preparation
+
+```bash
 npm run db:indexes
 npm run admin:bootstrap
+npm run db:check
 ```
 
-`ADMIN_EMAIL` and `ADMIN_PASSWORD` are read only by the bootstrap command. The password is hashed with bcrypt and never returned to the browser. Remove `ADMIN_PASSWORD` from deployment after bootstrap. To seed only taxonomy records in development, set `ALLOW_DEVELOPMENT_SEED=true` and run `npm run db:seed`; seeding is refused in production.
+Run index/bootstrap commands deliberately against the intended database; do not run them on every request. Development seed data is disabled unless `ALLOW_DEVELOPMENT_SEED=true`.
 
-## Environment
+## Quality checks
 
-`MONGODB_URI`, `AUTH_SECRET`, and `APP_URL` are required. `ADMIN_EMAIL` and `ADMIN_PASSWORD` are used to provision the administrator. Configure the manual payment receiver details with `PAYMENT_ACCOUNT_NAME`, `JAZZCASH_ACCOUNT_NUMBER`, and `EASYPAISA_ACCOUNT_NUMBER`. S3-compatible storage is recommended for uploads; configure `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, and optional `S3_ENDPOINT` when available. Without S3, uploads are stored in MongoDB (up to the application’s 4 MB per-file limit). `CRON_SECRET` protects the scheduled hold-expiry, reminder, and upload-cleanup worker at `/api/jobs`.
-
-## Application architecture
-
-- `src/models` contains users, customer/trainer profiles, applications, credentials, packages, availability, orders, sessions, payments, refunds, payouts, transactions, reviews, favorites, conversations, messages, notifications, taxonomy, support, audit, session, token, upload, and email-job collections.
-- `src/lib/server/security.ts` provides HTTP-only cookie sessions, bcrypt checks, session-version revocation, role guards, origin checks, and rate limits.
-- `src/services` contains centralized booking, availability, payment, trainer-application, community, dashboard, storage, and authentication rules.
-- `src/app/api/[...path]/route.ts` is the validated server API boundary. It enforces ownership and role checks before calling services.
-- Public trainer search and profiles query only active, email-verified, approved, public trainers. Development records are never automatically created.
-
-Checkout creates a short-lived held reservation, verifies the selected package and current availability in a MongoDB transaction, and asks the customer for a JazzCash/EasyPaisa transaction ID and screenshot. Only an administrator approval changes the payment and booking to confirmed. Package snapshots preserve historical price, commission, duration, and cancellation terms. Individual session records support multi-session packages and prevent overlapping reservations.
-
-## Tests and deployment
-
-```sh
+```bash
+npm test
 npm run lint
 npm run typecheck
-npm test
 npm run build
-npx playwright install chromium
 npm run test:e2e
 ```
 
-The backend suite uses a temporary MongoDB replica set and tests authentication validation, role and ownership guards, availability/timezones, partial-overlap races, idempotency, snapshots, payment webhook signatures, review eligibility, favorites, and private conversations. The browser suite starts the production build on port 3200 and checks public pages, responsive layout, secure registration/login, protected workspaces, support requests, and trainer application state.
+The backend suite covers validation, role/ownership guards, recurring availability, timezones, overlapping booking races, booking idempotency and snapshots, manual-payment approval, review eligibility and private messaging. Browser tests cover production routes and account/trainer workflows.
 
-Deploy the build to Vercel, set every production variable from `.env.example`, use an HTTPS `APP_URL`, run the index/bootstrap commands once against the production database, and configure the JazzCash/EasyPaisa receiver details. Configure the Vercel cron in `vercel.json` or invoke `/api/jobs` once per minute with `Authorization: Bearer $CRON_SECRET`. For production scale, configure an S3-compatible provider; otherwise the application uses MongoDB-backed uploads.
+## Vercel cron
+
+`vercel.json` intentionally uses the Vercel Hobby-compatible daily schedule. Request-time expiry checks remain authoritative, so customers cannot book an expired held slot just because cleanup has not run yet. The scheduled job performs eventual hold cleanup, session reminders and abandoned-upload cleanup.
+
+## Deployment checklist
+
+Use a staging database first. Confirm: trainer onboarding/submission, Admin CNIC/credential review, real dynamic trainer filters, matching, simultaneous booking protection, manual JazzCash/EasyPaisa approval, cancellation/refund states, meeting-link authorization, completed-booking reviews, password recovery, mobile layouts, SEO metadata/sitemap/robots and error/empty/loading states.

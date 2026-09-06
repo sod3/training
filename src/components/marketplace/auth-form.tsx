@@ -10,7 +10,7 @@ export function AuthForm({
 }: {
   signup?: boolean;
   initialRole?: string;
-  mode?: "forgot-password" | "reset-password" | "verify-email";
+  mode?: "forgot-password" | "reset-password";
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -41,22 +41,26 @@ export function AuthForm({
         </div>
       </div>
       <div className="auth-form">
-        <p className="eyebrow">YOUR NEXT CHAPTER</p>
+        <p className="eyebrow">{signup && initialRole === "trainer" ? "TRAINER APPLICATION · STEP 1" : "YOUR NEXT CHAPTER"}</p>
         <h1>
           {mode === "forgot-password"
             ? "Find your way back."
             : mode === "reset-password"
               ? "A fresh start."
-              : mode === "verify-email"
-                ? "Account access."
-                : signup
-                  ? "Start training differently."
+              : signup
+                  ? initialRole === "trainer"
+                    ? "Create your trainer account."
+                    : "Start training differently."
                   : "Welcome back."}
         </h1>
         <p>
-          {signup
-            ? "Make a little space for your goals."
-            : "Your people, your sessions, your progress."}
+          {mode === "forgot-password"
+            ? "No email verification is required on Spotter. Submit your sign-in email and support can issue a secure one-time reset link after account verification."
+            : signup
+              ? initialRole === "trainer"
+                ? "Next you’ll complete your professional profile, CNIC verification, certification, services, pricing and availability before submitting for admin review."
+                : "Make a little space for your goals."
+              : "Your people, your sessions, your progress."}
         </p>
         <form
           onSubmit={async (e) => {
@@ -68,16 +72,14 @@ export function AuthForm({
             const params = new URLSearchParams(window.location.search);
             try {
               const body =
-                mode === "verify-email"
-                  ? { token: params.get("token") }
-                  : mode === "reset-password"
-                    ? {
+                mode === "reset-password"
+                  ? {
                         token: params.get("token"),
                         password: f.get("password"),
                         confirmPassword: f.get("confirmPassword"),
-                      }
-                    : mode === "forgot-password"
-                      ? { email: f.get("email") }
+                    }
+                  : mode === "forgot-password"
+                    ? { email: f.get("email") }
                       : signup
                         ? {
                             firstName: f.get("firstName"),
@@ -146,7 +148,7 @@ export function AuthForm({
               </label>
             </>
           )}
-          {mode !== "verify-email" && mode !== "reset-password" && (
+          {mode !== "reset-password" && (
             <label className="field">
               Email
               <input
@@ -158,7 +160,7 @@ export function AuthForm({
               />
             </label>
           )}
-          {mode !== "verify-email" && mode !== "forgot-password" && (
+          {mode !== "forgot-password" && (
             <>
               <label className="field">
                 Password
@@ -213,26 +215,22 @@ export function AuthForm({
             disabled={busy}
             aria-label={
               mode === "forgot-password"
-                ? "Send reset link"
+                ? "Request password reset"
                 : mode === "reset-password"
                   ? "Update password"
-                  : mode === "verify-email"
-                    ? "Continue"
-                    : signup
-                      ? "Create account"
+                  : signup
+                      ? initialRole === "trainer" ? "Create trainer account and continue" : "Create account"
                       : "Log in"
             }
           >
             {busy
               ? "Please wait…"
-              : mode === "verify-email"
-                ? "Continue"
-                : mode === "forgot-password"
-                  ? "Send reset link"
+              : mode === "forgot-password"
+                  ? "Request password reset"
                   : mode === "reset-password"
                     ? "Update password"
                     : signup
-                      ? "Create account"
+                      ? initialRole === "trainer" ? "Create trainer account and continue" : "Create account"
                       : "Log in"}{" "}
             →
           </button>

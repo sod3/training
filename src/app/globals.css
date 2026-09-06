@@ -578,7 +578,7 @@ img {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.trainer-location {
+.trainer-online-line {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -587,7 +587,7 @@ img {
   margin-top: 16px;
   flex-wrap: wrap;
 }
-.trainer-location span {
+.trainer-online-line span {
   text-transform: capitalize;
 }
 .trainer-meta {
@@ -809,7 +809,7 @@ img {
   .trainer-specialty {
     font-size: 12px;
   }
-  .trainer-location,
+  .trainer-online-line,
   .trainer-meta {
     font-size: 11px;
   }
@@ -915,7 +915,7 @@ img {
   .trainer-specialty {
     font-size: 12px;
   }
-  .trainer-location {
+  .trainer-online-line {
     font-size: 11px;
   }
   .trainer-meta {
@@ -1253,93 +1253,6 @@ img {
   flex-direction: column;
   gap: 12px;
   font-size: 12px;
-}
-.map-layout {
-  display: grid;
-  grid-template-columns: 1fr 1.4fr;
-  gap: 18px;
-}
-.map-list-card {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 17px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: white;
-  margin-bottom: 10px;
-}
-.map-list-card strong {
-  font-size: 13px;
-}
-.map-list-card span {
-  font-size: 10px;
-  color: var(--muted-foreground);
-}
-.location-map {
-  position: relative;
-  min-height: 500px;
-  border: 1px solid #d3ddc7;
-  border-radius: 17px;
-  overflow: hidden;
-  background-color: #e8eddf;
-  background-image:
-    repeating-linear-gradient(
-      25deg,
-      transparent 0 65px,
-      #fff 66px 72px,
-      transparent 73px 130px
-    ),
-    repeating-linear-gradient(
-      115deg,
-      transparent 0 100px,
-      #fff 101px 108px,
-      transparent 109px 200px
-    );
-}
-.map-water {
-  position: absolute;
-  bottom: 0;
-  left: -20px;
-  background: #cadfdb;
-  width: 75%;
-  height: 25%;
-  border-radius: 0 100% 0 0;
-  padding: 55px 25px;
-  font-size: 9px;
-  letter-spacing: 0.15em;
-  color: #6f9390;
-}
-.map-city {
-  position: absolute;
-  left: 40%;
-  top: 47%;
-  font-size: 14px;
-  letter-spacing: 0.2em;
-  color: #8a967c;
-}
-.map-pin {
-  position: absolute;
-  padding: 7px 9px;
-  background: white;
-  border: 1px solid #9bac86;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px #20301512;
-  font-size: 10px;
-}
-.map-pin.selected {
-  background: var(--primary);
-  color: white;
-  z-index: 2;
-}
-.location-map > small {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  background: white;
-  padding: 5px 8px;
-  font-size: 8px;
-  border-radius: 4px;
 }
 .filter-sheet {
   height: 90dvh;
@@ -2319,17 +2232,6 @@ img {
 .info-page > .panel {
   max-width: 700px;
 }
-.location-page-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 22px;
-}
-.location-page-grid h2 {
-  font-size: 30px;
-}
-.location-page-grid .panel > svg {
-  color: #73984e;
-}
 .onboarding-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2519,9 +2421,6 @@ img {
   .dashboard-title h1 {
     font-size: 33px;
   }
-  .location-page-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 @media (max-width: 767px) {
   .page-heading {
@@ -2577,20 +2476,6 @@ img {
   }
   .search-results .trainer-card {
     width: 100%;
-  }
-  .map-layout {
-    grid-template-columns: 1fr;
-  }
-  .map-layout > div:first-child {
-    display: flex;
-    overflow: auto;
-    gap: 12px;
-  }
-  .map-list-card {
-    min-width: 200px;
-  }
-  .location-map {
-    min-height: 400px;
   }
   .quiz-page {
     margin-top: 15px;
@@ -2928,13 +2813,6 @@ img {
   .info-sections h2 {
     font-size: 25px;
   }
-  .location-page-grid {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-  .location-page-grid h2 {
-    font-size: 28px;
-  }
   .onboarding-grid {
     grid-template-columns: 1fr;
     gap: 35px;
@@ -3040,7 +2918,7 @@ img {
 .trainer-specialty {
   font-size: 13px;
 }
-.trainer-location,
+.trainer-online-line,
 .trainer-meta {
   font-size: 12px;
 }
@@ -3166,7 +3044,7 @@ img {
   .trainer-name h3 {
     font-size: 21px;
   }
-  .trainer-location,
+  .trainer-online-line,
   .trainer-meta {
     font-size: 12px;
   }
@@ -3587,7 +3465,7 @@ textarea:focus-visible {
   color: #686b61;
   margin-top: 8px;
 }
-.trainer-location {
+.trainer-online-line {
   font-size: 11px;
   color: #6d7067;
   margin-top: 14px;
@@ -4374,7 +4252,7 @@ textarea:focus-visible {
 .trainer-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-.profile-location-line {
+.profile-online-line {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -4383,7 +4261,7 @@ textarea:focus-visible {
   color: #62675b;
   margin-top: 12px;
 }
-.profile-location-line span {
+.profile-online-line span {
   margin-left: 12px;
 }
 .journey-grid {
@@ -4487,7 +4365,7 @@ textarea:focus-visible {
   .journey-step {
     gap: 18px;
   }
-  .profile-location-line span {
+  .profile-online-line span {
     margin-left: 0;
   }
   .desktop-filter-bar.compact-filter-bar {
@@ -4628,23 +4506,6 @@ textarea:focus-visible {
 }
 .hero-secondary-link:hover {
   border-color: var(--lime);
-  color: var(--lime);
-}
-.nav-location {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 42px;
-  padding-inline: 10px;
-  font-size: 11px;
-  color: #5f635a;
-  white-space: nowrap;
-}
-.site-nav.on-hero .nav-location {
-  color: #e5e7df;
-}
-.site-nav.on-hero .nav-location:hover,
-.nav-location:hover {
   color: var(--lime);
 }
 .directory-footer-note {
@@ -4987,9 +4848,6 @@ textarea:focus-visible {
   }
   .home-match-product {
     max-width: 880px;
-  }
-  .nav-location {
-    display: none;
   }
 }
 
@@ -5388,4 +5246,127 @@ textarea:focus-visible {
   .workspace-stats strong {
     font-size: 25px;
   }
+}
+
+/* Verified review composer */
+.review-composer {
+  display: grid;
+  gap: 1.35rem;
+  overflow: hidden;
+}
+.review-composer-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+.review-composer-head .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+}
+.review-composer-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--lime, #d9ff43);
+  color: #111;
+}
+.review-booking-summary {
+  display: grid;
+  gap: .2rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 2px);
+  background: color-mix(in srgb, var(--surface, #fff) 94%, var(--lime, #d9ff43));
+}
+.review-booking-summary span,
+.review-booking-summary small {
+  color: var(--muted);
+}
+.rating-picker {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem 1rem;
+  align-items: center;
+}
+.rating-picker legend {
+  width: 100%;
+  font-weight: 700;
+  margin-bottom: .25rem;
+}
+.rating-picker [role="radiogroup"] {
+  display: flex;
+  gap: .2rem;
+}
+.rating-picker button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, currentColor 20%, transparent);
+  cursor: pointer;
+  font-size: 2rem;
+  line-height: 1;
+  padding: .15rem;
+  transition: transform .16s ease, color .16s ease;
+}
+.rating-picker button:hover,
+.rating-picker button:focus-visible {
+  transform: translateY(-2px) scale(1.05);
+}
+.rating-picker button.selected {
+  color: #d89b00;
+}
+.rating-picker > span {
+  color: var(--muted);
+}
+.review-text-field textarea {
+  min-height: 9rem;
+  resize: vertical;
+}
+.review-trust-note {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  color: var(--muted);
+  font-size: .9rem;
+}
+.review-submit {
+  justify-self: start;
+}
+@media (max-width: 640px) {
+  .review-composer-head { grid-template-columns: 1fr; }
+  .rating-picker button { font-size: 1.75rem; }
+  .review-submit { width: 100%; justify-content: center; }
+}
+
+.admin-verification-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .75rem;
+  margin: 1rem 0;
+}
+.admin-verification-summary > div {
+  display: grid;
+  gap: .2rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.admin-verification-summary span {
+  color: var(--muted);
+  font-size: .76rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.admin-verification-summary strong {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .admin-verification-summary { grid-template-columns: 1fr; }
 }

@@ -5,7 +5,7 @@ import { useState } from "react";
 import {
   BadgeCheck,
   Star,
-  MapPin,
+  Video,
   Heart,
   Share2,
   ArrowUpRight,
@@ -15,11 +15,12 @@ import {
 } from "lucide-react";
 import { Trainer } from "@/types/trainer";
 import { useApi } from "@/lib/client-api";
-import { money } from "@/lib/marketplace";
+import { localAvailabilityLabel, money } from "@/lib/marketplace";
 import { useStore } from "./store";
 import { VerifiedBadge } from "./verified-badge";
+import { TrainerCard } from "./trainer-card";
 
-export function Profile({ trainer: t }: { trainer: Trainer }) {
+export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; recommended?: Trainer[] }) {
   const { state, notify, toggleSaved } = useStore();
   const [time, setTime] = useState("");
   const saved = state.saved.includes(t.id);
@@ -31,7 +32,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
     days: {
       date: string;
       label: string;
-      slots: { start: string; label: string; trainingTypes: string[] }[];
+      slots: { start: string; label: string }[];
     }[];
   }>(
     t.packages.length
@@ -45,7 +46,6 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
   const availableDays =
     availability?.days.filter((day) => day.slots.length) || [];
   const times = availableDays.flatMap((day) => day.slots);
-  const selectedSlot = times.find((slot) => slot.start === time);
   const selectedDate = availableDays.find((day) =>
     day.slots.some((slot) => slot.start === time),
   )?.date;
@@ -53,9 +53,6 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
     trainer: t.slug,
     date: selectedDate || t.nextAvailableDate || t.availabilityWeekStart,
     time,
-    ...(selectedSlot?.trainingTypes[0]
-      ? { type: selectedSlot.trainingTypes[0] }
-      : {}),
   })}`;
   return (
     <div className="container profile-page">
@@ -69,8 +66,8 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
             {t.firstName} {t.lastName} {t.verifiedIdentity && <BadgeCheck />}
           </h1>
           <p>{t.headline}</p>
-          <p className="profile-location-line">
-            <span>Next available: {t.nextAvailable}</span>
+          <p className="profile-online-line">
+            <span>Next available: {localAvailabilityLabel(t)}</span>
           </p>
         </div>
         <div className="profile-actions">
@@ -110,11 +107,8 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
         </div>
         <div>
           <Image
-            src={
-              t.coverImage ||
-              "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1000&q=80"
-            }
-            alt="Example training environment"
+            src={t.coverImage || "/images/coaching.webp"}
+            alt={`${t.firstName}'s online coaching approach`}
             fill
             sizes="(max-width:768px) 50vw, 35vw"
           />
@@ -137,7 +131,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
           <div className="profile-facts">
             <span>
               <Star size={17} />
-              <strong>{t.rating}</strong> · {t.reviewCount} reviews
+              <strong>{t.reviewCount ? t.rating.toFixed(1) : "No reviews yet"}</strong>{t.reviewCount ? ` · ${t.reviewCount} reviews` : ""}
             </span>
             <span>{t.sessionsCompleted} sessions completed</span>
             <span>
@@ -179,6 +173,10 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
                 </span>
               )}
             </div>
+            {t.category && <>
+              <h3>Primary category</h3>
+              <div className="choice-chips"><span>{t.category}</span></div>
+            </>}
             <h3>What we can work on</h3>
             <div className="choice-chips">
               {t.specialties.map((s) => (
@@ -205,11 +203,15 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
                 Credentials are trainer-provided and have not been verified.
               </p>
             )}
-            <h3>Where we train</h3>
+            <h3>How sessions happen</h3>
             <p className="flex gap-2 items-center">
-              <MapPin size={17} />
-              1-on-1 Online via Video Call
+              <Video size={17} />
+              Live 1-on-1 online video sessions
             </p>
+            {!!t.languages?.length && <>
+              <h3>Languages</h3>
+              <p>{t.languages.join(" · ")}</p>
+            </>}
           </section>
           <section className="profile-section" id="packages">
             <p className="eyebrow">START SMALL. BUILD FROM THERE.</p>
@@ -234,7 +236,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
                     href={`/booking?trainer=${t.slug}&package=${p.id}`}
                     className={`btn ${p.isPopular ? "" : "outline"}`}
                   >
-                    {p.sessions === 1 ? "Book a trial" : "Choose package"}
+                    {p.sessions === 1 ? "Book session" : "Choose package"}
                     <ArrowUpRight size={16} />
                   </Link>
                 </article>
@@ -245,8 +247,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
             <p className="eyebrow">MAKE ROOM FOR YOU</p>
             <h2>A time that fits.</h2>
             <p>
-              See this trainer’s available sessions for the next seven days in{" "}
-              {t.timezone}.
+              See real available sessions for the next seven days. Booking shows times in your device timezone, with {t.timezone} shown as the trainer timezone.
             </p>
             <Link href={book} className="btn outline mt-5">
               Explore available sessions <ArrowUpRight size={17} />
@@ -275,7 +276,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
                 <h3>Room for your experience.</h3>
                 <p>
                   This coach has no published reviews yet. Reviews appear after
-                  completed sessions.
+                  completed bookings.
                 </p>
                 <Link href={book} className="text-link">
                   Start with one session →
@@ -296,16 +297,16 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
           </section>
         </div>
         <aside className="booking-sidebar">
-          <p className="eyebrow">ONE SESSION IS A GREAT START</p>
+          <p className="eyebrow">START WITH THE RIGHT SESSION</p>
           <p className="booking-price">
             {money(t.packages[0]?.price || 0)}{" "}
-            <span>/ {t.packages[0]?.sessions === 1 ? "trial" : "package"}</span>
+            <span>/ {t.packages[0]?.sessions === 1 ? "session" : "package"}</span>
           </p>
           <p className="muted text-sm">
             {t.packages[0]?.duration} minutes · A plan built around you
           </p>
           <fieldset className="filter-group weekly-availability">
-            <legend>Available times · {t.timezone}</legend>
+            <legend>Available times · your device timezone</legend>
             <p className="fine-print">Next 7 days</p>
             <div className="availability-week">
               {availableDays.map((day) => (
@@ -319,7 +320,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
                         className={time === slot.start ? "selected" : ""}
                         onClick={() => setTime(slot.start)}
                       >
-                        {slot.label}
+                        {new Date(slot.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
                       </button>
                     ))}
                   </div>
@@ -332,11 +333,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
                 Availability will appear after this trainer adds a package.
               </p>
             )}
-            {!!t.packages.length && (
-              <p className="fine-print">
-                Availability will appear after this trainer adds weekly hours.
-              </p>
-            )}
+
             {slotError && <p role="alert">{slotError}</p>}
             {!slotsLoading &&
               availability &&
@@ -348,7 +345,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
               )}
           </fieldset>
           <Link href={book} className="btn w-full">
-            Book trial <ArrowRightIcon />
+            Book online session <ArrowRightIcon />
           </Link>
           <Link
             href={`/dashboard/customer/messages?trainer=${t.id}`}
@@ -358,7 +355,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
             Message {t.firstName}
           </Link>
           <p className="fine-print text-center">
-            Try one session before committing to a package.
+            Choose the service and time that fits your goals.
           </p>
           <Link href="/cancellation" className="cancellation-note">
             <BadgeCheck size={16} />
@@ -366,13 +363,23 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
           </Link>
         </aside>
       </div>
+      {recommended.length > 0 && (
+        <section className="profile-section mt-10" aria-labelledby="recommended-trainers">
+          <p className="eyebrow">MORE COACHES TO CONSIDER</p>
+          <h2 id="recommended-trainers">Also Recommended</h2>
+          <p>Approved online trainers with a similar category or coaching focus.</p>
+          <div className="trainer-grid mt-6">
+            {recommended.map((trainer) => <TrainerCard key={trainer.id} trainer={trainer} />)}
+          </div>
+        </section>
+      )}
       <div className="mobile-booking-bar">
         <div>
-          <small>Trial session</small>
-          <strong>{money(t.packages[0].price)}</strong>
+          <small>Online coaching</small>
+          <strong>{money(t.packages[0]?.price || 0)}</strong>
         </div>
         <Link href={book} className="btn">
-          Book trial <ArrowUpRight size={17} />
+          Book session <ArrowUpRight size={17} />
         </Link>
       </div>
     </div>

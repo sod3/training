@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 export const metadata: Metadata = {
-  title: "Find your trainer",
+  title: "Browse Verified Online Personal Trainers",
+  description: "Browse approved online personal trainers on Spotter. Compare specialties, real availability, package pricing and verified reviews.",
   alternates: { canonical: "/trainers" },
 };
 import { TrainerSearch } from "@/components/marketplace/trainer-search";

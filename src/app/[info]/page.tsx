@@ -5,7 +5,6 @@ import {
   ShieldCheck,
   BadgeCheck,
   CalendarDays,
-  MapPin,
   ArrowUpRight,
 } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
@@ -14,7 +13,6 @@ import {
   TrainerApplication,
   ContactForm,
 } from "@/components/marketplace/forms";
-import { locations } from "@/lib/marketplace";
 export const dynamicParams = false;
 export function generateStaticParams() {
   return [
@@ -27,7 +25,6 @@ export function generateStaticParams() {
     "help",
     "contact",
     "how-it-works",
-    "locations",
     "become-a-trainer",
   ].map((info) => ({ info }));
 }
@@ -44,7 +41,7 @@ const copy: Record<
     eyebrow: "GOOD TRAINING STARTS WITH GOOD PEOPLE",
     title: "Better trainers.\nBetter matches.\nBetter training.",
     intro:
-      "Spotter brings personal trainers and people together around goals, comfort, location, and time.",
+      "Spotter brings people and verified online personal trainers together around goals, schedule, coaching style, and budget.",
     sections: [
       [
         "A better place to start.",
@@ -52,7 +49,7 @@ const copy: Record<
       ],
       [
         "Built for the way you live.",
-        "Train at home, in a gym, outdoors, or online with a coach who fits your life.",
+        "Train live online with a coach whose approach, schedule, and pricing fit your life.",
       ],
     ],
   },
@@ -71,7 +68,7 @@ const copy: Record<
       ],
       [
         "Your comfort matters.",
-        "Agree on a meeting place and discuss your preferences with your trainer. Document review does not guarantee safety or fitness outcomes. Contact support about concerns.",
+        "Use only the private session link attached to your confirmed Spotter booking and discuss your preferences with your trainer. Document review does not guarantee safety or fitness outcomes. Contact support about concerns.",
       ],
     ],
   },
@@ -91,7 +88,7 @@ const copy: Record<
       ],
       [
         "Refund review.",
-        "Eligible refunds are reviewed by support and returned through the payment provider. A refund request is not a completed refund. Your dashboard shows its status.",
+        "Eligible refunds are reviewed by support and handled through the applicable manual payment process. A refund request is not a completed refund. Your dashboard shows its status.",
       ],
       [
         "Trainer cancellations.",
@@ -119,7 +116,7 @@ const copy: Record<
       ],
       [
         "Service providers and device storage.",
-        "Hosting, database, payment, and file-storage providers process information needed for these services. Secure cookies keep you signed in. Session storage remembers only your selected comparison identifiers.",
+        "Hosting and database providers process information needed for these services. Secure cookies keep you signed in. Session storage remembers only your selected comparison identifiers.",
       ],
     ],
   },
@@ -206,7 +203,7 @@ export default async function Page({
             {[
               [
                 "Tell us where you’re going.",
-                "Choose your goal, location, setting and usual training time.",
+                "Choose your goal, experience level, preferred training time and budget.",
               ],
               [
                 "Meet your matches.",
@@ -236,37 +233,11 @@ export default async function Page({
               </Reveal>
             ))}
             <Link className="btn" href="/match">
-              Find my trainer →
+              Get matched →
             </Link>
           </div>
         </div>
       </>
-    );
-  if (info === "locations")
-    return (
-      <div className="container section">
-        <div className="page-heading">
-          <p className="eyebrow">YOUR CITY. YOUR COACH.</p>
-          <h1>Good training, closer to home.</h1>
-          <p>Explore personal trainers across Karachi.</p>
-        </div>
-        <div className="location-page-grid">
-          {locations.map((l, i) => (
-            <Link
-              href={`/trainers?location=${encodeURIComponent(l)}`}
-              className="panel"
-              key={l}
-            >
-              <MapPin size={28} />
-              <span className="eyebrow mt-8">KARACHI / 0{i + 1}</span>
-              <h2>{l}</h2>
-              <span className="text-link mt-5">
-                Find trainers <ArrowUpRight size={18} />
-              </span>
-            </Link>
-          ))}
-        </div>
-      </div>
     );
   if (info === "become-a-trainer")
     return (
@@ -339,7 +310,7 @@ export default async function Page({
         {info !== "contact" && (
           <div className="flex flex-wrap gap-4 mt-10">
             <Link href="/trainers" className="btn">
-              Find a trainer →
+              Browse trainers →
             </Link>
             <Link
               href={info === "help" ? "/contact" : "/how-it-works"}
@@ -361,11 +332,26 @@ export async function generateMetadata({
   params: Promise<{ info: string }>;
 }) {
   const { info } = await params;
+  const special: Record<string, { title: string; description: string }> = {
+    "how-it-works": {
+      title: "How Online Personal Training Works",
+      description: "See how Spotter helps you match with, compare and book approved online personal trainers using real availability and transparent package pricing.",
+    },
+    "become-a-trainer": {
+      title: "Become a Spotter Online Personal Trainer",
+      description: "Apply to become a Spotter trainer. Build your professional profile, submit identity and certification evidence, set online services and availability, then send your application for review.",
+    },
+  };
+  const data = copy[info];
+  const title = special[info]?.title || info
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+  const description = special[info]?.description || data?.intro || "Learn more about Spotter online personal training.";
   return {
-    title: info
-      .split("-")
-      .map((s) => s[0].toUpperCase() + s.slice(1))
-      .join(" "),
+    title,
+    description,
     alternates: { canonical: "/" + info },
+    openGraph: { title, description, type: "website" as const },
   };
 }

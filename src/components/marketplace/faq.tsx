@@ -16,8 +16,8 @@ export const faqs = [
     "Each trainer sets their prices. Session rates and package totals appear on their profile, and the complete total is shown before you confirm.",
   ],
   [
-    "Can trainers come to my home?",
-    "Yes, when a trainer offers home sessions in your area. Choose Home when searching and add your address during booking.",
+    "How do online sessions work?",
+    "All Spotter training is live and online. After a booking is confirmed, the trainer can attach a private video-session link that only the booked customer can access.",
   ],
   [
     "What happens if I cancel?",
@@ -28,8 +28,8 @@ export const faqs = [
     "Only customers who completed a session with that trainer through Spotter can publish a review.",
   ],
   [
-    "Can I train online?",
-    "Yes. Select Online to find trainers who offer remote coaching. Your trainer can coordinate session details through messages.",
+    "Which timezone will I see?",
+    "Booking times are shown in your device timezone, while the trainer timezone is shown for clarity. Confirmed sessions keep their original UTC appointment time.",
   ],
 ];
 export function FAQ() {
