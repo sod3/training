@@ -332,7 +332,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
                 Availability will appear after this trainer adds a package.
               </p>
             )}
-            {!!t.packages.length && !t.trainingTypes.length && (
+            {!!t.packages.length && (
               <p className="fine-print">
                 Availability will appear after this trainer adds weekly hours.
               </p>

@@ -19,7 +19,6 @@ import {
 import { trainerAction } from "../src/services/trainer-management";
 import { dashboardData } from "../src/services/dashboard";
 import { getAvailableSlots, getAvailableWeek } from "../src/services/bookings";
-import { effectiveTrainingTypes } from "../src/lib/server/rules";
 
 let db: MongoMemoryReplSet;
 let actor: Actor;
@@ -28,7 +27,6 @@ const rule = {
   dayOfWeek: 1,
   startTime: "09:00",
   endTime: "12:00",
-  trainingTypes: ["gym"],
 };
 const two = [rule, { ...rule, dayOfWeek: 2 }];
 const save = (rules: unknown[], method = "POST") =>
@@ -38,11 +36,10 @@ const read = () =>
     .sort({ dayOfWeek: 1, startTime: 1 })
     .lean();
 const fields = (rows: Awaited<ReturnType<typeof read>>) =>
-  rows.map(({ dayOfWeek, startTime, endTime, trainingTypes }) => ({
+  rows.map(({ dayOfWeek, startTime, endTime }) => ({
     dayOfWeek,
     startTime,
     endTime,
-    trainingTypes,
   }));
 
 before(
@@ -152,9 +149,6 @@ test("input and Mongoose schema reject invalid times, weekdays, types, zones and
     { startTime: "24:00" },
     { startTime: "2030-01-01T09:00:00Z" },
     { endTime: "09:00" },
-    { trainingTypes: [] },
-    { trainingTypes: ["gym", "gym"] },
-    { trainingTypes: ["invalid"] },
   ]) {
     assert.equal(
       availabilitySchema.safeParse({ rules: [{ ...rule, ...patch }] }).success,
@@ -298,7 +292,6 @@ test("public availability uses schedule training types when the legacy profile l
     slug: "public-availability",
     displayName: "Public Schedule",
     timezone: "Asia/Karachi",
-    trainingTypes: [],
     applicationStatus: "APPROVED",
     profileVisibility: "PUBLIC",
   });
@@ -322,7 +315,6 @@ test("public availability uses schedule training types when the legacy profile l
       startTime: "09:00",
       endTime: "11:00",
       timezone: "Asia/Karachi",
-      trainingTypes: ["gym"],
     },
     {
       trainerId: trainer._id,
@@ -330,33 +322,15 @@ test("public availability uses schedule training types when the legacy profile l
       startTime: "13:00",
       endTime: "15:00",
       timezone: "Asia/Karachi",
-      trainingTypes: ["online"],
     },
   ]);
-
-  assert.deepEqual(
-    effectiveTrainingTypes(
-      [],
-      await TrainerAvailability.find({ trainerId: trainer._id }).lean(),
-    ),
-    ["gym", "online"],
-  );
 
   const all = await getAvailableSlots(
     String(trainer._id),
     date,
     pkg.sessionDuration,
   );
-  const gym = await getAvailableSlots(
-    String(trainer._id),
-    date,
-    pkg.sessionDuration,
-    "gym",
-  );
   assert.equal(all.length, 10);
-  assert.equal(gym.length, 5);
-  assert(all.some((slot) => slot.trainingTypes.includes("gym")));
-  assert(all.some((slot) => slot.trainingTypes.includes("online")));
   const week = await getAvailableWeek(
     String(trainer._id),
     date,
@@ -365,15 +339,7 @@ test("public availability uses schedule training types when the legacy profile l
   assert.equal(week.length, 7);
   assert.equal(week[0].date, date);
   assert.equal(week[0].slots.length, 10);
-  assert.equal(
-    await getAvailableSlots(
-      String(trainer._id),
-      date,
-      pkg.sessionDuration,
-      "home",
-    ).then((slots) => slots.length),
-    0,
-  );
+
 });
 
 test("connection cache shares cold/warm connections, recovers after disconnect and failed attempts", async () => {

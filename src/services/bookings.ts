@@ -75,7 +75,6 @@ export async function getAvailableSlots(
   trainerId: string,
   date: string,
   duration: number,
-  type?: string,
   session?: ClientSession,
   excludeSession?: string,
 ) {
@@ -86,7 +85,7 @@ export async function getAvailableSlots(
     session,
     excludeSession,
   );
-  return availableSlotsForDate(context, date, duration, type);
+  return availableSlotsForDate(context, date, duration);
 }
 
 export async function getAvailableWeek(
@@ -158,49 +157,32 @@ function availableSlotsForDate(
   context: AvailabilityContext,
   date: string,
   duration: number,
-  type?: string,
 ) {
   const { trainer, config, rules, exceptions, busy } = context;
-  // With no requested type, return the union of every training mode explicitly
-  // selected on weekly rules or dated extra-availability windows. Attach the
-  // compatible types so the profile can carry a valid one into checkout.
-  const requestedTypes = type
-    ? [type]
-    : [
-        ...new Set([
-          ...rules.flatMap((rule) => rule.trainingTypes),
-          ...exceptions
-            .filter((entry) => entry.kind === "AVAILABLE")
-            .flatMap((entry) => entry.trainingTypes),
-        ]),
-      ];
   const found = new Map<
     string,
-    { start: string; end: string; label: string; trainingTypes: string[] }
+    { start: string; end: string; label: string }
   >();
-  for (const requestedType of requestedTypes)
-    for (const slot of generateSlots(
-      date,
-      trainer.timezone,
-      duration,
-      requestedType,
-      rules,
-      exceptions,
-      busy,
-      config.minimumBookingNoticeHours,
-      config.maximumAdvanceBookingDays,
-    )) {
-      const existing = found.get(slot.start);
-      if (existing) existing.trainingTypes.push(requestedType);
-      else found.set(slot.start, { ...slot, trainingTypes: [requestedType] });
+  for (const slot of generateSlots(
+    date,
+    trainer.timezone,
+    duration,
+    rules,
+    exceptions,
+    busy,
+    config.minimumBookingNoticeHours,
+    config.maximumAdvanceBookingDays,
+  )) {
+    if (!found.has(slot.start)) {
+      found.set(slot.start, slot);
     }
+  }
   return [...found.values()].sort((a, b) => a.start.localeCompare(b.start));
 }
 async function validateSlot(
   trainerId: string,
   start: string,
   duration: number,
-  type: string,
   session: ClientSession,
   excludeSession?: string,
 ) {
@@ -210,7 +192,6 @@ async function validateSlot(
     trainerId,
     date,
     duration,
-    type,
     session,
     excludeSession,
   );
@@ -250,7 +231,6 @@ export async function createBooking(actor: Actor, data: unknown) {
       String(trainer._id),
       input.start,
       pkg.sessionDuration,
-      input.trainingType,
       session,
     );
     const price = calculateBookingPrice(pkg.price, config.commissionBps);
@@ -273,8 +253,6 @@ export async function createBooking(actor: Actor, data: unknown) {
             trainerEarning: price.trainerEarning,
             cancellationWindowHours: config.cancellationWindowHours,
           },
-          trainingType: input.trainingType,
-          trainingAddress: input.address,
           timezone: trainer.timezone,
           total: price.total,
           currency: pkg.currency,
@@ -295,7 +273,6 @@ export async function createBooking(actor: Actor, data: unknown) {
           sessionNumber: 1,
           start: slot.start,
           end: slot.end,
-          location: input.address,
           holdExpiresAt: expires,
         },
       ],
@@ -375,7 +352,6 @@ export async function scheduleSession(actor: Actor, id: string, data: unknown) {
       String(order.trainerId),
       input.start,
       order.packageSnapshot.sessionDuration!,
-      order.trainingType!,
       session,
       input.sessionId,
     );
@@ -398,7 +374,6 @@ export async function scheduleSession(actor: Actor, id: string, data: unknown) {
             sessionNumber: count + 1,
             start: slot.start,
             end: slot.end,
-            location: order.trainingAddress,
             status: "CONFIRMED",
             videoProvider: meeting.videoProvider,
             meetingId: meeting.meetingId,

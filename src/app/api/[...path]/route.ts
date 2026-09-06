@@ -187,7 +187,6 @@ async function handle(request: Request, context: Context) {
                 id,
                 input.date,
                 pkg.sessionDuration,
-                input.type,
               ),
             });
       }
@@ -217,7 +216,6 @@ async function handle(request: Request, context: Context) {
             String(order.trainerId),
             params.date,
             order.packageSnapshot.sessionDuration!,
-            order.trainingType!,
             undefined,
             params.sessionId ? objectId.parse(params.sessionId) : undefined,
           ),

@@ -67,7 +67,7 @@ export default function Page() {
                     ["Rating", `${t.rating} · ${t.reviewCount} reviews`],
                     ["Experience", `${t.experienceYears} years`],
                     ["Specialties", t.specialties.join(", ")],
-                    ["Training", t.trainingTypes.join(" · ")],
+
                     ["Next available", t.nextAvailable],
                     [
                       "Verification",

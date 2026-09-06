@@ -14,14 +14,12 @@ import {
 } from "@/models";
 import { connectDB } from "@/lib/server/db";
 import { getAvailableSlots } from "@/services/bookings";
-import { effectiveTrainingTypes } from "@/lib/server/rules";
-import type { Trainer, TrainingType } from "@/types/trainer";
+import type { Trainer } from "@/types/trainer";
 
 const querySchema = z.object({
   q: z.string().max(100).optional(),
   search: z.string().max(100).optional(),
   goal: z.string().max(100).optional(),
-  type: z.enum(["online", ""]).optional(),
   price: z.coerce.number().min(0).max(1000000).optional(),
   maxPrice: z.coerce.number().min(0).max(1000000).optional(),
   rating: z.coerce.number().min(0).max(5).optional(),
@@ -86,17 +84,10 @@ export async function presentTrainer(t: ProfileData): Promise<Trainer> {
       .select("trainingTypes")
       .lean(),
   ]);
-  // Weekly availability is itself an explicit declaration of how the trainer
-  // offers that window. Include it for older profiles whose profile-level list
-  // was never populated, and de-duplicate it for the public UI and booking flow.
-  const trainingTypes = effectiveTrainingTypes(
-    t.trainingTypes,
-    availability,
-  ) as TrainingType[];
   const availabilityWeekStart = DateTime.now().setZone(t.timezone).toISODate()!;
   let nextAvailable = "No open times this week";
   let nextAvailableDate: string | undefined;
-  if (packages.length && trainingTypes.length)
+  if (packages.length)
     for (let offset = 0; offset < 7; offset++) {
       const date = DateTime.now()
         .setZone(t.timezone)
@@ -132,7 +123,6 @@ export async function presentTrainer(t: ProfileData): Promise<Trainer> {
     sessionsCompleted: completed,
     experienceYears: t.yearsExperience,
     responseTime: "when available",
-    trainingTypes,
     specialties: t.specialties,
     certifications: credentials.map((c) => c.title),
     packages: packages.map((p) => ({
@@ -180,7 +170,6 @@ export async function listTrainers(raw: Record<string, unknown> = {}) {
       { trainingGoals: regex(q.goal) },
       { specialties: regex(q.goal) },
     ];
-  if (q.type) match.trainingTypes = q.type;
   if (q.experience) match.yearsExperience = { $gte: q.experience };
   if (q.q || q.search)
     match.$and = [
@@ -284,28 +273,26 @@ export async function listTrainers(raw: Record<string, unknown> = {}) {
       const start = q.availability === "tomorrow" ? 1 : 0;
       const days = ["today", "tomorrow"].includes(q.availability || "") ? 1 : 7;
       let next = "";
-      for (let i = start; i < start + days && !next; i++)
-        for (const type of q.type ? [q.type] : t.trainingTypes) {
-          const slots = await getAvailableSlots(
-            String(t._id),
-            DateTime.now().setZone(t.timezone).plus({ days: i }).toISODate()!,
-            pkg.sessionDuration,
-            type,
+      for (let i = start; i < start + days && !next; i++) {
+        const slots = await getAvailableSlots(
+          String(t._id),
+          DateTime.now().setZone(t.timezone).plus({ days: i }).toISODate()!,
+          pkg.sessionDuration,
+        );
+        const slot = slots.find((s) => {
+          const hour = DateTime.fromISO(s.start).setZone(t.timezone).hour;
+          return (
+            !q.time ||
+            q.time === "Flexible" ||
+            (q.time === "Morning"
+              ? hour < 12
+              : q.time === "Afternoon"
+                ? hour >= 12 && hour < 17
+                : hour >= 17)
           );
-          const slot = slots.find((s) => {
-            const hour = DateTime.fromISO(s.start).setZone(t.timezone).hour;
-            return (
-              !q.time ||
-              q.time === "Flexible" ||
-              (q.time === "Morning"
-                ? hour < 12
-                : q.time === "Afternoon"
-                  ? hour >= 12 && hour < 17
-                  : hour >= 17)
-            );
-          });
-          if (slot && (!next || slot.start < next)) next = slot.start;
-        }
+        });
+        if (slot && (!next || slot.start < next)) next = slot.start;
+      }
       if (next) eligible.push({ trainer: t, next });
     }
     if (q.sort === "soon")

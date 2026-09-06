@@ -212,8 +212,6 @@ export async function accountAction(
         lastName: z.string().trim().min(1).max(80),
         phone: z.string().max(30),
         fitnessGoals: z.array(z.string().max(100)).max(20).default([]),
-        preferredLocations: z.array(z.string().max(100)).max(20).default([]),
-        preferredTrainingTypes: z.array(z.string().max(30)).max(4).default([]),
         preferredSchedule: z.string().max(200).default(""),
         timezone: timezone.default("Asia/Karachi"),
         emailNotifications: z.boolean().default(true),
@@ -238,8 +236,6 @@ export async function accountAction(
         {
           $set: {
             fitnessGoals: input.fitnessGoals,
-            preferredLocations: input.preferredLocations,
-            preferredTrainingTypes: input.preferredTrainingTypes,
             preferredSchedule: input.preferredSchedule,
             timezone: input.timezone,
             notificationPreferences: { email: input.emailNotifications },

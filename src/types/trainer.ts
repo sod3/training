@@ -1,5 +1,3 @@
-export type TrainingType = "online";
-
 export interface TrainerPackage {
   id: string;
   title: string;
@@ -38,7 +36,7 @@ export interface Trainer {
   experienceYears: number;
   responseTime: string;
 
-  trainingTypes: TrainingType[];
+
   specialties: string[];
   certifications: string[];
   packages: TrainerPackage[];

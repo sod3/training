@@ -46,20 +46,7 @@ export type AvailabilityRule = {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
-  trainingTypes: string[];
 };
-export function effectiveTrainingTypes(
-  profileTypes: readonly string[],
-  rules: readonly Pick<AvailabilityRule, "trainingTypes">[],
-) {
-  const order = ["home", "gym", "outdoor", "online"];
-  return [
-    ...new Set([
-      ...profileTypes,
-      ...rules.flatMap((rule) => rule.trainingTypes),
-    ]),
-  ].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-}
 // Recurring wall-clock minutes, including overnight and Saturday/Sunday wrap.
 // Adjacent windows are valid. Combine training types into one window when times overlap.
 export function availabilityConflict(rules: AvailabilityRule[]) {
@@ -85,13 +72,11 @@ export function generateSlots(
   date: string,
   zone: string,
   duration: number,
-  type: string,
   rules: AvailabilityRule[],
   exceptions: {
     start: Date;
     end: Date;
     kind: string;
-    trainingTypes: string[];
   }[],
   busy: { start: Date; end: Date }[],
   notice: number,
@@ -109,7 +94,7 @@ export function generateSlots(
   const ranges: { start: DateTime; end: DateTime }[] = [];
   for (const d of [day.minus({ days: 1 }), day])
     for (const r of rules) {
-      if (d.weekday % 7 !== r.dayOfWeek || !r.trainingTypes.includes(type))
+      if (d.weekday % 7 !== r.dayOfWeek)
         continue;
       const start = DateTime.fromISO(`${d.toISODate()}T${r.startTime}`, {
         zone,
@@ -119,7 +104,7 @@ export function generateSlots(
       ranges.push({ start, end });
     }
   exceptions
-    .filter((e) => e.kind === "AVAILABLE" && e.trainingTypes.includes(type))
+    .filter((e) => e.kind === "AVAILABLE")
     .forEach((e) =>
       ranges.push({
         start: DateTime.fromJSDate(e.start, { zone }),

@@ -35,7 +35,7 @@ export const signupSchema = z
 export const loginSchema = z
   .object({ email, password: z.string().min(1).max(72) })
   .strict();
-export const trainingType = z.enum(["home", "gym", "outdoor", "online"]);
+
 const words = z.array(z.string().trim().min(1).max(100)).max(20);
 export const timezone = z
   .string()
@@ -48,8 +48,7 @@ export const profileSchema = z
     yearsExperience: z.number().int().min(0).max(80),
     specialties: words,
     trainingGoals: words,
-    trainingTypes: z.array(trainingType).max(4),
-    serviceAreas: words,
+
     city: z.string().max(100),
     timezone,
     languages: words,
@@ -79,14 +78,7 @@ export const availabilitySchema = z
             dayOfWeek: z.number().int().min(0).max(6),
             startTime: time,
             endTime: time,
-            trainingTypes: z
-              .array(trainingType)
-              .min(1)
-              .max(4)
-              .refine(
-                (types) => new Set(types).size === types.length,
-                "Training types must be unique",
-              ),
+
           })
           .strict()
           .refine(
@@ -103,7 +95,7 @@ export const exceptionSchema = z
     end: z.string().datetime(),
     kind: z.enum(["BLOCK", "AVAILABLE"]),
     reason: z.string().max(200),
-    trainingTypes: z.array(trainingType).max(4),
+
   })
   .strict()
   .refine((v) => new Date(v.end) > new Date(v.start), "End must follow start");
@@ -111,15 +103,9 @@ export const bookingSchema = z
   .object({
     packageId: objectId,
     start: z.string().datetime(),
-    trainingType,
-    address: z.string().trim().max(1000).default(""),
     idempotencyKey: z.string().uuid(),
   })
-  .strict()
-  .refine(
-    (v) => v.trainingType !== "home" || v.address.length >= 10,
-    "Home sessions require an address",
-  );
+  .strict();
 export const settingsSchema = z
   .object({
     platformName: z.string().min(1).max(80),

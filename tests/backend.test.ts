@@ -109,7 +109,6 @@ before(
       applicationStatus: "APPROVED",
       profileVisibility: "PUBLIC",
       identityVerificationStatus: "APPROVED",
-      trainingTypes: ["online"],
       timezone: "Asia/Karachi",
     });
     trainerId = String(trainer._id);
@@ -131,7 +130,6 @@ before(
       startTime: "08:00",
       endTime: "20:00",
       timezone: "Asia/Karachi",
-      trainingTypes: ["online"],
     });
     start = DateTime.fromISO(`${day}T10:00`, { zone: "Asia/Karachi" })
       .toUTC()
@@ -150,13 +148,11 @@ test("trainers can save multiple weekly windows in a transaction", async () => {
       dayOfWeek: 1,
       startTime: "09:00",
       endTime: "12:00",
-      trainingTypes: ["online"],
     },
     {
       dayOfWeek: 2,
       startTime: "13:00",
       endTime: "17:00",
-      trainingTypes: ["online"],
     },
   ];
   const actor = {
@@ -173,11 +169,10 @@ test("trainers can save multiple weekly windows in a transaction", async () => {
     .lean();
   assert.equal(saved.length, 2);
   assert.deepEqual(
-    saved.map(({ dayOfWeek, startTime, endTime, trainingTypes }) => ({
+    saved.map(({ dayOfWeek, startTime, endTime }) => ({
       dayOfWeek,
       startTime,
       endTime,
-      trainingTypes,
     })),
     rules,
   );
@@ -237,27 +232,23 @@ test("availability excludes blocks, past slots and overlapping windows", () => {
       dayOfWeek: 2,
       startTime: "08:00",
       endTime: "12:00",
-      trainingTypes: ["online"],
     },
     {
       dayOfWeek: 2,
       startTime: "09:00",
       endTime: "11:00",
-      trainingTypes: ["online"],
     },
   ];
   const slots = generateSlots(
     "2030-01-01",
     "Asia/Karachi",
     60,
-    "online",
     rules,
     [
       {
         start: new Date("2030-01-01T04:00:00Z"),
         end: new Date("2030-01-01T05:00:00Z"),
         kind: "BLOCK",
-        trainingTypes: [],
       },
     ],
     [],
@@ -284,13 +275,11 @@ test("cross-midnight and daylight-saving slots are represented as UTC instants",
     "2030-01-02",
     "Asia/Karachi",
     60,
-    "online",
     [
       {
         dayOfWeek: 2,
         startTime: "22:00",
         endTime: "02:00",
-        trainingTypes: ["online"],
       },
     ],
     [],
@@ -304,13 +293,11 @@ test("cross-midnight and daylight-saving slots are represented as UTC instants",
     "2030-11-03",
     "America/New_York",
     60,
-    "online",
     [
       {
         dayOfWeek: 0,
         startTime: "00:00",
         endTime: "04:00",
-        trainingTypes: ["online"],
       },
     ],
     [],
@@ -334,13 +321,11 @@ test("concurrent partially overlapping checkouts allow exactly one reservation",
     createBooking(customer, {
       packageId,
       start,
-      trainingType: "online",
       idempotencyKey: randomUUID(),
     }),
     createBooking(other, {
       packageId,
       start: later,
-      trainingType: "online",
       idempotencyKey: randomUUID(),
     }),
   ]);
@@ -357,7 +342,7 @@ test("concurrent partially overlapping checkouts allow exactly one reservation",
     reason: "Testing cancellation releases the slot",
   });
   assert(
-    (await getAvailableSlots(trainerId, day, 60, "online")).some(
+    (await getAvailableSlots(trainerId, day, 60)).some(
       (s) => s.start === start,
     ),
   );
@@ -366,7 +351,6 @@ test("booking retries preserve snapshots and do not create duplicate orders", as
   const input = {
     packageId,
     start,
-    trainingType: "online",
     idempotencyKey: randomUUID(),
   };
   const first = await createBooking(customer, input);

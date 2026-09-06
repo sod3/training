@@ -54,7 +54,7 @@ function Checkout({
   const [packageId, setPackage] = useState(
     params.package || t.packages[0]?.id || "",
   );
-  const [type, setType] = useState(params.type || t.trainingTypes[0] || "gym");
+  const [type, setType] = useState(params.type || "gym");
   const [date, setDate] = useState(params.date || "");
   const [start, setStart] = useState(params.time || "");
   const [address, setAddress] = useState(params.address || "");
@@ -128,7 +128,7 @@ function Checkout({
               <fieldset className="filter-group">
                 <legend>How would you like to train?</legend>
                 <div className="choice-chips">
-                  {t.trainingTypes.map((value) => (
+                  {["gym", "home", "outdoor", "online"].map((value) => (
                     <button
                       key={value}
                       className={type === value ? "selected" : ""}

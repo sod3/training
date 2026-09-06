@@ -25,12 +25,6 @@ const availabilityRows = (value: unknown): Item[] =>
     endTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(rule.endTime ?? ""))
       ? rule.endTime
       : "17:00",
-    trainingTypes: (() => {
-      const types = Array.isArray(rule.trainingTypes)
-        ? rule.trainingTypes
-        : csv(rule.trainingTypes);
-      return types.length ? types : ["gym"];
-    })(),
   }));
 const csv = (value: unknown) =>
   String(value || "")
@@ -81,14 +75,10 @@ export function ProfilePanel({
     fields.push(
       {
         name: "fitnessGoals",
-        label: "Fitness goals, separated by commas",
-        value: String(preferences.fitnessGoals || ""),
-      },
-
-      {
-        name: "preferredTrainingTypes",
-        label: "Training types, separated by commas",
-        value: String(preferences.preferredTrainingTypes || ""),
+        label: "Fitness goals",
+        type: "checkbox-group",
+        options: ["Weight Loss", "Muscle Gain", "Flexibility", "Endurance", "Sports Performance"],
+        value: preferences.fitnessGoals as string[] || [],
       },
       {
         name: "preferredSchedule",
@@ -119,8 +109,7 @@ export function ProfilePanel({
             ...v,
             ...(role === "customer"
               ? {
-                  fitnessGoals: csv(v.fitnessGoals),
-                  preferredTrainingTypes: csv(v.preferredTrainingTypes),
+                  fitnessGoals: v.fitnessGoals,
                 }
               : {}),
           })}
@@ -161,21 +150,27 @@ export function ProfilePanel({
                 min: 0,
                 max: 80,
               },
-              ...[
-                "specialties",
-                "trainingGoals",
-                "trainingTypes",
-                "serviceAreas",
-                "languages",
-              ].map((name) => ({
-                name,
-                label: `${name.replace(/([A-Z])/g, " $1")} (comma separated)`,
-                value: String(trainer[name] || ""),
-                hint:
-                  name === "trainingTypes"
-                    ? "home, gym, outdoor, online"
-                    : undefined,
-              })),
+              {
+                name: "specialties",
+                label: "Specialties",
+                type: "checkbox-group",
+                options: ["Weight Loss", "Muscle Gain", "Yoga", "Pilates", "Strength Training", "Rehabilitation"],
+                value: trainer.specialties as string[] || [],
+              },
+              {
+                name: "trainingGoals",
+                label: "Training Goals",
+                type: "checkbox-group",
+                options: ["Weight Loss", "Muscle Gain", "Flexibility", "Endurance", "Sports Performance"],
+                value: trainer.trainingGoals as string[] || [],
+              },
+              {
+                name: "languages",
+                label: "Languages",
+                type: "checkbox-group",
+                options: ["English", "Urdu", "Punjabi", "Sindhi", "Pashto"],
+                value: trainer.languages as string[] || [],
+              },
               { name: "city", label: "City", value: str(trainer, "city") },
               {
                 name: "timezone",
@@ -185,11 +180,9 @@ export function ProfilePanel({
             ]}
             transform={(v) => ({
               ...v,
-              specialties: csv(v.specialties),
-              trainingGoals: csv(v.trainingGoals),
-              trainingTypes: csv(v.trainingTypes),
-              serviceAreas: csv(v.serviceAreas),
-              languages: csv(v.languages),
+              specialties: v.specialties,
+              trainingGoals: v.trainingGoals,
+              languages: v.languages,
             })}
           />
           <UploadForm
@@ -360,13 +353,7 @@ export function AvailabilityPanel({
                 onChange={(e) => set(i, "endTime", e.target.value)}
               />
             </label>
-            <label className="field">
-              Training types
-              <input
-                value={String(r.trainingTypes || "")}
-                onChange={(e) => set(i, "trainingTypes", csv(e.target.value))}
-              />
-            </label>
+
             <button
               className="text-link"
               onClick={() => setRules(rules.filter((_, n) => n !== i))}
@@ -386,7 +373,6 @@ export function AvailabilityPanel({
                   dayOfWeek: 1,
                   startTime: "09:00",
                   endTime: "17:00",
-                  trainingTypes: ["gym"],
                 },
               ])
             }
@@ -406,7 +392,6 @@ export function AvailabilityPanel({
                       dayOfWeek: num(r, "dayOfWeek"),
                       startTime: str(r, "startTime"),
                       endTime: str(r, "endTime"),
-                      trainingTypes: r.trainingTypes,
                     })),
                   },
                 );
@@ -449,17 +434,11 @@ export function AvailabilityPanel({
               required: true,
             },
             { name: "reason", label: "Reason", required: true },
-            {
-              name: "trainingTypes",
-              label: "Training types, comma separated",
-              value: "gym",
-            },
           ]}
           transform={(v) => ({
             ...v,
             start: new Date(String(v.start)).toISOString(),
             end: new Date(String(v.end)).toISOString(),
-            trainingTypes: csv(v.trainingTypes),
           })}
         />
         {rows(data.exceptions).map((r) => (
@@ -494,8 +473,9 @@ export function VerificationPanel({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   return (
-    <section className="panel">
-      <h2>Simple verification</h2>
+    <>
+      <section className="panel">
+        <h2>Simple verification</h2>
       <p>
         Send these four details once. An admin will review and publish your
         profile.
@@ -592,7 +572,77 @@ export function VerificationPanel({
           View submitted CNIC picture
         </a>
       )}
-    </section>
+      </section>
+      <section className="panel">
+        <h2>Certificates & Credentials</h2>
+        <p>Add 1 or more images. Fields are optional.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
+          {rows(data.credentials).filter(c => str(c, "type") === "CERTIFICATION").map((cred) => (
+             <div key={str(cred, "_id")} style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+               <strong>{str(cred, "title") || "Untitled Certificate"}</strong> 
+               {str(cred, "issuingOrganization") ? ` - ${str(cred, "issuingOrganization")}` : ""}
+               <br />
+               <a className="text-link" href={`/api/media/${str(cred, "uploadId")}`}>View File</a>
+             </div>
+          ))}
+        </div>
+        <form
+          className="workspace-form"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (busy) return;
+            setBusy(true);
+            setMessage("");
+            const form = e.currentTarget;
+            const values = new FormData(form);
+            try {
+              const file = values.get("file");
+              const upload = new FormData();
+              upload.set("purpose", "PRIVATE");
+              upload.set("file", file as File);
+              const response = await fetch("/api/uploads", {
+                method: "POST",
+                body: upload,
+              });
+              const uploaded = await response.json();
+              if (!response.ok) throw new Error(uploaded.error);
+              const result = await api<{ message: string }>(
+                "trainer/credentials",
+                {
+                  uploadId: uploaded.id,
+                  type: "CERTIFICATION",
+                  title: values.get("title") || "",
+                  issuingOrganization: values.get("issuingOrganization") || "",
+                },
+              );
+              setMessage(result.message);
+              form.reset();
+              reload();
+            } catch (error) {
+              setMessage((error as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <label className="field">
+            Certificate image
+            <input name="file" type="file" required accept=".jpg,.jpeg,.png,.webp,.pdf" />
+          </label>
+          <label className="field">
+            Title (optional)
+            <input name="title" maxLength={200} />
+          </label>
+          <label className="field">
+            Issuing Organization (optional)
+            <input name="issuingOrganization" maxLength={200} />
+          </label>
+          <button className="btn small outline" disabled={busy}>
+            {busy ? "Uploading…" : "Upload Certificate"}
+          </button>
+        </form>
+      </section>
+    </>
   );
 }
 export function MessagesPanel({

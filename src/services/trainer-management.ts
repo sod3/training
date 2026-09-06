@@ -170,9 +170,6 @@ export async function trainerAction(
       405,
     );
     const input = availabilitySchema.parse(data);
-    const selectedTrainingTypes = [
-      ...new Set(input.rules.flatMap((rule) => rule.trainingTypes)),
-    ];
     const conflict = availabilityConflict(input.rules);
     assert(
       !conflict,
@@ -223,13 +220,7 @@ export async function trainerAction(
                   availabilityReviewStatus: "APPROVED",
                   availabilityReviewNotes: "",
                 },
-                ...(selectedTrainingTypes.length
-                  ? {
-                      $addToSet: {
-                        trainingTypes: { $each: selectedTrainingTypes },
-                      },
-                    }
-                  : {}),
+
                 $unset: {
                   availabilityReviewedBy: 1,
                   availabilityReviewedAt: 1,
@@ -283,8 +274,8 @@ export async function trainerAction(
       .object({
         uploadId: objectId,
         type: z.enum(["IDENTITY", "CERTIFICATION"]),
-        title: z.string().min(2).max(200),
-        issuingOrganization: z.string().max(200),
+        title: z.string().max(200).optional(),
+        issuingOrganization: z.string().max(200).optional(),
         credentialNumber: z.string().max(200).optional(),
         expiryDate: z.string().date().optional(),
       })
@@ -338,10 +329,7 @@ export async function trainerAction(
         assert(
           current.biography.length >= 50 &&
             current.headline &&
-            current.specialties.length &&
-            current.serviceAreas.length &&
-            current.trainingTypes.length &&
-            current.city,
+            current.specialties.length,
           "Complete your professional profile first",
         );
         assert(

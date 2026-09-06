@@ -71,8 +71,6 @@ export const CustomerProfile = model(
     {
       userId: { ...ref("User"), unique: true },
       fitnessGoals: [String],
-      preferredTrainingTypes: [String],
-      preferredLocations: { type: [String], select: false }, // deprecated
       preferredSchedule: text(),
       fitnessLevel: text(),
       timezone: { type: String, default: "Asia/Karachi" },
@@ -97,10 +95,6 @@ const trainer = new Schema(
     yearsExperience: { type: Number, min: 0, max: 80, default: 0 },
     specialties: [String],
     trainingGoals: [String],
-    trainingTypes: [
-      { type: String, enum: ["online"] },
-    ],
-    serviceAreas: { type: [String], select: false }, // deprecated
     city: { type: String, select: false }, // deprecated
     timezone: { type: String, default: "Asia/Karachi" },
     languages: [String],
@@ -258,12 +252,6 @@ export const TrainerAvailability = model(
         required: true,
         validate: (zone: string) => DateTime.now().setZone(zone).isValid,
       },
-      trainingTypes: {
-        type: [{ type: String, enum: ["online"] }],
-        required: true,
-        validate: (types: string[]) =>
-          types.length === 1 && types[0] === "online",
-      },
       active: { type: Boolean, default: true },
     },
     options,
@@ -278,7 +266,6 @@ export const TrainerAvailabilityException = model(
       end: { type: Date, required: true },
       kind: { type: String, enum: ["BLOCK", "AVAILABLE"], required: true },
       reason: text(),
-      trainingTypes: [String],
     },
     options,
   ),
@@ -304,8 +291,6 @@ const order = new Schema(
     trainerId: ref("TrainerProfile"),
     packageId: ref("TrainerPackage"),
     packageSnapshot: { type: snapshot, required: true },
-    trainingType: String,
-    trainingAddress: { type: String, select: false }, // deprecated
     videoProvider: { type: String, enum: ["NONE", "GOOGLE_MEET", "ZOOM", "MOCK"], default: "NONE" },
     meetingId: text(),
     meetingUrl: text(1000),
@@ -372,7 +357,6 @@ const session = new Schema(
       default: "HELD",
     },
     holdExpiresAt: Date,
-    location: { type: String, select: false }, // deprecated
     videoProvider: { type: String, enum: ["NONE", "GOOGLE_MEET", "ZOOM", "MOCK"], default: "NONE" },
     meetingId: text(),
     meetingUrl: text(1000),

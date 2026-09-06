@@ -12,11 +12,12 @@ export type Field = {
     | "textarea"
     | "select"
     | "checkbox"
+    | "checkbox-group"
     | "date"
     | "datetime-local"
     | "time";
   options?: string[];
-  value?: string | number | boolean;
+  value?: string | number | boolean | string[];
   required?: boolean;
   min?: number;
   max?: number;
@@ -53,11 +54,13 @@ export function ActionForm({
         const input: Record<string, unknown> = {};
         fields.forEach((field) => {
           input[field.name] =
-            field.type === "checkbox"
-              ? values.get(field.name) === "on"
-              : field.type === "number"
-                ? Number(values.get(field.name))
-                : String(values.get(field.name) || "");
+            field.type === "checkbox-group"
+              ? values.getAll(field.name)
+              : field.type === "checkbox"
+                ? values.get(field.name) === "on"
+                : field.type === "number"
+                  ? Number(values.get(field.name))
+                  : String(values.get(field.name) || "");
         });
         setPending(true);
         setError("");
@@ -107,6 +110,24 @@ export function ActionForm({
               name={field.name}
               defaultChecked={!!field.value}
             />
+          ) : field.type === "checkbox-group" ? (
+            <div className="checkbox-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+              {field.options?.map((opt) => (
+                <label key={opt} className="check-label" style={{ fontWeight: 'normal' }}>
+                  <input
+                    type="checkbox"
+                    name={field.name}
+                    value={opt}
+                    defaultChecked={
+                      Array.isArray(field.value)
+                        ? field.value.includes(opt)
+                        : String(field.value || "").includes(opt)
+                    }
+                  />
+                  {opt}
+                </label>
+              ))}
+            </div>
           ) : (
             <input
               name={field.name}
