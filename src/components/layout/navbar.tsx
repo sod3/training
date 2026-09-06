@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowUpRight, ArrowRight, Menu, MapPin } from "lucide-react";
 import { siteConfig } from "@/config/site";
@@ -11,6 +11,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useStore } from "@/components/marketplace/store";
+import { api } from "@/lib/client-api";
 export function Logo() {
   return (
     <Link href="/" className="brand" aria-label="Spotter home">
@@ -20,9 +21,16 @@ export function Logo() {
 }
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { state } = useStore();
+  const { state, notify } = useStore();
+  const dashboard =
+    state.role === "admin"
+      ? "/admin"
+      : state.role === "trainer"
+        ? "/trainer"
+        : "/dashboard/customer";
   useEffect(() => {
     const scroll = () => setScrolled(window.scrollY > 24);
     scroll();
@@ -33,7 +41,8 @@ export function Navbar() {
     pathname,
   );
   return (
-    <header className={`site-nav ${pathname === "/" ? "on-hero" : ""} ${scrolled ? "scrolled" : ""}`}
+    <header
+      className={`site-nav ${pathname === "/" ? "on-hero" : ""} ${scrolled ? "scrolled" : ""}`}
     >
       <div className="container nav-inner">
         <Logo />
@@ -55,7 +64,11 @@ export function Navbar() {
               ))}
             </nav>
             <div className="nav-actions">
-              <Link href="/locations" className="nav-location" aria-label="Explore trainers by location">
+              <Link
+                href="/locations"
+                className="nav-location"
+                aria-label="Explore trainers by location"
+              >
                 <MapPin size={14} /> Karachi
               </Link>
               <Link
@@ -68,8 +81,38 @@ export function Navbar() {
                 }
                 className="login-link"
               >
-                {state.role === "visitor" ? "Log in" : "Dashboard"}
+                {state.role === "visitor"
+                  ? "Log in"
+                  : state.name.split(" ")[0] || "Dashboard"}
               </Link>
+              {state.role !== "visitor" && (
+                <details className="account-menu">
+                  <summary>Account</summary>
+                  <div>
+                    <Link href={dashboard}>Dashboard</Link>
+                    <Link href={`${dashboard}/notifications`}>
+                      Notifications {state.unread || ""}
+                    </Link>
+                    {state.role !== "admin" && (
+                      <Link href={`${dashboard}/messages`}>
+                        Messages {state.unreadMessages || ""}
+                      </Link>
+                    )}
+                    <button
+                      onClick={async () => {
+                        try {
+                          await api("auth/logout", {});
+                          router.push("/");
+                        } catch (e) {
+                          notify((e as Error).message);
+                        }
+                      }}
+                    >
+                      Log out
+                    </button>
+                  </div>
+                </details>
+              )}
               <Link href="/match" className="btn lime small">
                 Find my trainer <ArrowRight size={16} />
               </Link>
@@ -94,8 +137,11 @@ export function Navbar() {
                       <ArrowUpRight size={20} />
                     </Link>
                   ))}
-                  <Link href="/login" onClick={() => setOpen(false)}>
-                    Log in
+                  <Link
+                    href={state.role === "visitor" ? "/login" : dashboard}
+                    onClick={() => setOpen(false)}
+                  >
+                    {state.role === "visitor" ? "Log in" : "Dashboard"}
                   </Link>
                   <Link
                     href="/match"

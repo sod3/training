@@ -21,7 +21,7 @@ export function TrainerCard({
   trainer: Trainer;
   variant?: "default" | "compact" | "horizontal";
 }) {
-  const { state, update, notify } = useStore();
+  const { state, update, notify, toggleSaved } = useStore();
   const saved = state.saved.includes(t.id);
   const compared = state.compare.includes(t.id);
   return (
@@ -40,24 +40,17 @@ export function TrainerCard({
         </Link>
         {t.matchScore !== undefined ? (
           <span className="photo-label match-label">{t.matchScore}% match</span>
-        ) : (
+        ) : t.verifiedIdentity ? (
           <VerifiedBadge
             className="photo-label"
             credentials={t.verifiedCredentials}
           />
-        )}
+        ) : null}
         <button
           className={`favorite ${saved ? "saved" : ""}`}
           aria-label={`${saved ? "Unsave" : "Save"} ${t.firstName}`}
           aria-pressed={saved}
-          onClick={() => {
-            update({
-              saved: saved
-                ? state.saved.filter((id) => id !== t.id)
-                : [...state.saved, t.id],
-            });
-            notify(saved ? "Removed from saved." : "Trainer saved.");
-          }}
+          onClick={() => void toggleSaved(t.id)}
         >
           <Heart size={19} fill={saved ? "currentColor" : "none"} />
         </button>
@@ -87,7 +80,8 @@ export function TrainerCard({
           <span>· {t.trainingTypes.slice(0, 2).join(" / ")}</span>
         </p>
         <p className="trainer-meta">
-          {t.reviewCount} reviews <span>·</span> {t.experienceYears} yrs experience
+          {t.reviewCount} reviews <span>·</span> {t.experienceYears} yrs
+          experience
         </p>
         <div className="trainer-price">
           <p>
@@ -96,7 +90,7 @@ export function TrainerCard({
             <small> / session</small>
           </p>
           <Link href={`/booking?trainer=${t.slug}`} className="trial-link">
-            Book trial <ArrowUpRight size={16} />
+            Book session <ArrowUpRight size={16} />
           </Link>
         </div>
         <div className="card-secondary">

@@ -23,7 +23,9 @@ export function HeroSection() {
         <h1>
           {["Your trainer.", "Your schedule.", "Your city."].map((line, i) => (
             <span className="masked-line" key={line}>
-              <span style={{ animationDelay: `${0.08 + i * 0.1}s` }}>{line}</span>
+              <span style={{ animationDelay: `${0.08 + i * 0.1}s` }}>
+                {line}
+              </span>
             </span>
           ))}
         </h1>

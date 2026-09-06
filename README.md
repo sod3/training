@@ -1,59 +1,51 @@
-# SPOTTER
+# Spotter
 
-A responsive personal training marketplace for Karachi, built on the existing Next.js 16 App Router project. It uses Geist, Tailwind 4, Base UI, Framer Motion, Lucide, and Recharts.
+Spotter is a production marketplace for discovering and booking personal trainers. The Next.js 16 App Router application uses MongoDB/Mongoose, server-side sessions, Zod validation, manual JazzCash/EasyPaisa payment review, private document storage, and responsive customer, trainer, and administrator workspaces.
 
-## Run locally
+## Setup
 
 ```sh
 npm install
+Copy-Item .env.example .env
 npm run dev
 ```
 
-For a production preview:
+Fill the values in `.env` before using the database, file uploads, or payments. The local `.env` contains a generated development `AUTH_SECRET`; replace it with a new secret for each deployed environment.
+
+MongoDB must be a replica set (MongoDB Atlas supplies this) because checkout and booking updates use transactions. Set `MONGODB_URI` and run:
 
 ```sh
-npm run build
-npm run start -- --port 3200
+npm run db:indexes
+npm run admin:bootstrap
 ```
 
-## Verify
+`ADMIN_EMAIL` and `ADMIN_PASSWORD` are read only by the bootstrap command. The password is hashed with bcrypt and never returned to the browser. Remove `ADMIN_PASSWORD` from deployment after bootstrap. To seed only taxonomy records in development, set `ALLOW_DEVELOPMENT_SEED=true` and run `npm run db:seed`; seeding is refused in production.
+
+## Environment
+
+`MONGODB_URI`, `AUTH_SECRET`, and `APP_URL` are required. `ADMIN_EMAIL` and `ADMIN_PASSWORD` are used to provision the administrator. Configure the manual payment receiver details with `PAYMENT_ACCOUNT_NAME`, `JAZZCASH_ACCOUNT_NUMBER`, and `EASYPAISA_ACCOUNT_NUMBER`. Configure the private S3-compatible bucket with `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, and optional `S3_ENDPOINT` for images, payment screenshots, and verification documents. `CRON_SECRET` protects the scheduled hold-expiry, reminder, and upload-cleanup worker at `/api/jobs`.
+
+## Application architecture
+
+- `src/models` contains users, customer/trainer profiles, applications, credentials, packages, availability, orders, sessions, payments, refunds, payouts, transactions, reviews, favorites, conversations, messages, notifications, taxonomy, support, audit, session, token, upload, and email-job collections.
+- `src/lib/server/security.ts` provides HTTP-only cookie sessions, bcrypt checks, session-version revocation, role guards, origin checks, and rate limits.
+- `src/services` contains centralized booking, availability, payment, trainer-application, community, dashboard, storage, and authentication rules.
+- `src/app/api/[...path]/route.ts` is the validated server API boundary. It enforces ownership and role checks before calling services.
+- Public trainer search and profiles query only active, email-verified, approved, public trainers. Development records are never automatically created.
+
+Checkout creates a short-lived held reservation, verifies the selected package and current availability in a MongoDB transaction, and asks the customer for a JazzCash/EasyPaisa transaction ID and screenshot. Only an administrator approval changes the payment and booking to confirmed. Package snapshots preserve historical price, commission, duration, and cancellation terms. Individual session records support multi-session packages and prevent overlapping reservations.
+
+## Tests and deployment
 
 ```sh
 npm run lint
+npm run typecheck
+npm test
 npm run build
 npx playwright install chromium
 npm run test:e2e
 ```
 
-The browser tests start a production server on port 3200 (or reuse one already running). They cover public and dashboard routes, eleven viewport widths from 320 to 1920 pixels, filter state, mobile sheets, favorites, comparison, matching, booking, simulated payment failure, calendar export, cancellation, applications, and messages.
+The backend suite uses a temporary MongoDB replica set and tests authentication validation, role and ownership guards, availability/timezones, partial-overlap races, idempotency, snapshots, payment webhook signatures, review eligibility, favorites, and private conversations. The browser suite starts the production build on port 3200 and checks public pages, responsive layout, secure registration/login, protected workspaces, support requests, and trainer application state.
 
-## Architecture
-
-- `src/app`: route wrappers, static information pages, homepage, and error/loading boundaries. Trainer profiles use `generateStaticParams`; unknown trainers return HTTP 404.
-- `src/components/marketplace`: discovery, trainer cards and profiles, filter/map experience, four-step matching, authentication, booking, and confirmation.
-- `src/components/dashboard`: shared responsive workspace for customer, trainer, and admin roles, including bookings, progress, messaging, applications, and booking-value charts.
-- `src/components/marketplace/store.tsx`: typed local demo state, persistence, toast feedback, and comparison tray.
-- `src/data/trainers.ts` and `src/types/trainer.ts`: the original trainer contract and six sample coaches. Every coach has a single-session entry point.
-- `src/lib/marketplace.ts`: shared goal matching, price formatting, date keys, and demo slot generation.
-- `src/lib/motion.ts` and `src/components/motion`: reusable motion settings and viewport reveals.
-- `src/app/globals.css`: semantic color tokens, typography, layouts, breakpoints, focus states, and reduced-motion rules.
-
-## Product flows
-
-Search supports goal, specialty/name, location, training type, budget, rating, experience, identity verification, and availability. Filters update immediately and share through the URL. List/map mode uses an explicitly illustrative map; distance sorting uses sample distances.
-
-Matching scores are deterministic: the percentage is the share of selected goal, area, training type, price, and time criteria that match. Reasons accompany each result.
-
-Bookings carry the selected trainer, package, date, time, location, and amount through checkout. Occupied slots are unavailable while a booking remains active. All times are PKT. Confirmation exports an `.ics` file, and cancellation follows the displayed 12-hour sample policy.
-
-Trainer accounts can log completed sessions. Customer dashboards show package usage and accept a review after the package is completed. Applications can be approved or declined from the admin workspace.
-
-## Demo boundaries
-
-This remains backend-independent. Profiles, reviews, statistics, credentials, availability, photos, and editorial stories are sample content. Identity and credential badges are distinct; credentials are not claimed as verified when the sample record says otherwise.
-
-Login selects a demo role; it is not authentication or access control. No payment is taken. No email, SMS, support request, or message is sent externally. Bookings, favorites, comparisons, progress, workspace profile, reviews, and messages persist in this browser under `spotter-state`. Clear the site's browser storage to reset the demo.
-
-The hero and featured portraits are generated illustrative imagery stored as optimized WebP files in public/images. Remaining male portraits and gym imagery use Unsplash through Next/Image. All imagery uses responsive sizes; only above-fold media is prioritized. No fabricated before/after transformation photos or guaranteed outcome claims are used.
-
-The existing Vercel deployment is not changed by local development. Deploy through the project's existing hosting workflow when ready.
+Deploy the build to Vercel, set every production variable from `.env.example`, use an HTTPS `APP_URL`, run the index/bootstrap commands once against the production database, and configure the JazzCash/EasyPaisa receiver details. Configure the Vercel cron in `vercel.json` or invoke `/api/jobs` once per minute with `Authorization: Bearer $CRON_SECRET`. An S3-compatible provider is required for payment screenshots and other uploads.

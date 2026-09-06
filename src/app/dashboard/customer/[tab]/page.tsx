@@ -18,6 +18,9 @@ export default async function Page({
       "payments",
       "reviews",
       "profile",
+      "notifications",
+      "security",
+      "favorites",
     ].includes(tab)
   )
     notFound();

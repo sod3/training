@@ -12,9 +12,9 @@ export default defineConfig({
   },
   reporter: "list",
   webServer: {
-    command: "npm run start -- --port 3200",
+    command: "npx tsx tests/server.ts",
     url: "http://localhost:3200",
-    reuseExistingServer: !process.env.CI,
-    timeout: 30000,
+    reuseExistingServer: false,
+    timeout: 120000,
   },
 });

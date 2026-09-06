@@ -1,8 +1,11 @@
 import { BookingSuccess } from "@/components/marketplace/booking-success";
+import { requirePage } from "@/lib/server/security";
+export const metadata = { robots: { index: false, follow: false } };
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ reference?: string }>;
+  searchParams: Promise<{ id?: string }>;
 }) {
-  return <BookingSuccess reference={(await searchParams).reference || ""} />;
+  await requirePage();
+  return <BookingSuccess id={(await searchParams).id} />;
 }

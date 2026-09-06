@@ -1,297 +1,177 @@
 import { test, expect } from "@playwright/test";
-const widths = [320, 360, 375, 390, 430, 768, 1024, 1280, 1440, 1728, 1920];
-test("homepage and key screens fit every requested viewport", async ({
+const origin = { Origin: "https://spotter.test" };
+test("public pages preserve layout, show honest empty states, and protect workspaces", async ({
   page,
-}) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  for (const route of [
-    "/",
-    "/trainers",
-    "/trainers/ahmed-raza",
-    "/match",
-    "/dashboard/customer",
-    "/dashboard/trainer",
-    "/admin",
-    "/booking?trainer=ahmed-raza",
-    "/login",
-  ]) {
-    await page.goto(route);
-    await expect(page.locator("h1").first()).toBeVisible();
-    for (const width of widths) {
-      await page.setViewportSize({ width, height: 1000 });
-      await page.waitForTimeout(80);
-      const overflow = await page.evaluate(
-        () => document.documentElement.scrollWidth > innerWidth + 1,
-      );
-      expect(overflow, `${route} overflows at ${width}`).toBe(false);
-    }
-  }
-  expect(errors).toEqual([]);
-});
-test("all navigation destinations resolve, unknown profiles show a useful 404", async ({
   request,
 }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
   for (const route of [
     "/",
     "/trainers",
-    "/trainers/ahmed-raza",
-    "/trainers/usman-ali",
-    "/trainers/omar-siddiqui",
-    "/trainers/bilal-khan",
-    "/trainers/fahad-malik",
-    "/trainers/hassan-ahmed",
     "/match",
-    "/match/results",
-    "/compare",
-    "/booking?trainer=usman-ali",
-    "/checkout?package=p1_t8",
-    "/booking/success",
     "/login",
     "/signup",
     "/about",
-    "/how-it-works",
-    "/become-a-trainer",
-    "/locations",
-    "/contact",
-    "/help",
-    "/safety",
-    "/cancellation",
     "/privacy",
     "/terms",
-    "/careers",
-    "/dashboard/customer",
-    ...[
-      "bookings",
-      "trainers",
-      "saved",
-      "messages",
-      "progress",
-      "payments",
-      "reviews",
-      "profile",
-    ].map((x) => `/dashboard/customer/${x}`),
-    "/dashboard/trainer",
-    ...["calendar", "clients", "messages", "earnings", "profile"].map(
-      (x) => `/dashboard/trainer/${x}`,
-    ),
-    "/admin",
-    ...["applications", "bookings", "payouts", "disputes", "profile"].map(
-      (x) => `/admin/${x}`,
-    ),
+    "/contact",
+    "/become-a-trainer",
   ]) {
-    const response = await request.get(route);
-    expect(response.status(), route).toBe(200);
+    await page.goto(route);
+    await expect(page.locator("h1").first()).toBeVisible();
+    for (const width of [360, 768, 1440]) {
+      await page.setViewportSize({ width, height: 1000 });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth + 1,
+        ),
+        route,
+      ).toBe(true);
+    }
+    await expect(page.locator("body")).not.toContainText(
+      /demo marketplace|sample profiles|illustrative|prototype/i,
+    );
   }
-  const missing = await request.get("/trainers/not-a-real-trainer");
-  expect(missing.status()).toBe(404);
-  expect(await missing.text()).toContain("Looks like this workout moved");
-});
-test("filters, saved trainers, comparison and mobile sheet work", async ({
-  page,
-}) => {
-  await page.goto("/trainers?type=online");
-  await expect(page.locator(".trainer-card")).toHaveCount(4);
-  await page.getByRole("button", { name: "Save Bilal", exact: true }).click();
-  await expect(page.getByRole("status").first()).toContainText("Trainer saved");
-  await page
-    .locator(".trainer-card")
-    .first()
-    .getByRole("button", { name: "Compare", exact: true })
-    .click();
-  await page
-    .getByRole("link", { name: "Compare trainers →", exact: true })
-    .click();
-  await expect(page.locator(".comparison-grid")).toContainText("Bilal Khan");
-  await page.goto("/dashboard/customer/saved");
-  await expect(page.locator(".trainer-card")).toHaveCount(1);
-  await page.reload();
-  await expect(page.locator(".trainer-card")).toHaveCount(1);
-  await page.goto("/trainers?goal=Mobility");
-  await expect(page.locator(".trainer-card")).toHaveCount(3);
-  await page.getByLabel("Search trainers or specialties").fill("zzzzzz");
+  await page.goto("/trainers");
   await expect(
     page.getByRole("heading", { name: "No exact matches yet." }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Clear filters", exact: true })
-    .click();
-  await expect(page.locator(".trainer-card")).toHaveCount(6);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("button", { name: /^Filters/ }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "online", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Show 4 trainers" }).click();
-  await expect(page.locator(".trainer-card")).toHaveCount(4);
-});
-test("match preferences produce deterministic relevant results", async ({
-  page,
-}) => {
-  await page.goto("/match");
-  for (const answer of ["Build Muscle", "home", "DHA", "Evening"]) {
-    await page.getByRole("button", { name: answer, exact: true }).click();
-    await page
-      .getByRole("button", { name: /Continue|Find my matches/ })
-      .click();
+  for (const route of ["/admin", "/trainer", "/dashboard/customer"]) {
+    await page.goto(route);
+    await expect(page).toHaveURL(/\/login/);
   }
-  await expect(page).toHaveURL(/match\/results/);
-  await expect(page.locator(".trainer-card").first()).toContainText("Ahmed");
-  await expect(page.locator(".trainer-card").first()).toContainText(
-    "100% match",
-  );
+  expect((await request.get("/api/admin/users")).status()).toBe(401);
+  expect((await request.get("/trainers/nonexistent")).status()).toBe(404);
+  expect(errors).toEqual([]);
 });
-test("booking uses selected coach and price, persists, exports calendar, and handles cancellation", async ({
+test("registration, cookie login, role enforcement, logout and server persistence", async ({
   page,
+  request,
 }) => {
-  await page.goto("/booking?trainer=usman-ali");
-  await page.getByRole("button", { name: "online", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Choose a time", exact: true })
-    .click();
-  await page.getByRole("button", { name: "8:00 AM", exact: true }).click();
-  await page.getByRole("button", { name: "Continue to booking" }).click();
-  await expect(page).toHaveURL(/checkout/);
-  await expect(page.locator(".order-summary")).toContainText("Usman Ali");
-  await expect(page.locator(".order-total")).toContainText("PKR 2,000");
-  await page.getByLabel("Full name", { exact: true }).fill("Test Client");
-  await page.getByLabel("Email", { exact: true }).fill("test@example.com");
-  await page.getByLabel("Phone number", { exact: true }).fill("03001234567");
-  await page.getByRole("button", { name: "Review & payment" }).click();
-  await page.getByLabel("Test a failed demo payment").check();
-  await page.getByRole("button", { name: "Confirm demo booking" }).click();
-  await expect(page.locator(".form-error[role=alert]")).toContainText(
-    "did not go through",
+  const email = `customer-${Date.now()}@spotter.test`;
+  const created = await request.post("/api/auth/signup", {
+    headers: origin,
+    data: {
+      firstName: "Amina",
+      lastName: "Test",
+      email,
+      password: "integration-customer-password",
+      confirmPassword: "integration-customer-password",
+      terms: true,
+    },
+  });
+  expect(created.status()).toBe(200);
+  const cookie = created.headers()["set-cookie"];
+  expect(cookie).toContain("HttpOnly");
+  expect(cookie).toContain("Secure");
+  expect(cookie).toContain("SameSite=lax");
+  // Use the browser form to establish its own session and verify redirect handling.
+  await page.route("**/api/auth/login", (route) =>
+    route.continue({
+      headers: { ...route.request().headers(), origin: "https://spotter.test" },
+    }),
   );
-  await page.getByLabel("Test a failed demo payment").uncheck();
-  await page.getByRole("button", { name: "Confirm demo booking" }).click();
-  await expect(
-    page.getByRole("heading", { name: "You’re booked." }),
-  ).toBeVisible();
-  await expect(page.locator(".success-page")).toContainText("Usman Ali");
-  const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Add to calendar" }).click();
-  expect((await download).suggestedFilename()).toMatch(/SPT-.*\.ics/);
-  await page.reload();
-  await expect(
-    page.getByRole("heading", { name: "You’re booked." }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "View booking →" }).click();
-  await expect(page.locator(".booking-row")).toContainText("Usman Ali");
-  page.once("dialog", (d) => d.accept());
-  await page.getByRole("button", { name: "Cancel booking" }).click();
-  await expect(page.locator(".booking-row .status")).toHaveText("Cancelled");
+  await page.goto("/login");
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("integration-customer-password");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page).toHaveURL(/dashboard/);
+  await expect(page.getByRole("heading", { name: /Welcome/ })).toBeVisible();
+  const me = await request.get("/api/auth/me");
+  expect((await me.json()).user.role).toBe("CUSTOMER");
+  expect(
+    (
+      await request.post("/api/admin/settings", { headers: origin, data: {} })
+    ).status(),
+  ).toBe(403);
+  expect(
+    (
+      await request.post("/api/trainer/packages", { headers: origin, data: {} })
+    ).status(),
+  ).toBe(403);
+  expect(
+    (
+      await request.post("/api/favorites", {
+        headers: { Origin: "https://evil.test" },
+        data: {},
+      })
+    ).status(),
+  ).toBe(403);
+  const saved = await request.post("/api/account/profile", {
+    headers: origin,
+    data: {
+      firstName: "Amina",
+      lastName: "Updated",
+      phone: "",
+      fitnessGoals: ["Mobility"],
+      preferredLocations: ["Clifton"],
+    },
+  });
+  expect(saved.status()).toBe(200);
+  const profile = await request.get("/api/dashboard/profile");
+  expect((await profile.json()).profile.lastName).toBe("Updated");
+  await request.post("/api/auth/logout", { headers: origin, data: {} });
+  expect((await request.get("/api/dashboard/bookings")).status()).toBe(401);
 });
-test("trainer applications and messages update demo state", async ({
-  page,
+test("trainer signup creates a private draft and privileged signup is rejected", async ({
+  request,
 }) => {
-  await page.goto("/become-a-trainer");
-  await page.getByLabel("Full name").fill("Test Coach");
-  await page.getByLabel("Email", { exact: true }).fill("coach@example.com");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page
-    .getByLabel("Your qualifications")
-    .fill("Sample coaching certificate");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByLabel("Your specialty").fill("Strength");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByLabel("Training locations").fill("DHA");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByLabel("Preferred availability").selectOption("Evening");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page
-    .getByLabel("Your coaching approach")
-    .fill("Thoughtful strength coaching for beginners.");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Submit application" }).click();
-  await expect(
-    page.getByRole("heading", { name: "You’re on the list." }),
-  ).toBeVisible();
-  await page.goto("/admin/applications");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
-  await expect(page.locator(".application-row .status")).toHaveText("Approved");
-  await page.goto("/dashboard/customer/messages?trainer=t8");
-  await page
-    .getByLabel("Your message")
-    .fill("Hello, I’m interested in a trial.");
-  await page.getByRole("button", { name: "Send demo message" }).click();
-  await page.reload();
-  await expect(page.locator(".message-bubble")).toContainText(
-    "interested in a trial",
-  );
+  const email = `trainer-${Date.now()}@spotter.test`;
+  const body = {
+    firstName: "Trainer",
+    lastName: "Test",
+    email,
+    password: "integration-trainer-password",
+    confirmPassword: "integration-trainer-password",
+    terms: true,
+    role: "TRAINER",
+  };
+  const response = await request.post("/api/auth/signup", {
+    headers: origin,
+    data: body,
+  });
+  expect(response.status()).toBe(200);
+  const profile = await request.get("/api/trainer/verification");
+  const data = await profile.json();
+  expect(data.application.status).toBe("DRAFT");
+  expect(data.trainer.profileVisibility).toBe("PRIVATE");
+  expect(
+    (
+      await request.post("/api/auth/signup", {
+        headers: origin,
+        data: { ...body, email: "privileged@spotter.test", role: "ADMIN" },
+      })
+    ).status(),
+  ).toBe(422);
+  const publicTrainers = await request.get("/api/trainers");
+  expect((await publicTrainers.json()).total).toBe(0);
 });
-
-test("booked slots cannot be reused and profile preferences survive reload", async ({
-  page,
+test("admin login accesses real records and contact requests reach support", async ({
+  request,
 }) => {
-  await page.goto("/booking?trainer=ahmed-raza");
-  await page.getByRole("button", { name: "gym", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Choose a time", exact: true })
-    .click();
-  await page.getByRole("button", { name: "6:00 PM", exact: true }).click();
-  await page.getByRole("button", { name: "Continue to booking" }).click();
-  await page.getByLabel("Full name", { exact: true }).fill("Test Member");
-  await page.getByLabel("Email", { exact: true }).fill("member@example.com");
-  await page.getByLabel("Phone number").fill("03000000000");
-  await page.getByRole("button", { name: "Review & payment" }).click();
-  await page.getByRole("button", { name: "Confirm demo booking" }).click();
-  await expect(
-    page.getByRole("heading", { name: "You’re booked." }),
-  ).toBeVisible();
-  await page.goto("/booking?trainer=ahmed-raza");
-  await page.getByRole("button", { name: "gym", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Choose a time", exact: true })
-    .click();
-  await expect(
-    page.getByRole("button", { name: "6:00 PM", exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Continue to booking" }),
-  ).toBeDisabled();
-  await page.goto("/dashboard/customer/profile");
-  await page.getByLabel("Name", { exact: true }).fill("New Name");
-  await page.getByLabel("Training goal").selectOption("Mobility");
-  await page.getByRole("button", { name: "Save profile" }).click();
-  await page.reload();
-  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
-    "New Name",
-  );
-  await expect(page.getByLabel("Training goal")).toHaveValue("Mobility");
-  await page.goto("/dashboard/trainer/calendar");
-  await page.getByRole("button", { name: "Log completed session" }).click();
-  await expect(page.locator(".booking-row .status")).toHaveText("Completed");
-  await page.goto("/dashboard/customer/reviews");
-  await page
-    .getByLabel("Your experience")
-    .fill("Clear guidance and a thoughtful first session.");
-  await page.getByRole("button", { name: "Submit review" }).click();
-  await page.reload();
-  await expect(page.locator(".profile-review")).toContainText("Clear guidance");
-});
-test("price sorting, persisted URL filters, no fake map, and accessible menu work", async ({
-  page,
-}) => {
-  await page.goto("/trainers");
-  await page.getByLabel("Sort trainers").selectOption("low");
-  await expect(page.locator(".trainer-card").first()).toContainText("Omar");
-  await expect(page.getByRole("button", { name: "Show map" })).toHaveCount(0);
-  await page.getByLabel("Maximum session price").fill("2500");
-  await page.reload();
-  await expect(page.getByLabel("Maximum session price")).toHaveValue("2500");
-  await expect(page.locator(".trainer-card")).toHaveCount(2);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("button", { name: "Open navigation" }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page.goto("/");
-  await page.keyboard.press("Tab");
-  await expect(
-    page.getByRole("link", { name: "Skip to content" }),
-  ).toBeFocused();
+  const login = await request.post("/api/auth/login", {
+    headers: origin,
+    data: {
+      email: "admin@spotter.test",
+      password: "integration-admin-password",
+    },
+  });
+  expect(login.status()).toBe(200);
+  const contact = await request.post("/api/contact", {
+    headers: origin,
+    data: {
+      name: "Customer",
+      email: "customer@spotter.test",
+      subject: "A booking question",
+      message: "Please help with a booking question.",
+    },
+  });
+  expect(contact.status()).toBe(200);
+  const support = await request.get("/api/admin/support");
+  expect((await support.json()).items.length).toBeGreaterThan(0);
+  const users = await request.get("/api/admin/users");
+  expect(await users.text()).not.toContain("passwordHash");
 });

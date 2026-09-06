@@ -2,31 +2,26 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { ArrowRight, BadgeCheck } from "lucide-react";
-import { useStore } from "./store";
+import { api } from "@/lib/client-api";
 export function AuthForm({
   signup = false,
   initialRole = "customer",
+  mode,
 }: {
   signup?: boolean;
   initialRole?: string;
+  mode?: "forgot-password" | "reset-password" | "verify-email";
 }) {
-  const { update, notify } = useStore();
-  const router = useRouter();
-  const [role, setRole] = useState(
-    ["customer", "trainer", "admin"].includes(initialRole)
-      ? initialRole
-      : "customer",
-  );
-  const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [visible, setVisible] = useState(false);
   return (
     <div className="auth-page">
       <div className="auth-photo">
         <Image
           src="/images/coaching.webp"
-          alt="Making time for a focused training session"
+          alt="Focused personal training"
           fill
           priority
           sizes="50vw"
@@ -46,106 +41,217 @@ export function AuthForm({
         </div>
       </div>
       <div className="auth-form">
-        <p className="eyebrow">
-          {signup ? "YOUR NEXT CHAPTER" : "BACK IN YOUR CORNER"}
-        </p>
-        <h1>{signup ? "Start training differently." : "Welcome back."}</h1>
+        <p className="eyebrow">YOUR NEXT CHAPTER</p>
+        <h1>
+          {mode === "forgot-password"
+            ? "Find your way back."
+            : mode === "reset-password"
+              ? "A fresh start."
+              : mode === "verify-email"
+                ? "Account access."
+                : signup
+                  ? "Start training differently."
+                  : "Welcome back."}
+        </h1>
         <p>
           {signup
             ? "Make a little space for your goals."
             : "Your people, your sessions, your progress."}
         </p>
         <form
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
+            if (busy) return;
             setBusy(true);
+            setError("");
             const f = new FormData(e.currentTarget);
-            update({ role, name: String(f.get("name") || "Hamza") });
-            localStorage.setItem("app_role", role);
-            notify(
-              signup
-                ? "Demo account created."
-                : "Welcome to your demo workspace.",
-            );
-            router.push(role === "admin" ? "/admin" : `/dashboard/${role}`);
+            const params = new URLSearchParams(window.location.search);
+            try {
+              const body =
+                mode === "verify-email"
+                  ? { token: params.get("token") }
+                  : mode === "reset-password"
+                    ? {
+                        token: params.get("token"),
+                        password: f.get("password"),
+                        confirmPassword: f.get("confirmPassword"),
+                      }
+                    : mode === "forgot-password"
+                      ? { email: f.get("email") }
+                      : signup
+                        ? {
+                            firstName: f.get("firstName"),
+                            lastName: f.get("lastName"),
+                            email: f.get("email"),
+                            password: f.get("password"),
+                            confirmPassword: f.get("confirmPassword"),
+                            role:
+                              initialRole === "trainer"
+                                ? "TRAINER"
+                                : "CUSTOMER",
+                            terms: f.get("terms") === "on",
+                          }
+                        : {
+                            email: f.get("email"),
+                            password: f.get("password"),
+                          };
+              const result = await api<{ redirect?: string; message?: string }>(
+                `auth/${mode || (signup ? "signup" : "login")}`,
+                body,
+              );
+              if (result.redirect) {
+                const save = params.get("save");
+                if (
+                  save &&
+                  /^[a-f\d]{24}$/.test(save) &&
+                  result.redirect === "/dashboard"
+                )
+                  await api("favorites", { trainerId: save, saved: true });
+                const next = params.get("next");
+                const safe =
+                  next &&
+                  next.startsWith("/") &&
+                  !next.startsWith("//") &&
+                  !next.includes("\\")
+                    ? next
+                    : result.redirect;
+                window.location.assign(safe);
+              } else setMessage(result.message || "Done.");
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
           }}
         >
           {signup && (
+            <>
+              <label className="field">
+                First name
+                <input
+                  name="firstName"
+                  required
+                  autoComplete="given-name"
+                  maxLength={80}
+                />
+              </label>
+              <label className="field">
+                Last name
+                <input
+                  name="lastName"
+                  required
+                  autoComplete="family-name"
+                  maxLength={80}
+                />
+              </label>
+            </>
+          )}
+          {mode !== "verify-email" && mode !== "reset-password" && (
             <label className="field">
-              Name
+              Email
               <input
-                name="name"
+                name="email"
+                type="email"
                 required
-                autoComplete="name"
-                placeholder="Your name"
+                autoComplete="email"
+                maxLength={254}
               />
             </label>
           )}
-          <label className="field">
-            Email
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              placeholder="you@example.com"
-            />
-          </label>
-          <label className="field">
-            Password
-            <input
-              type={visible ? "text" : "password"}
-              required
-              minLength={6}
-              autoComplete={signup ? "new-password" : "current-password"}
-              placeholder="At least 6 characters"
-            />
-          </label>
+          {mode !== "verify-email" && mode !== "forgot-password" && (
+            <>
+              <label className="field">
+                Password
+                <input
+                  name="password"
+                  type={visible ? "text" : "password"}
+                  required
+                  minLength={signup || mode ? 12 : 1}
+                  maxLength={72}
+                  autoComplete={
+                    signup || mode ? "new-password" : "current-password"
+                  }
+                />
+              </label>
+              <button
+                className="text-link"
+                type="button"
+                onClick={() => setVisible(!visible)}
+              >
+                {visible ? "Hide password" : "Show password"}
+              </button>
+            </>
+          )}
+          {(signup || mode === "reset-password") && (
+            <label className="field">
+              Confirm password
+              <input
+                type="password"
+                name="confirmPassword"
+                required
+                minLength={12}
+                maxLength={72}
+                autoComplete="new-password"
+              />
+            </label>
+          )}
+          {signup && (
+            <label className="check-label">
+              <input type="checkbox" name="terms" required />I agree to the{" "}
+              <Link href="/terms">Terms</Link> and{" "}
+              <Link href="/privacy">Privacy Policy</Link>.
+            </label>
+          )}
+          {error && (
+            <p role="alert" className="form-error">
+              {error}
+            </p>
+          )}
+          {message && <p role="status">{message}</p>}
           <button
-            className="password-toggle"
-            type="button"
-            aria-pressed={visible}
-            onClick={() => setVisible(!visible)}
+            className="btn w-full"
+            disabled={busy}
+            aria-label={
+              mode === "forgot-password"
+                ? "Send reset link"
+                : mode === "reset-password"
+                  ? "Update password"
+                  : mode === "verify-email"
+                    ? "Continue"
+                    : signup
+                      ? "Create account"
+                      : "Log in"
+            }
           >
-            {visible ? "Hide password" : "Show password"}
-          </button>
-          <fieldset className="filter-group">
-            <legend>Explore as</legend>
-            <div className="choice-chips">
-              {["customer", "trainer", "admin"].map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  aria-pressed={role === r}
-                  className={role === r ? "selected" : ""}
-                  onClick={() => setRole(r)}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          <button className="btn w-full" disabled={busy}>
             {busy
-              ? "Opening your workspace…"
-              : signup
-                ? "Create demo account"
-                : "Log in to demo"}
-            <ArrowRight size={17} />
+              ? "Please wait…"
+              : mode === "verify-email"
+                ? "Continue"
+                : mode === "forgot-password"
+                  ? "Send reset link"
+                  : mode === "reset-password"
+                    ? "Update password"
+                    : signup
+                      ? "Create account"
+                      : "Log in"}{" "}
+            →
           </button>
         </form>
-        <p className="auth-note">
-          <BadgeCheck size={16} />
-          Demo access only. Use sample details; no real account is created.
-        </p>
+        {!signup && !mode && (
+          <Link className="text-link mt-5" href="/forgot-password">
+            Forgot password?
+          </Link>
+        )}
         <p className="auth-switch">
-          {signup ? "Already have an account?" : "New here?"}{" "}
-          <Link href={signup ? "/login" : "/signup"}>
-            {signup ? "Log in" : "Create an account"}
+          <Link href={signup || mode ? "/login" : "/signup"}>
+            {signup || mode ? "Back to log in" : "Create a customer account"}
           </Link>
         </p>
-        <Link href="/help" className="text-link">
-          Need help accessing your account? →
-        </Link>
+        {!mode && (
+          <Link className="text-link" href="/signup?role=trainer">
+            Join as a trainer →
+          </Link>
+        )}
       </div>
     </div>
   );

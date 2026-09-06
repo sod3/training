@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowRight, Check, MapPin, Sparkles } from "lucide-react";
-import { trainers } from "@/data/trainers";
+import type { Trainer } from "@/types/trainer";
 import { matchesGoal, money } from "@/lib/marketplace";
 import { Reveal } from "@/components/motion/reveal";
 
@@ -15,11 +15,11 @@ const featuredGoals = [
   "Mobility",
 ];
 
-export function HomeMatchExperience() {
+export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
   const [goal, setGoal] = useState(featuredGoals[0]);
   const match = useMemo(
     () => trainers.find((trainer) => matchesGoal(trainer, goal)) ?? trainers[0],
-    [goal],
+    [goal, trainers],
   );
 
   return (
@@ -49,7 +49,11 @@ export function HomeMatchExperience() {
               <span>About 30 seconds</span>
             </div>
             <p className="match-question-label">What are you working toward?</p>
-            <div className="match-goal-grid" role="group" aria-label="Choose a fitness goal">
+            <div
+              className="match-goal-grid"
+              role="group"
+              aria-label="Choose a fitness goal"
+            >
               {featuredGoals.map((item) => (
                 <button
                   key={item}
@@ -71,37 +75,41 @@ export function HomeMatchExperience() {
             >
               Continue matching <ArrowRight size={17} />
             </Link>
-            <p className="home-match-note">No account needed to see your matches.</p>
+            <p className="home-match-note">
+              No account needed to see your matches.
+            </p>
           </div>
 
-          <div className="match-preview-card" aria-live="polite">
-            <div className="match-preview-kicker">
-              <Sparkles size={15} /> Example match for {goal.toLowerCase()}
-            </div>
-            <div className="match-preview-media">
-              <Image
-                src={match.profileImage}
-                alt={`${match.firstName} ${match.lastName}, personal trainer`}
-                fill
-                sizes="(max-width: 900px) 100vw, 36vw"
-              />
-              <span className="match-score-pill">Strong fit</span>
-            </div>
-            <div className="match-preview-body">
-              <div>
-                <h3>
-                  {match.firstName} {match.lastName}
-                </h3>
-                <p>{match.specialties.slice(0, 2).join(" · ")}</p>
+          {match && (
+            <div className="match-preview-card" aria-live="polite">
+              <div className="match-preview-kicker">
+                <Sparkles size={15} /> Featured coach for {goal.toLowerCase()}
               </div>
-              <div className="match-preview-meta">
-                <span>
-                  <MapPin size={13} /> {match.locations[0]}
-                </span>
-                <span>From {money(match.basePrice)} / session</span>
+              <div className="match-preview-media">
+                <Image
+                  src={match.profileImage}
+                  alt={`${match.firstName} ${match.lastName}, personal trainer`}
+                  fill
+                  sizes="(max-width: 900px) 100vw, 36vw"
+                />
+                <span className="match-score-pill">Strong fit</span>
+              </div>
+              <div className="match-preview-body">
+                <div>
+                  <h3>
+                    {match.firstName} {match.lastName}
+                  </h3>
+                  <p>{match.specialties.slice(0, 2).join(" · ")}</p>
+                </div>
+                <div className="match-preview-meta">
+                  <span>
+                    <MapPin size={13} /> {match.locations[0]}
+                  </span>
+                  <span>From {money(match.basePrice)} / session</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </section>

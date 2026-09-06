@@ -44,43 +44,34 @@ const copy: Record<
     eyebrow: "GOOD TRAINING STARTS WITH GOOD PEOPLE",
     title: "Better trainers.\nBetter matches.\nBetter training.",
     intro:
-      "Spotter brings personal trainers and people in Karachi together, around the things that actually matter: goals, comfort, location, and time.",
+      "Spotter brings personal trainers and people together around goals, comfort, location, and time.",
     sections: [
       [
         "A better place to start.",
-        "Finding a coach shouldn’t mean scrolling endlessly or guessing what a session costs. Spotter puts approach, availability, and prices in one place.",
+        "Compare coaching approaches, available times, and transparent package prices in one place.",
       ],
       [
         "Built for the way you live.",
-        "At home, in a gym, outdoors, or online. A good training routine begins with a coach who fits your everyday life.",
-      ],
-      [
-        "An honest preview.",
-        "This is a working frontend prototype. Trainers, ratings, verification, and client stories are sample content. Bookings and account actions are simulated on your device.",
+        "Train at home, in a gym, outdoors, or online with a coach who fits your life.",
       ],
     ],
   },
   safety: {
     eyebrow: "TRUST IS IN THE DETAILS",
     title: "A clearer picture.\nA more confident start.",
-    intro:
-      "Know who you’re training with, what you’re booking, and where to find the details that matter.",
+    intro: "Understand what has been reviewed before you book.",
     sections: [
       [
-        "Identity and credentials are separate.",
-        "Profile badges distinguish identity verification from credential checks. Sample verification badges demonstrate how the live experience would communicate reviewed information.",
+        "Identity and credentials.",
+        "Trainers submit identity documents and professional credentials for review. Each badge reflects its own approved check; expired credentials are not presented as verified.",
       ],
       [
         "Reviews tied to sessions.",
-        "A verified booking review means the reviewer completed a session through the platform. Reviews displayed in this demo are illustrative.",
+        "Only customers who completed a session through Spotter can review their trainer.",
       ],
       [
-        "Make your first session comfortable.",
-        "Agree on your meeting place, share your preferences with your trainer, and choose an environment where you feel comfortable. Tell your trainer if an exercise doesn’t feel right.",
-      ],
-      [
-        "A prototype, with clear limits.",
-        "This demo doesn’t perform background checks, process payments, or provide live support. Nothing here is a guarantee of safety or fitness results.",
+        "Your comfort matters.",
+        "Agree on a meeting place and discuss your preferences with your trainer. Document review does not guarantee safety or fitness outcomes. Contact support about concerns.",
       ],
     ],
   },
@@ -88,83 +79,81 @@ const copy: Record<
     eyebrow: "CLEAR BEFORE YOU COMMIT",
     title: "Plans change.\nHere’s what happens next.",
     intro:
-      "The sample cancellation policy is shown before every booking, so there are no surprises.",
+      "Your booking preserves the cancellation terms in effect when you purchased it.",
     sections: [
       [
-        "12 hours or more before your session.",
-        "Cancel without a fee from Dashboard → Bookings. The session status changes to Cancelled, and that time becomes available again.",
+        "Before the cancellation deadline.",
+        "Cancel or reschedule from your dashboard before the booking’s cancellation window closes. The standard window is 12 hours; check your specific booking for its saved terms.",
       ],
       [
-        "Less than 12 hours before your session.",
-        "The sample policy treats the session price as non-refundable. You’ll see this reminder before cancelling.",
+        "Late cancellations.",
+        "Late cancellations forfeit the affected session’s proportional package price. Unused eligible sessions remain refundable when you cancel a package.",
       ],
       [
-        "If your trainer can’t make it.",
-        "In a live service, support would coordinate a replacement time or applicable refund. This demo does not move money or send real notifications.",
+        "Refund review.",
+        "Eligible refunds are reviewed by support and returned through the payment provider. A refund request is not a completed refund. Your dashboard shows its status.",
       ],
       [
-        "No real charges.",
-        "Every checkout is simulated. Cancellation and booking amounts are recorded only in this browser.",
+        "Trainer cancellations.",
+        "When a trainer cancels, unused sessions are eligible for refund review. Contact support if you need help arranging another trainer.",
       ],
     ],
   },
   privacy: {
     eyebrow: "YOUR INFORMATION",
-    title: "Simple, transparent\ndemo privacy.",
+    title: "Your data.\nHandled with care.",
     intro:
-      "This prototype stores your activity in your browser so you can try the complete experience.",
+      "Spotter uses information needed to manage accounts, training bookings, payments, and support.",
     sections: [
       [
-        "What stays on this device.",
-        "Saved trainers, comparisons, demo bookings, messages, application details, and progress entries are stored in browser local storage. Use sample details rather than sensitive personal information.",
+        "Information we store.",
+        "We store account and profile details, bookings, favorites, reviews, messages, and support requests. Trainer verification documents are held in private file storage.",
       ],
       [
-        "What is not collected.",
-        "There is no real payment processing or account authentication. Passwords and payment card details are not stored by this demo.",
+        "Account and payment security.",
+        "Passwords are stored as hashes. Spotter records the payment method, payer name, transaction reference, screenshot, and review status needed to verify manual transfers.",
       ],
       [
-        "Clearing your data.",
-        "You can clear this site’s browser storage to remove your demo activity. This also removes saved bookings and messages.",
+        "Access and retention.",
+        "Customers and trainers can access their own records. Authorized administrators review applications and handle support. Request account deletion in your security settings; booking and financial records may be retained where required.",
       ],
       [
-        "Images and hosting.",
-        "The site loads sample photography from Unsplash and assets through its hosting provider. Those services may receive normal technical request information.",
+        "Service providers and device storage.",
+        "Hosting, database, payment, and file-storage providers process information needed for these services. Secure cookies keep you signed in. Session storage remembers only your selected comparison identifiers.",
       ],
     ],
   },
   terms: {
     eyebrow: "A SHARED UNDERSTANDING",
-    title: "A place to explore.\nA prototype to try.",
-    intro:
-      "Spotter is a frontend demonstration of a personal training marketplace, not a live booking service.",
+    title: "Clear expectations.\nA better experience.",
+    intro: "These terms describe how to use Spotter’s training marketplace.",
     sections: [
       [
-        "Sample marketplace content.",
-        "Profiles, trainer identities, reviews, verification statuses, statistics, and stories are fictional or illustrative. Photographs are representative.",
+        "Your account.",
+        "Provide accurate details, protect your password, and use only your own account. Trainers must submit accurate experience and credentials.",
       ],
       [
-        "Demo bookings and accounts.",
-        "Submitting a booking does not reserve a real trainer or create a payment obligation. Login only switches the local demo role and is not secure authentication.",
+        "Bookings and payment.",
+        "Package details, price, and cancellation terms are saved with your purchase. A temporary reservation expires unless payment is confirmed. Multi-session packages are scheduled as individual appointments.",
       ],
       [
         "Fitness is individual.",
-        "Training approaches and progress vary from person to person. Nothing shown promises a particular physical outcome.",
+        "Training approaches and progress vary. Discuss your needs and limitations with your trainer. Spotter does not promise a particular fitness outcome.",
       ],
       [
-        "Availability and support.",
-        "Schedules are sample data. Messages and support requests are not delivered to real recipients.",
+        "Respectful communication.",
+        "Messages and reviews must be truthful and respectful. Misuse may lead to moderation or account restrictions. Contact support to raise a concern about an account, session, or payment.",
       ],
     ],
   },
   careers: {
     eyebrow: "BUILD SOMETHING THAT MOVES PEOPLE",
     title: "Good people.\nA shared direction.",
-    intro:
-      "We’re exploring a better way for Karachi to find personal training.",
+    intro: "Help more people find training that fits.",
     sections: [
       [
-        "No open positions right now.",
-        "There are no active job listings in this demo. If you’re a coach, you can explore the trainer application and business workspace.",
+        "For coaches.",
+        "Apply to offer personal training through Spotter. Complete your professional profile and submit your credentials for review.",
       ],
     ],
   },
@@ -172,14 +161,14 @@ const copy: Record<
     eyebrow: "LET’S CLEAR THINGS UP",
     title: "A little help.\nA smoother start.",
     intro:
-      "Find answers about booking, choosing a trainer, and using your demo workspace.",
+      "Find answers about booking, choosing a trainer, and managing your account.",
     sections: [],
   },
   contact: {
     eyebrow: "WE’RE GLAD YOU’RE HERE",
     title: "Let’s talk\nabout your next step.",
     intro:
-      "Explore the support request experience below. This demo does not connect to a live inbox.",
+      "Send a question or tell us about an issue. Our support team can review your request.",
     sections: [],
   },
 };
@@ -221,7 +210,7 @@ export default async function Page({
               ],
               [
                 "Meet your matches.",
-                "See which sample profiles fit your preferences.",
+                "See which trainers fit your preferences.",
               ],
               [
                 "Choose your trainer.",

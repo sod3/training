@@ -1,5 +1,10 @@
 import Link from "next/link";
-import { ArrowUpRight, BadgeCheck, FileCheck2, MessagesSquare } from "lucide-react";
+import {
+  ArrowUpRight,
+  BadgeCheck,
+  FileCheck2,
+  MessagesSquare,
+} from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
 
 const trustItems = [
@@ -18,7 +23,7 @@ const trustItems = [
   {
     label: "Reviews",
     title: "Context, not just stars.",
-    copy: "Reviews show the customer’s training goal and whether the feedback is linked to a completed booking in the product model.",
+    copy: "Reviews show the customer’s training goal and whether the feedback is linked to a completed booking through Spotter.",
     icon: MessagesSquare,
   },
 ];
@@ -31,7 +36,8 @@ export function TrustSection() {
           <div className="home-trust-heading">
             <div>
               <p className="eyebrow">
-                <span className="section-index">03 /</span> TRUST, WITHOUT THE NOISE
+                <span className="section-index">03 /</span> TRUST, WITHOUT THE
+                NOISE
               </p>
               <h2 id="home-trust-title">
                 Know who you’re
@@ -61,7 +67,8 @@ export function TrustSection() {
         </div>
 
         <p className="home-trust-disclaimer">
-          This prototype uses illustrative verification and review data. The interface is structured so live verification services can replace sample status later.
+          Identity and credential badges reflect reviewed documents.
+          Verification does not guarantee fitness outcomes.
         </p>
       </div>
     </section>

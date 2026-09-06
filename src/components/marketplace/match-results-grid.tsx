@@ -33,7 +33,7 @@ export function MatchResultsGrid({
           >
             <option value="recommended">Recommended</option>
             <option value="rating">Highest rated</option>
-            <option value="closest">Closest · demo distances</option>
+
             <option value="soon">Available soonest</option>
           </select>
         </div>

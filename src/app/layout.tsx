@@ -4,7 +4,7 @@ import "./globals.css";
 import { siteConfig } from "@/config/site";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { RoleSwitcher } from "@/components/layout/role-switcher";
+
 import { StoreProvider } from "@/components/marketplace/store";
 
 const geistSans = Geist({
@@ -66,7 +66,6 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
-          <RoleSwitcher />
         </StoreProvider>
       </body>
     </html>

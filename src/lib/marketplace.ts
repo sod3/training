@@ -34,11 +34,3 @@ export function dateKey(offset = 0) {
   date.setDate(date.getDate() + offset);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
-export function slots(t: Trainer, date: string) {
-  const hour = t.nextAvailable.split(", ")[1] || "6:00 PM";
-  return date === dateKey()
-    ? t.nextAvailable.startsWith("Today")
-      ? [hour]
-      : []
-    : ["8:00 AM", "5:00 PM", hour].filter((v, i, a) => a.indexOf(v) === i);
-}

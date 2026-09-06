@@ -1,126 +1,154 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, X } from "lucide-react";
-export type Booking = {
-  id: string;
-  trainerId: string;
-  packageId: string;
-  date: string;
-  time: string;
-  type: string;
-  address: string;
-  name: string;
-  price: number;
-  status: string;
-  completedSessions?: number;
-};
+import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
+import { api, useApi } from "@/lib/client-api";
 type State = {
   saved: string[];
   compare: string[];
-  bookings: Booking[];
-  messages: { trainerId: string; text: string }[];
   role: string;
   name: string;
-  applications: {
-    name: string;
-    specialty: string;
-    status: string;
-    email?: string;
-    qualifications?: string;
-    location?: string;
-    availability?: string;
-    bio?: string;
-    documentName?: string;
-  }[];
-  progress: { date: string; weight: number }[];
-  goal: string;
-  reviews: { bookingId: string; rating: number; text: string }[];
+  unread: number;
+  unreadMessages: number;
+  emailVerified: boolean;
 };
 const initial: State = {
   saved: [],
   compare: [],
-  bookings: [],
-  messages: [],
   role: "visitor",
   name: "",
-  applications: [],
-  progress: [],
-  goal: "Build strength",
-  reviews: [],
+  unread: 0,
+  unreadMessages: 0,
+  emailVerified: false,
 };
 const Context = createContext<{
   state: State;
-  update: (patch: Partial<State>) => void;
+  update: (patch: { compare?: string[] }) => void;
   notify: (text: string) => void;
   ready: boolean;
-}>({ state: initial, update: () => {}, notify: () => {}, ready: false });
+  refresh: () => void;
+  toggleSaved: (id: string) => Promise<void>;
+}>({
+  state: initial,
+  update: () => {},
+  notify: () => {},
+  ready: false,
+  refresh: () => {},
+  toggleSaved: async () => {},
+});
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState(initial);
-  const [ready, setReady] = useState(false);
+  const router = useRouter();
+  const { data, reload, loading } = useApi<{
+    user: { name: string; role: string; emailVerified: boolean } | null;
+    saved: string[];
+    unread: number;
+    unreadMessages: number;
+  }>("auth/me");
+  const [compare, setCompare] = useState<string[]>([]);
   const [toast, setToast] = useState("");
-  // Hydrate browser-only demo persistence after SSR; the initial server and client snapshots match.
-  /* eslint-disable react-hooks/set-state-in-effect -- Restore browser persistence after the identical SSR snapshot. */
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("spotter-state");
-      if (saved) setState({ ...initial, ...JSON.parse(saved) });
+      const ids = JSON.parse(sessionStorage.getItem("spotter-compare") || "[]");
+      if (Array.isArray(ids))
+        Promise.resolve().then(() =>
+          setCompare(
+            ids
+              .filter((v) => typeof v === "string" && /^[a-f\d]{24}$/.test(v))
+              .slice(0, 3),
+          ),
+        );
     } catch {}
-    setReady(true);
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    if (ready) {
-      try {
-        localStorage.setItem("spotter-state", JSON.stringify(state));
-      } catch {}
-    }
-  }, [state, ready]);
   useEffect(() => {
     if (toast) {
-      const timer = setTimeout(() => setToast(""), 3200);
+      const timer = setTimeout(() => setToast(""), 4500);
       return () => clearTimeout(timer);
     }
   }, [toast]);
+  const state: State = {
+    ...initial,
+    compare,
+    saved: data?.saved || [],
+    name: data?.user?.name || "",
+    role: data?.user?.role.toLowerCase() || "visitor",
+    unread: data?.unread || 0,
+    unreadMessages: data?.unreadMessages || 0,
+    emailVerified: !!data?.user?.emailVerified,
+  };
+  async function toggleSaved(id: string) {
+    if (!data?.user) {
+      router.push(
+        `/login?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}&save=${id}`,
+      );
+      return;
+    }
+    try {
+      await api("favorites", {
+        trainerId: id,
+        saved: !state.saved.includes(id),
+      });
+      reload();
+      setToast(
+        state.saved.includes(id)
+          ? "Trainer removed from favorites."
+          : "Trainer saved.",
+      );
+    } catch (e) {
+      setToast((e as Error).message);
+    }
+  }
   return (
-      <Context.Provider
-        value={{
-          state,
-          update: (patch) => setState((s) => ({ ...s, ...patch })),
-          notify: setToast,
-          ready,
-        }}
-      >
-        {children}
-        {toast && (
-          <div className="toast" role="status">
-            <Check size={18} />
-            {toast}
-            <button
-              aria-label="Dismiss notification"
-              onClick={() => setToast("")}
-            >
-              <X size={16} />
-            </button>
-          </div>
-        )}
-        {state.compare.length > 0 && (
-          <div className="compare-tray">
-            <span>
-              <strong>{state.compare.length}/3</strong> trainers selected
-            </span>
-            <Link className="btn small" href="/compare">
-              Compare trainers →
-            </Link>
-            <button
-              aria-label="Clear comparison"
-              onClick={() => setState((s) => ({ ...s, compare: [] }))}
-            >
-              <X size={18} />
-            </button>
-          </div>
-        )}
-      </Context.Provider>
+    <Context.Provider
+      value={{
+        state,
+        update: (patch) => {
+          if (patch.compare) {
+            setCompare(patch.compare);
+            sessionStorage.setItem(
+              "spotter-compare",
+              JSON.stringify(patch.compare),
+            );
+          }
+        },
+        notify: setToast,
+        ready: !loading,
+        refresh: reload,
+        toggleSaved,
+      }}
+    >
+      {children}
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+          <button
+            aria-label="Dismiss notification"
+            onClick={() => setToast("")}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+      {compare.length > 0 && (
+        <div className="compare-tray">
+          <span>
+            <strong>{compare.length}/3</strong> trainers selected
+          </span>
+          <Link className="btn small" href="/compare">
+            Compare trainers →
+          </Link>
+          <button
+            aria-label="Clear comparison"
+            onClick={() => {
+              setCompare([]);
+              sessionStorage.removeItem("spotter-compare");
+            }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
+    </Context.Provider>
   );
 }
 export const useStore = () => useContext(Context);

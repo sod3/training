@@ -1,85 +1,45 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { trainers } from "@/data/trainers";
-import { matchesGoal } from "@/lib/marketplace";
+import { listTrainers } from "@/services/trainers";
 import { MatchResultsGrid } from "@/components/marketplace/match-results-grid";
+export const dynamic = "force-dynamic";
 export default async function Page({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const a = await searchParams;
-  const matches = trainers
-    .map((t) => {
-      const reasons: string[] = [];
-      let total = 0;
-      let hit = 0;
-      const test = (active: boolean, matched: boolean, reason: string) => {
-        if (active) {
-          total++;
-          if (matched) {
-            hit++;
-            reasons.push(reason);
-          }
-        }
-      };
-      test(!!a.goal, matchesGoal(t, a.goal || ""), "Matches your goal");
-      test(
-        !!a.type,
-        t.trainingTypes.some((type) => type === a.type),
-        `Offers ${a.type} training`,
-      );
-      test(
-        !!a.location,
-        t.locations.some((l) =>
-          l.toLowerCase().includes((a.location || "").toLowerCase()),
-        ),
-        "Serves your area",
-      );
-      test(
-        !!a.budget && a.budget !== "Flexible",
-        a.budget?.includes("1,500")
-          ? t.basePrice <= 2500
-          : a.budget?.includes("2,500")
-            ? t.basePrice >= 2500 && t.basePrice <= 4000
-            : t.basePrice >= 4000,
-        "Within your budget",
-      );
-      test(
-        !!a.time && a.time !== "Flexible",
-        a.time === "Morning"
-          ? t.nextAvailable.includes("AM")
-          : a.time === "Evening"
-            ? t.nextAvailable.includes("PM")
-            : false,
-        "Fits your preferred time",
-      );
-      return {
-        ...t,
-        matchScore: total ? Math.round((hit / total) * 100) : undefined,
-        reasons,
-      };
-    })
-    .sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
-    .slice(0, 3);
+  const params = await searchParams;
+  const result = await listTrainers({ ...params, limit: 12 });
+  const reasons = [
+    params.goal && "Matches your goal",
+    params.location && "Serves your area",
+    params.type && `Offers ${params.type} training`,
+    params.time &&
+      params.time !== "Flexible" &&
+      "Has availability at your preferred time",
+  ].filter((value): value is string => !!value);
   return (
     <div className="container section">
-      <Link
-        className="text-link"
-        href={`/match?${new URLSearchParams(Object.fromEntries(Object.entries(a).filter((e): e is [string, string] => !!e[1])))}`}
-      >
-        <ArrowLeft size={16} />
-        Edit your preferences
+      <Link className="text-link" href="/match">
+        ← Edit your preferences
       </Link>
       <div className="page-heading mt-9">
         <p className="eyebrow">A LITTLE MORE PERSONAL</p>
-        <h1>{matches.length} trainers matched for you.</h1>
+        <h1>{result.total} trainers fit your preferences.</h1>
         <p>
-          Ranked by your preferences. Match percentages show how many selected
-          criteria fit.
+          Matches meet your selected criteria and are ranked by featured status,
+          customer ratings, and experience.
         </p>
       </div>
-      <MatchResultsGrid matches={matches} />
+      {result.trainers.length ? (
+        <MatchResultsGrid
+          matches={result.trainers.map((t) => ({ ...t, reasons }))}
+        />
+      ) : (
+        <div className="empty-state">
+          <h2>No exact matches yet.</h2>
+          <p>Try a broader location or a different schedule.</p>
+        </div>
+      )}
       <Link href="/trainers" className="btn outline mt-10">
         Explore all trainers →
       </Link>

@@ -7,9 +7,17 @@ import { TrainerCard } from "@/components/marketplace/trainer-card";
 import { Reveal } from "@/components/motion/reveal";
 import { HomeMatchExperience } from "@/components/marketplace/home-match-experience";
 import { TrustSection } from "@/components/marketplace/trust-section";
-import { trainers } from "@/data/trainers";
+import { getFeaturedTrainers } from "@/lib/services/trainers";
+export const dynamic = "force-dynamic";
 
-export default function Home() {
+export default async function Home() {
+  let trainers: import("@/types/trainer").Trainer[] = [];
+  let unavailable = false;
+  try {
+    trainers = await getFeaturedTrainers();
+  } catch {
+    unavailable = true;
+  }
   return (
     <>
       <HeroSection />
@@ -35,12 +43,25 @@ export default function Home() {
             <TrainerCard key={t.id} trainer={t} />
           ))}
         </div>
-        <p className="sample-caption">
-          Meet the experience. Profiles, availability and reviews shown are
-          illustrative.
-        </p>
+        {!trainers.length && (
+          <div className="empty-state compact">
+            <h3>
+              {unavailable
+                ? "Trainer discovery is temporarily unavailable."
+                : "Your next coach is on the way."}
+            </h3>
+            <p>
+              {unavailable
+                ? "Please try again shortly."
+                : "Approved trainers will appear here when they are ready to take bookings."}
+            </p>
+            <Link href="/become-a-trainer" className="text-link">
+              Join as a trainer →
+            </Link>
+          </div>
+        )}
       </section>
-      <HomeMatchExperience />
+      <HomeMatchExperience trainers={trainers} />
       <TrustSection />
       <section className="spotter-final">
         <div className="container">

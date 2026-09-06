@@ -14,28 +14,26 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { Trainer } from "@/types/trainer";
-import { trainers } from "@/data/trainers";
-import { money, dateKey, slots } from "@/lib/marketplace";
+import { useApi } from "@/lib/client-api";
+import { money, dateKey } from "@/lib/marketplace";
 import { useStore } from "./store";
 import { VerifiedBadge } from "./verified-badge";
-import { TrainerCard } from "./trainer-card";
+
 export function Profile({ trainer: t }: { trainer: Trainer }) {
-  const { state, update, notify } = useStore();
+  const { state, notify, toggleSaved } = useStore();
   const [date, setDate] = useState(
     dateKey(t.nextAvailable.startsWith("Today") ? 0 : 1),
   );
   const [time, setTime] = useState("");
   const saved = state.saved.includes(t.id);
-  const times = slots(t, date).filter(
-    (s) =>
-      !state.bookings.some(
-        (b) =>
-          b.trainerId === t.id &&
-          b.date === date &&
-          b.time === s &&
-          b.status !== "Cancelled",
-      ),
+  const { data: availability, error: slotError } = useApi<{
+    slots: { start: string; label: string }[];
+  }>(
+    t.packages.length
+      ? `trainers/${t.id}/availability?${new URLSearchParams({ date, packageId: t.packages[0].id, type: t.trainingTypes[0] })}`
+      : null,
   );
+  const times = availability?.slots || [];
   const book = `/booking?${new URLSearchParams({ trainer: t.slug, date, time })}`;
   return (
     <div className="container profile-page">
@@ -46,29 +44,19 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
         <div>
           <p className="eyebrow">A GOOD CONNECTION STARTS HERE</p>
           <h1>
-            {t.firstName} {t.lastName} <BadgeCheck />
+            {t.firstName} {t.lastName} {t.verifiedIdentity && <BadgeCheck />}
           </h1>
           <p>{t.headline}</p>
           <p className="profile-location-line">
             <MapPin size={14} />
-            {t.locations[0]} · Karachi <span>Next: {t.nextAvailable}</span>
-          </p>
-          <p className="fine-print">
-            Sample coach · Illustrative reviews, availability and credentials
+            {t.locations[0]} · {t.city} <span>Next: {t.nextAvailable}</span>
           </p>
         </div>
         <div className="profile-actions">
           <button
             className="btn outline small"
             aria-pressed={saved}
-            onClick={() => {
-              update({
-                saved: saved
-                  ? state.saved.filter((id) => id !== t.id)
-                  : [...state.saved, t.id],
-              });
-              notify(saved ? "Removed from saved." : "Trainer saved.");
-            }}
+            onClick={() => void toggleSaved(t.id)}
           >
             <Heart size={16} fill={saved ? "currentColor" : "none"} />
             {saved ? "Saved" : "Save"}
@@ -154,7 +142,9 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
               </details>
             )}
             <div className="trust-pills">
-              <VerifiedBadge credentials={t.verifiedCredentials} />
+              {t.verifiedIdentity && (
+                <VerifiedBadge credentials={t.verifiedCredentials} />
+              )}
               {t.verifiedIdentity && (
                 <span>
                   <BadgeCheck size={16} />
@@ -238,10 +228,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
           <section className="profile-section" id="availability">
             <p className="eyebrow">MAKE ROOM FOR YOU</p>
             <h2>A time that fits.</h2>
-            <p>
-              Choose a date and see this coach’s sample availability. All times
-              are Karachi time (PKT).
-            </p>
+            <p>Choose a date to see available sessions in {t.timezone}.</p>
             <Link href={book} className="btn outline mt-5">
               Explore available sessions <ArrowUpRight size={17} />
             </Link>
@@ -259,7 +246,7 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
                   <p>{r.comment}</p>
                   <small>
                     {r.goal} · {r.date} ·{" "}
-                    {r.verified ? "Sample verified booking" : "Sample review"}
+                    {r.verified ? "Verified booking" : "Review"}
                   </small>
                 </article>
               ))
@@ -268,8 +255,8 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
                 <Star size={28} />
                 <h3>Room for your experience.</h3>
                 <p>
-                  Detailed sample reviews haven’t been added for this coach.
-                  Reviews appear after completed sessions.
+                  This coach has no published reviews yet. Reviews appear after
+                  completed sessions.
                 </p>
                 <Link href={book} className="text-link">
                   Start with one session →
@@ -292,11 +279,11 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
         <aside className="booking-sidebar">
           <p className="eyebrow">ONE SESSION IS A GREAT START</p>
           <p className="booking-price">
-            {money(t.packages[0].price)}{" "}
-            <span>/ {t.packages[0].sessions === 1 ? "trial" : "package"}</span>
+            {money(t.packages[0]?.price || 0)}{" "}
+            <span>/ {t.packages[0]?.sessions === 1 ? "trial" : "package"}</span>
           </p>
           <p className="muted text-sm">
-            {t.packages[0].duration} minutes · A plan built around you
+            {t.packages[0]?.duration} minutes · A plan built around you
           </p>
           <label className="field mt-6">
             Choose a date
@@ -312,19 +299,20 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
             />
           </label>
           <fieldset className="filter-group">
-            <legend>Available times · PKT</legend>
+            <legend>Available times · {t.timezone}</legend>
             <div className="choice-chips">
               {times.map((s) => (
                 <button
-                  key={s}
-                  aria-pressed={time === s}
-                  className={time === s ? "selected" : ""}
-                  onClick={() => setTime(s)}
+                  key={s.start}
+                  aria-pressed={time === s.start}
+                  className={time === s.start ? "selected" : ""}
+                  onClick={() => setTime(s.start)}
                 >
-                  {s}
+                  {s.label}
                 </button>
               ))}
             </div>
+            {slotError && <p role="alert">{slotError}</p>}
             {!times.length && (
               <p className="fine-print">
                 No slots for this date. Try tomorrow.
@@ -346,26 +334,10 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
           </p>
           <Link href="/cancellation" className="cancellation-note">
             <BadgeCheck size={16} />
-            Free cancellation 12+ hours before.
+            See the cancellation terms before booking.
           </Link>
         </aside>
       </div>
-      <section className="section">
-        <div className="section-heading">
-          <h2>More good people.</h2>
-          <Link href="/trainers" className="text-link">
-            Explore all trainers ↗
-          </Link>
-        </div>
-        <div className="trainer-grid swipe-row">
-          {trainers
-            .filter((tr) => tr.id !== t.id)
-            .slice(0, 3)
-            .map((tr) => (
-              <TrainerCard trainer={tr} key={tr.id} />
-            ))}
-        </div>
-      </section>
       <div className="mobile-booking-bar">
         <div>
           <small>Trial session</small>

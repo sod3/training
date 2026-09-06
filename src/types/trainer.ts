@@ -21,6 +21,8 @@ export interface Review {
 }
 
 export interface Trainer {
+  timezone?: string;
+  city?: string;
   id: string;
   slug: string;
   firstName: string;

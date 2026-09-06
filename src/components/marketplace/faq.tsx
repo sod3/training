@@ -5,7 +5,7 @@ import { Plus } from "lucide-react";
 export const faqs = [
   [
     "How are trainers verified?",
-    "Trainer profiles show separate identity and credential checks. This demo uses sample verification badges; a live marketplace would review identity documents and certifications before awarding them.",
+    "Trainer profiles show separate identity and credential checks. Spotter reviews submitted evidence before approving badges.",
   ],
   [
     "Can I book a trial session?",
@@ -21,11 +21,11 @@ export const faqs = [
   ],
   [
     "What happens if I cancel?",
-    "The demo policy allows free cancellation at least 12 hours before your session. Within 12 hours, the session price is non-refundable. Your booking page shows the policy.",
+    "Your booking shows the cancellation deadline saved at purchase. Cancel before that deadline for an eligible refund. Late cancellations forfeit the affected session’s share of the package.",
   ],
   [
     "How do verified reviews work?",
-    "A verified booking review is tied to a completed session. The profiles and reviews on this prototype are illustrative sample content.",
+    "Only customers who completed a session with that trainer through Spotter can publish a review.",
   ],
   [
     "Can I train online?",
@@ -34,51 +34,52 @@ export const faqs = [
 ];
 export function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
-  return (<MotionConfig reducedMotion="user">
-    <section className="section container faq-section">
-      <div>
-        <p className="eyebrow">A LITTLE CLARITY</p>
-        <h2>
-          Good questions.
-          <br />
-          Straight answers.
-        </h2>
-        <p className="section-copy">
-          The things you might be wondering
-          <br />
-          before your first session.
-        </p>
-      </div>
-      <div>
-        {faqs.map(([q, a], i) => (
-          <div className="faq-item" key={q}>
-            <h3>
-              <button
-                aria-expanded={open === i}
-                aria-controls={`faq-${i}`}
-                onClick={() => setOpen(open === i ? null : i)}
-              >
-                {q}
-                <Plus size={20} className={open === i ? "rotate-45" : ""} />
-              </button>
-            </h3>
-            <AnimatePresence initial={false}>
-              {open === i && (
-                <motion.div
-                  id={`faq-${i}`}
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.22 }}
+  return (
+    <MotionConfig reducedMotion="user">
+      <section className="section container faq-section">
+        <div>
+          <p className="eyebrow">A LITTLE CLARITY</p>
+          <h2>
+            Good questions.
+            <br />
+            Straight answers.
+          </h2>
+          <p className="section-copy">
+            The things you might be wondering
+            <br />
+            before your first session.
+          </p>
+        </div>
+        <div>
+          {faqs.map(([q, a], i) => (
+            <div className="faq-item" key={q}>
+              <h3>
+                <button
+                  aria-expanded={open === i}
+                  aria-controls={`faq-${i}`}
+                  onClick={() => setOpen(open === i ? null : i)}
                 >
-                  <p>{a}</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        ))}
-      </div>
-    </section>
+                  {q}
+                  <Plus size={20} className={open === i ? "rotate-45" : ""} />
+                </button>
+              </h3>
+              <AnimatePresence initial={false}>
+                {open === i && (
+                  <motion.div
+                    id={`faq-${i}`}
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.22 }}
+                  >
+                    <p>{a}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ))}
+        </div>
+      </section>
     </MotionConfig>
   );
 }

@@ -33,7 +33,7 @@ export function Footer() {
         <div className="footer-bottom">
           <span>© {new Date().getFullYear()} SPOTTER.</span>
           <span>Made for your next chapter.</span>
-          <span>Demo marketplace · Sample profiles & reviews</span>
+          <span>Personal training, made personal.</span>
         </div>
       </div>
     </footer>

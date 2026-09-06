@@ -3,11 +3,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { X, Columns3 } from "lucide-react";
 import { useStore } from "@/components/marketplace/store";
-import { trainers } from "@/data/trainers";
+import { useApi } from "@/lib/client-api";
+import type { Trainer } from "@/types/trainer";
 import { money } from "@/lib/marketplace";
 export default function Page() {
   const { state, update } = useStore();
-  const selected = trainers.filter((t) => state.compare.includes(t.id));
+  const { data, error } = useApi<{ trainers: Trainer[] }>(
+    state.compare.length ? `trainers?ids=${state.compare.join(",")}` : null,
+  );
+  const selected = data?.trainers || [];
   return (
     <div className="container section">
       <div className="page-heading">
@@ -15,7 +19,9 @@ export default function Page() {
         <h1>Find your best fit.</h1>
         <p>Compare up to three coaches, side by side.</p>
       </div>
-      {!selected.length ? (
+      {error ? (
+        <p role="alert">{error}</p>
+      ) : !selected.length ? (
         <div className="empty-state">
           <Columns3 size={38} />
           <h2>Meet a few good options first.</h2>
