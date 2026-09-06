@@ -26,6 +26,7 @@ import {
   completeSession,
   createBooking,
   expireHolds,
+  getAvailableWeek,
   getAvailableSlots,
   ownedOrder,
   scheduleSession,
@@ -162,7 +163,8 @@ async function handle(request: Request, context: Context) {
           .object({
             date: z.string(),
             packageId: objectId,
-            type: z.enum(["home", "gym", "outdoor", "online"]),
+            type: z.enum(["home", "gym", "outdoor", "online"]).optional(),
+            days: z.coerce.number().int().min(1).max(7).default(1),
           })
           .parse(params);
         const pkg = await TrainerPackage.findOne({
@@ -171,14 +173,23 @@ async function handle(request: Request, context: Context) {
           active: true,
         }).lean();
         assert(pkg, "Package not found", 404);
-        return json({
-          slots: await getAvailableSlots(
-            id,
-            input.date,
-            pkg.sessionDuration,
-            input.type,
-          ),
-        });
+        return input.days > 1
+          ? json({
+              days: await getAvailableWeek(
+                id,
+                input.date,
+                pkg.sessionDuration,
+                input.days,
+              ),
+            })
+          : json({
+              slots: await getAvailableSlots(
+                id,
+                input.date,
+                pkg.sessionDuration,
+                input.type,
+              ),
+            });
       }
       if (root === "catalog")
         return json({

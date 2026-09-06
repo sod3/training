@@ -256,6 +256,75 @@ test("trainer availability persists after adding, editing and removing windows i
   expect(
     (await (await page.request.get("/api/trainer/availability")).json()).rules,
   ).toHaveLength(1);
+
+  // Publish this deliberately minimal trainer and verify that the public page
+  // derives its training type and times from the saved weekly rule.
+  expect(
+    (
+      await page.request.post("/api/trainer/packages", {
+        headers: origin,
+        data: {
+          name: "Public schedule test",
+          description: "One session used to verify public weekly availability.",
+          sessionCount: 1,
+          sessionDuration: 60,
+          price: 10000,
+          trialPackage: true,
+          active: true,
+          sortOrder: 0,
+        },
+      })
+    ).status(),
+  ).toBe(200);
+  const trainerData = await (
+    await page.request.get("/api/trainer/verification")
+  ).json();
+  expect(
+    (
+      await request.post("/api/auth/login", {
+        headers: origin,
+        data: {
+          email: "admin@spotter.test",
+          password: "integration-admin-password",
+        },
+      })
+    ).status(),
+  ).toBe(200);
+  expect(
+    (
+      await request.post(`/api/admin/trainers/${trainerData.trainer._id}`, {
+        headers: origin,
+        data: {
+          featured: false,
+          profileVisibility: "PUBLIC",
+          availabilityReviewStatus: "APPROVED",
+          availabilityReviewNotes: "",
+        },
+      })
+    ).status(),
+  ).toBe(200);
+  await page.goto(`/trainers/${trainerData.trainer.slug}`);
+  await expect(page.getByLabel("Choose a date")).toHaveCount(0);
+  await expect(page.getByText("Next 7 days", { exact: true })).toBeVisible();
+  const publicTimes = page
+    .getByRole("group", { name: /Available times · Asia\/Karachi/ })
+    .getByRole("button");
+  await expect(publicTimes.first()).toBeVisible();
+  expect(await publicTimes.count()).toBeGreaterThan(1);
+  await expect(
+    page.getByText(/Availability will appear after this trainer adds/),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("No slots for this date. Try tomorrow."),
+  ).toHaveCount(0);
+  await publicTimes.first().click();
+  await expect(page.getByRole("link", { name: /Book trial/ })).toHaveAttribute(
+    "href",
+    /type=gym/,
+  );
+
+  await page.goto("/trainer/availability");
+  await expect(windows).toHaveCount(1);
   await windows
     .first()
     .getByRole("button", { name: "Remove", exact: true })

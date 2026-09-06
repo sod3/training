@@ -46,6 +46,8 @@ export interface Trainer {
   reviews: Review[];
   basePrice: number;
   nextAvailable: string;
+  nextAvailableDate?: string;
+  availabilityWeekStart: string;
   matchScore?: number;
   distanceKm?: number;
 }

@@ -42,6 +42,39 @@ trainer profile update cannot fix an exception thrown before that update runs.
 6. `GET /api/trainer/availability` reloads that trainer's rules in a stable order.
    Responses use `Cache-Control: no-store`; the UI reloads after saving.
 
+## Public profile availability
+
+Weekly rules and the trainer profile previously had separate `trainingTypes`
+arrays. The public profile checked only `TrainerProfile.trainingTypes`, while the
+trainer availability editor wrote only `TrainerAvailability.trainingTypes`. A
+legacy/approved trainer could therefore have saved `gym` hours but an empty profile
+array. The browser skipped its availability request and displayed both “adds a
+training type” and “No slots” at once; a direct request was also filtered out by
+the server-side profile array.
+
+The public trainer presenter now derives effective training types from both the
+profile and active weekly rules. Saving a schedule also merges its selected types
+into the profile for future consistency. Slot authorization is based on the actual
+weekly/detailed availability records. A public request without `type` returns the
+union of every selected training type, de-duplicated by start time, and tells the
+client which types support each slot. Checkout receives one compatible type when
+the visitor selects a time.
+
+The profile initializes its date from the server's actual first available date.
+Previously it compared a formatted value such as `Mon, 7 Sep · 9:00 AM` with the
+word `Today`, which could never succeed and defaulted the calendar to tomorrow.
+Loading, missing-package, missing-hours, API-error and genuinely-empty-date states
+are now mutually exclusive, so contradictory messages no longer render together.
+
+The public trainer card now displays the complete next seven days instead of a
+single “Choose a date” control. `GET /api/trainers/:id/availability` accepts
+`days=7` and returns groups containing the local date, local day label and every
+bookable start time. The server loads the trainer, settings, weekly rules, dated
+exceptions and reservations once for the whole range, then calculates each day
+from that shared snapshot. Empty days are omitted from the card; when the entire
+week is empty, one clear empty state is shown. Selecting a time carries that
+group's date and a compatible training type into checkout.
+
 The existing UI uses **schedule replacement**, not individual slot CRUD URLs:
 
 - Add/edit: `POST /api/trainer/availability` with `{ "rules": [...] }` containing

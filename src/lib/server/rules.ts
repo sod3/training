@@ -48,6 +48,18 @@ export type AvailabilityRule = {
   endTime: string;
   trainingTypes: string[];
 };
+export function effectiveTrainingTypes(
+  profileTypes: readonly string[],
+  rules: readonly Pick<AvailabilityRule, "trainingTypes">[],
+) {
+  const order = ["home", "gym", "outdoor", "online"];
+  return [
+    ...new Set([
+      ...profileTypes,
+      ...rules.flatMap((rule) => rule.trainingTypes),
+    ]),
+  ].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+}
 // Recurring wall-clock minutes, including overnight and Saturday/Sunday wrap.
 // Adjacent windows are valid. Combine training types into one window when times overlap.
 export function availabilityConflict(rules: AvailabilityRule[]) {

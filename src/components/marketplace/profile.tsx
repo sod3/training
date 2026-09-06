@@ -15,26 +15,48 @@ import {
 } from "lucide-react";
 import { Trainer } from "@/types/trainer";
 import { useApi } from "@/lib/client-api";
-import { money, dateKey } from "@/lib/marketplace";
+import { money } from "@/lib/marketplace";
 import { useStore } from "./store";
 import { VerifiedBadge } from "./verified-badge";
 
 export function Profile({ trainer: t }: { trainer: Trainer }) {
   const { state, notify, toggleSaved } = useStore();
-  const [date, setDate] = useState(
-    dateKey(t.nextAvailable.startsWith("Today") ? 0 : 1),
-  );
   const [time, setTime] = useState("");
   const saved = state.saved.includes(t.id);
-  const { data: availability, error: slotError } = useApi<{
-    slots: { start: string; label: string }[];
+  const {
+    data: availability,
+    error: slotError,
+    loading: slotsLoading,
+  } = useApi<{
+    days: {
+      date: string;
+      label: string;
+      slots: { start: string; label: string; trainingTypes: string[] }[];
+    }[];
   }>(
-    t.packages.length && t.trainingTypes.length
-      ? `trainers/${t.id}/availability?${new URLSearchParams({ date, packageId: t.packages[0].id, type: t.trainingTypes[0] })}`
+    t.packages.length
+      ? `trainers/${t.id}/availability?${new URLSearchParams({
+          date: t.availabilityWeekStart,
+          days: "7",
+          packageId: t.packages[0].id,
+        })}`
       : null,
   );
-  const times = availability?.slots || [];
-  const book = `/booking?${new URLSearchParams({ trainer: t.slug, date, time })}`;
+  const availableDays =
+    availability?.days.filter((day) => day.slots.length) || [];
+  const times = availableDays.flatMap((day) => day.slots);
+  const selectedSlot = times.find((slot) => slot.start === time);
+  const selectedDate = availableDays.find((day) =>
+    day.slots.some((slot) => slot.start === time),
+  )?.date;
+  const book = `/booking?${new URLSearchParams({
+    trainer: t.slug,
+    date: selectedDate || t.nextAvailableDate || t.availabilityWeekStart,
+    time,
+    ...(selectedSlot?.trainingTypes[0]
+      ? { type: selectedSlot.trainingTypes[0] }
+      : {}),
+  })}`;
   return (
     <div className="container profile-page">
       <Link href="/trainers" className="text-link">
@@ -228,7 +250,10 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
           <section className="profile-section" id="availability">
             <p className="eyebrow">MAKE ROOM FOR YOU</p>
             <h2>A time that fits.</h2>
-            <p>Choose a date to see available sessions in {t.timezone}.</p>
+            <p>
+              See this trainer’s available sessions for the next seven days in{" "}
+              {t.timezone}.
+            </p>
             <Link href={book} className="btn outline mt-5">
               Explore available sessions <ArrowUpRight size={17} />
             </Link>
@@ -285,45 +310,48 @@ export function Profile({ trainer: t }: { trainer: Trainer }) {
           <p className="muted text-sm">
             {t.packages[0]?.duration} minutes · A plan built around you
           </p>
-          <label className="field mt-6">
-            Choose a date
-            <input
-              type="date"
-              value={date}
-              min={dateKey()}
-              max={dateKey(30)}
-              onChange={(e) => {
-                setDate(e.target.value);
-                setTime("");
-              }}
-            />
-          </label>
-          <fieldset className="filter-group">
+          <fieldset className="filter-group weekly-availability">
             <legend>Available times · {t.timezone}</legend>
-            <div className="choice-chips">
-              {times.map((s) => (
-                <button
-                  key={s.start}
-                  aria-pressed={time === s.start}
-                  className={time === s.start ? "selected" : ""}
-                  onClick={() => setTime(s.start)}
-                >
-                  {s.label}
-                </button>
+            <p className="fine-print">Next 7 days</p>
+            <div className="availability-week">
+              {availableDays.map((day) => (
+                <section key={day.date} className="availability-day">
+                  <h3>{day.label}</h3>
+                  <div className="choice-chips">
+                    {day.slots.map((slot) => (
+                      <button
+                        key={slot.start}
+                        aria-pressed={time === slot.start}
+                        className={time === slot.start ? "selected" : ""}
+                        onClick={() => setTime(slot.start)}
+                      >
+                        {slot.label}
+                      </button>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
-            {!t.trainingTypes.length && (
+            {slotsLoading && <p role="status">Checking availability…</p>}
+            {!t.packages.length && (
               <p className="fine-print">
-                Availability will appear after this trainer adds a training
-                type.
+                Availability will appear after this trainer adds a package.
+              </p>
+            )}
+            {!!t.packages.length && !t.trainingTypes.length && (
+              <p className="fine-print">
+                Availability will appear after this trainer adds weekly hours.
               </p>
             )}
             {slotError && <p role="alert">{slotError}</p>}
-            {!times.length && (
-              <p className="fine-print">
-                No slots for this date. Try tomorrow.
-              </p>
-            )}
+            {!slotsLoading &&
+              availability &&
+              !availableDays.length &&
+              !slotError && (
+                <p className="fine-print">
+                  No open times in the next seven days.
+                </p>
+              )}
           </fieldset>
           <Link href={book} className="btn w-full">
             Book trial <ArrowRightIcon />

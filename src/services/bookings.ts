@@ -74,7 +74,42 @@ export async function getAvailableSlots(
   trainerId: string,
   date: string,
   duration: number,
-  type: string,
+  type?: string,
+  session?: ClientSession,
+  excludeSession?: string,
+) {
+  const context = await loadAvailabilityContext(
+    trainerId,
+    date,
+    1,
+    session,
+    excludeSession,
+  );
+  return availableSlotsForDate(context, date, duration, type);
+}
+
+export async function getAvailableWeek(
+  trainerId: string,
+  date: string,
+  duration: number,
+  days = 7,
+) {
+  const context = await loadAvailabilityContext(trainerId, date, days);
+  return Array.from({ length: days }, (_, offset) => {
+    const day = context.firstDay.plus({ days: offset });
+    const dayDate = day.toISODate()!;
+    return {
+      date: dayDate,
+      label: day.toFormat("cccc, d LLL"),
+      slots: availableSlotsForDate(context, dayDate, duration),
+    };
+  });
+}
+
+async function loadAvailabilityContext(
+  trainerId: string,
+  date: string,
+  days: number,
   session?: ClientSession,
   excludeSession?: string,
 ) {
@@ -82,44 +117,83 @@ export async function getAvailableSlots(
   z.string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .parse(date);
+  z.number().int().min(1).max(7).parse(days);
   const trainer = await publicTrainer(trainerId, session);
-  if (!trainer.trainingTypes.some((value) => value === type)) return [];
-  const day = DateTime.fromISO(date, { zone: trainer.timezone });
-  assert(day.isValid, "Invalid date");
-  const s = await settings(session);
-  const rules = await TrainerAvailability.find({ trainerId, active: true })
-    .session(session ?? null)
-    .lean();
-  const exceptions = await TrainerAvailabilityException.find({
-    trainerId,
-    start: { $lt: day.plus({ days: 2 }).toJSDate() },
-    end: { $gt: day.minus({ days: 1 }).toJSDate() },
-  })
-    .session(session ?? null)
-    .lean();
-  const busy = await Session.find({
-    trainerId,
-    ...(excludeSession ? { _id: { $ne: excludeSession } } : {}),
-    start: { $lt: day.plus({ days: 2 }).toJSDate() },
-    end: { $gt: day.toJSDate() },
-    $or: [
-      { status: { $in: ["CONFIRMED", "COMPLETED", "NO_SHOW"] } },
-      { status: "HELD", holdExpiresAt: { $gt: new Date() } },
-    ],
-  })
-    .session(session ?? null)
-    .lean();
-  return generateSlots(
-    date,
-    trainer.timezone,
-    duration,
-    type,
-    rules,
-    exceptions,
-    busy,
-    s.minimumBookingNoticeHours,
-    s.maximumAdvanceBookingDays,
+  const firstDay = DateTime.fromISO(date, { zone: trainer.timezone }).startOf(
+    "day",
   );
+  assert(firstDay.isValid, "Invalid date");
+  const [config, rules, exceptions, busy] = await Promise.all([
+    settings(session),
+    TrainerAvailability.find({ trainerId, active: true })
+      .session(session ?? null)
+      .lean(),
+    TrainerAvailabilityException.find({
+      trainerId,
+      start: { $lt: firstDay.plus({ days: days + 1 }).toJSDate() },
+      end: { $gt: firstDay.minus({ days: 1 }).toJSDate() },
+    })
+      .session(session ?? null)
+      .lean(),
+    Session.find({
+      trainerId,
+      ...(excludeSession ? { _id: { $ne: excludeSession } } : {}),
+      start: { $lt: firstDay.plus({ days: days + 1 }).toJSDate() },
+      end: { $gt: firstDay.toJSDate() },
+      $or: [
+        { status: { $in: ["CONFIRMED", "COMPLETED", "NO_SHOW"] } },
+        { status: "HELD", holdExpiresAt: { $gt: new Date() } },
+      ],
+    })
+      .session(session ?? null)
+      .lean(),
+  ]);
+  return { trainer, firstDay, config, rules, exceptions, busy };
+}
+
+type AvailabilityContext = Awaited<ReturnType<typeof loadAvailabilityContext>>;
+
+function availableSlotsForDate(
+  context: AvailabilityContext,
+  date: string,
+  duration: number,
+  type?: string,
+) {
+  const { trainer, config, rules, exceptions, busy } = context;
+  // With no requested type, return the union of every training mode explicitly
+  // selected on weekly rules or dated extra-availability windows. Attach the
+  // compatible types so the profile can carry a valid one into checkout.
+  const requestedTypes = type
+    ? [type]
+    : [
+        ...new Set([
+          ...rules.flatMap((rule) => rule.trainingTypes),
+          ...exceptions
+            .filter((entry) => entry.kind === "AVAILABLE")
+            .flatMap((entry) => entry.trainingTypes),
+        ]),
+      ];
+  const found = new Map<
+    string,
+    { start: string; end: string; label: string; trainingTypes: string[] }
+  >();
+  for (const requestedType of requestedTypes)
+    for (const slot of generateSlots(
+      date,
+      trainer.timezone,
+      duration,
+      requestedType,
+      rules,
+      exceptions,
+      busy,
+      config.minimumBookingNoticeHours,
+      config.maximumAdvanceBookingDays,
+    )) {
+      const existing = found.get(slot.start);
+      if (existing) existing.trainingTypes.push(requestedType);
+      else found.set(slot.start, { ...slot, trainingTypes: [requestedType] });
+    }
+  return [...found.values()].sort((a, b) => a.start.localeCompare(b.start));
 }
 async function validateSlot(
   trainerId: string,

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import mongoose from "mongoose";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
+import { DateTime } from "luxon";
 import { connectDB } from "../src/lib/server/db";
 import { AppError, errorResponse } from "../src/lib/server/errors";
 import { databaseOperation } from "../src/lib/server/diagnostics";
@@ -10,12 +11,15 @@ import { type Actor } from "../src/lib/server/security";
 import {
   TrainerAvailability,
   TrainerProfile,
+  TrainerPackage,
   User,
   Session,
   models,
 } from "../src/models";
 import { trainerAction } from "../src/services/trainer-management";
 import { dashboardData } from "../src/services/dashboard";
+import { getAvailableSlots, getAvailableWeek } from "../src/services/bookings";
+import { effectiveTrainingTypes } from "../src/lib/server/rules";
 
 let db: MongoMemoryReplSet;
 let actor: Actor;
@@ -281,6 +285,95 @@ test("invalid stored timezone fails safely without deleting the previous schedul
       { $set: { timezone: "Asia/Karachi" } },
     );
   }
+});
+
+test("public availability uses schedule training types when the legacy profile list is empty", async () => {
+  const user = await User.create({
+    normalizedEmail: "public-availability@example.test",
+    passwordHash: "test-only",
+    role: "TRAINER",
+  });
+  const trainer = await TrainerProfile.create({
+    userId: user._id,
+    slug: "public-availability",
+    displayName: "Public Schedule",
+    timezone: "Asia/Karachi",
+    trainingTypes: [],
+    applicationStatus: "APPROVED",
+    profileVisibility: "PUBLIC",
+  });
+  const pkg = await TrainerPackage.create({
+    trainerId: trainer._id,
+    name: "One session",
+    description: "One public availability test session",
+    sessionCount: 1,
+    sessionDuration: 60,
+    price: 10000,
+  });
+  const date = DateTime.now()
+    .setZone("Asia/Karachi")
+    .plus({ days: 3 })
+    .toISODate()!;
+  const dayOfWeek = DateTime.fromISO(date).weekday % 7;
+  await TrainerAvailability.create([
+    {
+      trainerId: trainer._id,
+      dayOfWeek,
+      startTime: "09:00",
+      endTime: "11:00",
+      timezone: "Asia/Karachi",
+      trainingTypes: ["gym"],
+    },
+    {
+      trainerId: trainer._id,
+      dayOfWeek,
+      startTime: "13:00",
+      endTime: "15:00",
+      timezone: "Asia/Karachi",
+      trainingTypes: ["online"],
+    },
+  ]);
+
+  assert.deepEqual(
+    effectiveTrainingTypes(
+      [],
+      await TrainerAvailability.find({ trainerId: trainer._id }).lean(),
+    ),
+    ["gym", "online"],
+  );
+
+  const all = await getAvailableSlots(
+    String(trainer._id),
+    date,
+    pkg.sessionDuration,
+  );
+  const gym = await getAvailableSlots(
+    String(trainer._id),
+    date,
+    pkg.sessionDuration,
+    "gym",
+  );
+  assert.equal(all.length, 10);
+  assert.equal(gym.length, 5);
+  assert(all.some((slot) => slot.trainingTypes.includes("gym")));
+  assert(all.some((slot) => slot.trainingTypes.includes("online")));
+  const week = await getAvailableWeek(
+    String(trainer._id),
+    date,
+    pkg.sessionDuration,
+  );
+  assert.equal(week.length, 7);
+  assert.equal(week[0].date, date);
+  assert.equal(week[0].slots.length, 10);
+  assert.equal(
+    await getAvailableSlots(
+      String(trainer._id),
+      date,
+      pkg.sessionDuration,
+      "home",
+    ).then((slots) => slots.length),
+    0,
+  );
 });
 
 test("connection cache shares cold/warm connections, recovers after disconnect and failed attempts", async () => {

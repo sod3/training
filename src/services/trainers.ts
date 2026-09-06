@@ -7,12 +7,14 @@ import {
   TrainerProfile,
   TrainerPackage,
   TrainerCredential,
+  TrainerAvailability,
   Review,
   Session,
   User,
 } from "@/models";
 import { connectDB } from "@/lib/server/db";
 import { getAvailableSlots } from "@/services/bookings";
+import { effectiveTrainingTypes } from "@/lib/server/rules";
 import type { Trainer, TrainingType } from "@/types/trainer";
 
 const querySchema = z.object({
@@ -43,40 +45,59 @@ type ProfileData = mongoose.InferSchemaType<typeof TrainerProfile.schema> & {
   _id: mongoose.Types.ObjectId;
 };
 export async function presentTrainer(t: ProfileData): Promise<Trainer> {
-  const [packages, reviews, credentials, completed, stats, account] =
-    await Promise.all([
-      TrainerPackage.find({ trainerId: t._id, active: true })
-        .sort({ sortOrder: 1, price: 1 })
-        .limit(30)
-        .lean(),
-      Review.find({ trainerId: t._id, status: "VISIBLE" })
-        .sort({ createdAt: -1 })
-        .limit(20)
-        .lean(),
-      TrainerCredential.find({
-        trainerId: t._id,
-        type: "CERTIFICATION",
-        verificationStatus: "APPROVED",
-        $or: [{ expiryDate: null }, { expiryDate: { $gt: new Date() } }],
-      })
-        .select("title")
-        .limit(20)
-        .lean(),
-      Session.countDocuments({ trainerId: t._id, status: "COMPLETED" }),
-      Review.aggregate<{ average: number; count: number }>([
-        { $match: { trainerId: t._id, status: "VISIBLE" } },
-        {
-          $group: {
-            _id: null,
-            average: { $avg: "$rating" },
-            count: { $sum: 1 },
-          },
+  const [
+    packages,
+    reviews,
+    credentials,
+    completed,
+    stats,
+    account,
+    availability,
+  ] = await Promise.all([
+    TrainerPackage.find({ trainerId: t._id, active: true })
+      .sort({ sortOrder: 1, price: 1 })
+      .limit(30)
+      .lean(),
+    Review.find({ trainerId: t._id, status: "VISIBLE" })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean(),
+    TrainerCredential.find({
+      trainerId: t._id,
+      type: "CERTIFICATION",
+      verificationStatus: "APPROVED",
+      $or: [{ expiryDate: null }, { expiryDate: { $gt: new Date() } }],
+    })
+      .select("title")
+      .limit(20)
+      .lean(),
+    Session.countDocuments({ trainerId: t._id, status: "COMPLETED" }),
+    Review.aggregate<{ average: number; count: number }>([
+      { $match: { trainerId: t._id, status: "VISIBLE" } },
+      {
+        $group: {
+          _id: null,
+          average: { $avg: "$rating" },
+          count: { $sum: 1 },
         },
-      ]),
-      User.findById(t.userId).select("avatar").lean(),
-    ]);
+      },
+    ]),
+    User.findById(t.userId).select("avatar").lean(),
+    TrainerAvailability.find({ trainerId: t._id, active: true })
+      .select("trainingTypes")
+      .lean(),
+  ]);
+  // Weekly availability is itself an explicit declaration of how the trainer
+  // offers that window. Include it for older profiles whose profile-level list
+  // was never populated, and de-duplicate it for the public UI and booking flow.
+  const trainingTypes = effectiveTrainingTypes(
+    t.trainingTypes,
+    availability,
+  ) as TrainingType[];
+  const availabilityWeekStart = DateTime.now().setZone(t.timezone).toISODate()!;
   let nextAvailable = "No open times this week";
-  if (packages.length && t.trainingTypes.length)
+  let nextAvailableDate: string | undefined;
+  if (packages.length && trainingTypes.length)
     for (let offset = 0; offset < 7; offset++) {
       const date = DateTime.now()
         .setZone(t.timezone)
@@ -86,12 +107,12 @@ export async function presentTrainer(t: ProfileData): Promise<Trainer> {
         String(t._id),
         date,
         packages[0].sessionDuration,
-        t.trainingTypes[0],
       );
-      if (slots.length) {
+      if (slots[0]) {
         nextAvailable = DateTime.fromISO(slots[0].start)
           .setZone(t.timezone)
           .toFormat("ccc, d LLL · h:mm a");
+        nextAvailableDate = date;
         break;
       }
     }
@@ -113,7 +134,7 @@ export async function presentTrainer(t: ProfileData): Promise<Trainer> {
     experienceYears: t.yearsExperience,
     responseTime: "when available",
     locations: t.serviceAreas,
-    trainingTypes: t.trainingTypes as TrainingType[],
+    trainingTypes,
     specialties: t.specialties,
     certifications: credentials.map((c) => c.title),
     packages: packages.map((p) => ({
@@ -137,6 +158,8 @@ export async function presentTrainer(t: ProfileData): Promise<Trainer> {
       ? Math.min(...packages.map((p) => p.price / p.sessionCount / 100))
       : 0,
     nextAvailable,
+    nextAvailableDate,
+    availabilityWeekStart,
     timezone: t.timezone,
     city: t.city,
   };

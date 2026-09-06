@@ -171,6 +171,9 @@ export async function trainerAction(
       405,
     );
     const input = availabilitySchema.parse(data);
+    const selectedTrainingTypes = [
+      ...new Set(input.rules.flatMap((rule) => rule.trainingTypes)),
+    ];
     const conflict = availabilityConflict(input.rules);
     assert(
       !conflict,
@@ -221,6 +224,13 @@ export async function trainerAction(
                   availabilityReviewStatus: "APPROVED",
                   availabilityReviewNotes: "",
                 },
+                ...(selectedTrainingTypes.length
+                  ? {
+                      $addToSet: {
+                        trainingTypes: { $each: selectedTrainingTypes },
+                      },
+                    }
+                  : {}),
                 $unset: {
                   availabilityReviewedBy: 1,
                   availabilityReviewedAt: 1,
