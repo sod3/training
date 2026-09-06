@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 export const metadata: Metadata = { alternates: { canonical: "/" } };
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { HeroSection } from "@/components/marketplace/hero-section";
@@ -9,6 +8,7 @@ import { Reveal } from "@/components/motion/reveal";
 import { HomeMatchExperience } from "@/components/marketplace/home-match-experience";
 import { TrustSection } from "@/components/marketplace/trust-section";
 import { trainers } from "@/data/trainers";
+
 export default function Home() {
   return (
     <>
@@ -42,43 +42,6 @@ export default function Home() {
       </section>
       <HomeMatchExperience />
       <TrustSection />
-      <section className="spotter-story container">
-        <Reveal>
-          <div className="story-photo">
-            <Image
-              src="/images/coaching.webp"
-              alt="A male coach supporting a male client during strength training"
-              fill
-              sizes="(max-width:768px) 100vw, 50vw"
-            />
-            <span>SMALL STEPS. STRONGER EVERY DAY.</span>
-          </div>
-        </Reveal>
-        <Reveal>
-          <div className="story-copy">
-            <p className="eyebrow">
-              <span className="section-index">04 /</span> MORE THAN A SESSION
-            </p>
-            <h2>
-              A little guidance.
-              <br />A whole new
-              <br />
-              <span className="quiet-heading">perspective.</span>
-            </h2>
-            <blockquote>
-              “My trainer understood exactly where I was starting from. It felt
-              personal from day one.”
-            </blockquote>
-            <div className="story-author">
-              <span>HM</span>
-              <div>
-                <strong>Hamza M.</strong>
-                <small>Illustrative member experience</small>
-              </div>
-            </div>
-          </div>
-        </Reveal>
-      </section>
       <section className="spotter-final">
         <div className="container">
           <p className="eyebrow">YOUR NEXT CHAPTER STARTS HERE</p>
