@@ -5289,6 +5289,18 @@ textarea:focus-visible {
   position: relative;
   font-size: 13px;
 }
+.account-trigger {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 7px 0;
+}
+.account-trigger:hover,
+.account-trigger:focus-visible {
+  color: #839660;
+}
 .account-menu > div {
   position: absolute;
   right: 0;

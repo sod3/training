@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, ArrowRight, Menu, MapPin } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import {
@@ -23,6 +23,8 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
   const { state, notify } = useStore();
   const dashboard =
@@ -37,6 +39,22 @@ export function Navbar() {
     window.addEventListener("scroll", scroll, { passive: true });
     return () => window.removeEventListener("scroll", scroll);
   }, []);
+  useEffect(() => {
+    if (!accountOpen) return;
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node))
+        setAccountOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAccountOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [accountOpen]);
   const minimal = ["/match", "/checkout", "/login", "/signup"].includes(
     pathname,
   );
@@ -86,32 +104,43 @@ export function Navbar() {
                   : state.name.split(" ")[0] || "Dashboard"}
               </Link>
               {state.role !== "visitor" && (
-                <details className="account-menu">
-                  <summary>Account</summary>
-                  <div>
-                    <Link href={dashboard}>Dashboard</Link>
-                    <Link href={`${dashboard}/notifications`}>
-                      Notifications {state.unread || ""}
-                    </Link>
-                    {state.role !== "admin" && (
-                      <Link href={`${dashboard}/messages`}>
-                        Messages {state.unreadMessages || ""}
+                <div className="account-menu" ref={accountMenuRef}>
+                  <button
+                    type="button"
+                    className="account-trigger"
+                    aria-expanded={accountOpen}
+                    aria-controls="account-menu-items"
+                    onClick={() => setAccountOpen((value) => !value)}
+                  >
+                    Account <span aria-hidden="true">⌄</span>
+                  </button>
+                  {accountOpen && (
+                    <div id="account-menu-items">
+                      <Link href={dashboard}>Dashboard</Link>
+                      <Link href={`${dashboard}/notifications`}>
+                        Notifications {state.unread || ""}
                       </Link>
-                    )}
-                    <button
-                      onClick={async () => {
-                        try {
-                          await api("auth/logout", {});
-                          router.push("/");
-                        } catch (e) {
-                          notify((e as Error).message);
-                        }
-                      }}
-                    >
-                      Log out
-                    </button>
-                  </div>
-                </details>
+                      {state.role !== "admin" && (
+                        <Link href={`${dashboard}/messages`}>
+                          Messages {state.unreadMessages || ""}
+                        </Link>
+                      )}
+                      <button
+                        onClick={async () => {
+                          setAccountOpen(false);
+                          try {
+                            await api("auth/logout", {});
+                            router.push("/");
+                          } catch (e) {
+                            notify((e as Error).message);
+                          }
+                        }}
+                      >
+                        Log out
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
               <Link href="/match" className="btn lime small">
                 Find my trainer <ArrowRight size={16} />

@@ -27,7 +27,13 @@ export const hashPassword = (value: string) => bcrypt.hash(value, 12);
 export const checkPassword = (value: string, hash: string) =>
   bcrypt.compare(value, hash);
 export function appUrl() {
-  const url = process.env.APP_URL;
+  const url =
+    process.env.APP_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : undefined);
   assert(url, "Application URL is not configured", 503);
   const parsed = new URL(url);
   assert(
@@ -91,12 +97,15 @@ const cookieName =
   process.env.NODE_ENV === "production"
     ? "__Host-spotter-session"
     : "spotter-session";
+// Keep the browser session across restarts. The database expiry is refreshed
+// on authenticated requests, so active users are not unexpectedly signed out.
+const sessionLifetime = 365 * 86400000;
 export async function createSession(user: {
   _id: string | import("mongoose").Types.ObjectId;
   sessionVersion: number;
 }) {
   const token = randomToken();
-  const expiresAt = new Date(Date.now() + 7 * 86400000);
+  const expiresAt = new Date(Date.now() + sessionLifetime);
   await AuthSession.create({
     userId: user._id,
     tokenHash: hashToken(token),
@@ -109,6 +118,7 @@ export async function createSession(user: {
     sameSite: "lax",
     path: "/",
     expires: expiresAt,
+    maxAge: Math.floor(sessionLifetime / 1000),
   });
 }
 export async function currentUser(): Promise<Actor | null> {
@@ -127,6 +137,15 @@ export async function currentUser(): Promise<Actor | null> {
     session.version !== user.sessionVersion
   )
     return null;
+  // Sliding expiry keeps a returning user signed in while retaining a finite
+  // lifetime for abandoned sessions.
+  const refreshedExpiry = new Date(Date.now() + sessionLifetime);
+  if (session.expiresAt.getTime() < Date.now() + 180 * 86400000) {
+    await AuthSession.updateOne(
+      { _id: session._id },
+      { $set: { expiresAt: refreshedExpiry } },
+    );
+  }
   return {
     id: String(user._id),
     name: user.name,
