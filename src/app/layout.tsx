@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Instrument_Sans } from "next/font/google";
 import "./globals.css";
 import { siteConfig } from "@/config/site";
+import { SiteMotion } from "@/components/motion/site-motion";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
@@ -24,8 +25,16 @@ export const metadata: Metadata = {
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
-  metadataBase: new URL(process.env.APP_URL || "https://training-seven-taupe.vercel.app"),
-  keywords: ["online personal trainer", "online fitness coach", "1-on-1 online training", "verified personal trainers", "live online fitness coaching"],
+  metadataBase: new URL(
+    process.env.APP_URL || "https://training-seven-taupe.vercel.app",
+  ),
+  keywords: [
+    "online personal trainer",
+    "online fitness coach",
+    "1-on-1 online training",
+    "verified personal trainers",
+    "live online fitness coaching",
+  ],
   openGraph: {
     title: "Spotter | Verified Online Personal Trainers",
     description: siteConfig.description,
@@ -60,14 +69,16 @@ export default function RootLayout({
         className={`${instrumentSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <StoreProvider>
-          <a href="#main-content" className="skip-link">
-            Skip to content
-          </a>
-          <Navbar />
-          <main id="main-content" className="flex-1 flex flex-col">
-            {children}
-          </main>
-          <Footer />
+          <SiteMotion>
+            <a href="#main-content" className="skip-link">
+              Skip to content
+            </a>
+            <Navbar />
+            <main id="main-content" className="flex-1 flex flex-col">
+              {children}
+            </main>
+            <Footer />
+          </SiteMotion>
         </StoreProvider>
       </body>
     </html>

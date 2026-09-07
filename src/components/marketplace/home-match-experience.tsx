@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Check, Sparkles, Video } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Trainer } from "@/types/trainer";
 import { matchesGoal, money } from "@/lib/marketplace";
+import { SplitHeading } from "@/components/motion/reveal";
 import { Reveal } from "@/components/motion/reveal";
 import { useMatchState } from "@/hooks/use-match-state";
 import {
@@ -23,7 +24,14 @@ const fallbackGoals = [
 
 export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
   const trainerGoals = useMemo(
-    () => Array.from(new Set(trainers.map((trainer) => trainer.category).filter((value): value is string => Boolean(value)))).slice(0, 3),
+    () =>
+      Array.from(
+        new Set(
+          trainers
+            .map((trainer) => trainer.category)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ).slice(0, 3),
     [trainers],
   );
   const goals = trainerGoals.length ? trainerGoals : fallbackGoals;
@@ -48,7 +56,11 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
     const candidates = trainers
       .filter((trainer) => matchesGoal(trainer, answers.goal))
       .filter((trainer) => !budget || trainer.basePrice <= budget);
-    return candidates[0] ?? trainers.find((trainer) => matchesGoal(trainer, answers.goal)) ?? trainers[0];
+    return (
+      candidates[0] ??
+      trainers.find((trainer) => matchesGoal(trainer, answers.goal)) ??
+      trainers[0]
+    );
   }, [answers.goal, answers.budget, trainers]);
 
   const params = matchParams(answers, true).toString();
@@ -59,11 +71,12 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
       <div className="container home-match-shell">
         <Reveal>
           <div className="home-match-copy">
-            <p className="eyebrow"><span className="section-index">02 /</span> GET MATCHED</p>
-            <h2 id="home-match-title">
-              Your next coach,
-              <span className="quiet-heading"> narrowed to fit.</span>
-            </h2>
+            <p className="eyebrow">
+              <span className="section-index">02 /</span> GET MATCHED
+            </p>
+            <div id="home-match-title">
+              <SplitHeading lines={["Your next coach,", "narrowed to fit."]} />
+            </div>
             <p>
               A few preferences narrow the field around what actually matters:
               your goal, level, schedule and budget.
@@ -78,10 +91,18 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
               <span>ABOUT 30 SECONDS</span>
             </div>
             <div className="match-progress" aria-hidden="true">
-              <span style={{ width: `${((step + 1) / questions.length) * 100}%` }} />
+              <span
+                style={{ width: `${((step + 1) / questions.length) * 100}%` }}
+              />
             </div>
-            <p className="match-question-label" key={question.id}>{question.title}</p>
-            <div className="match-goal-grid" role="group" aria-label={question.title}>
+            <p className="match-question-label" key={question.id}>
+              {question.title}
+            </p>
+            <div
+              className="match-goal-grid"
+              role="group"
+              aria-label={question.title}
+            >
               {question.options.map((item) => {
                 const selected = answers[question.id] === item.value;
                 return (
@@ -93,7 +114,9 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
                     onClick={() => answer(question.id, item.value)}
                   >
                     <span>{item.label}</span>
-                    <span className="match-choice-dot">{selected ? <Check size={13} /> : null}</span>
+                    <span className="match-choice-dot">
+                      {selected ? <Check size={13} /> : null}
+                    </span>
                   </button>
                 );
               })}
@@ -112,17 +135,26 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
                   type="button"
                   className="btn home-match-cta"
                   disabled={!canContinue}
-                  onClick={() => setStep((value) => Math.min(questions.length - 1, value + 1))}
+                  onClick={() =>
+                    setStep((value) =>
+                      Math.min(questions.length - 1, value + 1),
+                    )
+                  }
                 >
                   Continue <ArrowRight size={16} />
                 </button>
               ) : (
-                <Link href={`/match/results?${params}`} className="btn home-match-cta">
+                <Link
+                  href={`/match/results?${params}`}
+                  className="btn home-match-cta"
+                >
                   See my matches <ArrowRight size={16} />
                 </Link>
               )}
             </div>
-            <p className="home-match-note">No account needed to see your matches.</p>
+            <p className="home-match-note">
+              No account needed to see your matches.
+            </p>
           </div>
 
           <div className="match-preview-card" aria-live="polite">
@@ -134,12 +166,20 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
                   initial={{ opacity: 0, y: 10, scale: 0.985 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.99 }}
-                  transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] as const }}
+                  transition={{
+                    duration: 0.34,
+                    ease: [0.22, 1, 0.36, 1] as const,
+                  }}
                 >
-                  <div className="match-preview-kicker"><Sparkles size={14} /> LIVE MATCH PREVIEW</div>
+                  <div className="match-preview-kicker">
+                    <Sparkles size={14} /> LIVE MATCH PREVIEW
+                  </div>
                   <div className="match-preview-media">
                     <Image
-                      src={match.profileImage || "/media/fallback-trainer-profile.avif"}
+                      src={
+                        match.profileImage ||
+                        "/media/fallback-trainer-profile.avif"
+                      }
                       alt={`${match.firstName} ${match.lastName}, personal trainer`}
                       fill
                       sizes="(max-width: 900px) 100vw, 36vw"
@@ -148,12 +188,21 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
                   </div>
                   <div className="match-preview-body">
                     <div>
-                      <h3>{match.firstName} {match.lastName}</h3>
-                      <p>{match.specialties.slice(0, 2).join(" · ") || match.category}</p>
+                      <h3>
+                        {match.firstName} {match.lastName}
+                      </h3>
+                      <p>
+                        {match.specialties.slice(0, 2).join(" · ") ||
+                          match.category}
+                      </p>
                     </div>
                     <div className="match-preview-meta">
-                      <span><Video size={13} /> Live 1-on-1 online</span>
-                      {match.packages.length > 0 && <span>From {money(match.basePrice)} / session</span>}
+                      <span>
+                        <Video size={13} /> Live 1-on-1 online
+                      </span>
+                      {match.packages.length > 0 && (
+                        <span>From {money(match.basePrice)} / session</span>
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -168,7 +217,10 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
                 >
                   <Sparkles size={22} />
                   <h3>Your matches appear here.</h3>
-                  <p>As approved trainers join Spotter, this preview updates using real marketplace data.</p>
+                  <p>
+                    As approved trainers join Spotter, this preview updates
+                    using real marketplace data.
+                  </p>
                 </motion.div>
               )}
             </AnimatePresence>

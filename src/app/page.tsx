@@ -4,6 +4,10 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { HeroSection } from "@/components/marketplace/hero-section";
 import { TrainerCard } from "@/components/marketplace/trainer-card";
+import { Atmosphere } from "@/components/three/atmosphere";
+import { HowItWorks } from "@/components/marketplace/how-it-works";
+import { HorizontalShowcase } from "@/components/motion/horizontal-showcase";
+import { SplitHeading } from "@/components/motion/reveal";
 import { Reveal } from "@/components/motion/reveal";
 import { HomeMatchExperience } from "@/components/marketplace/home-match-experience";
 import { TrustSection } from "@/components/marketplace/trust-section";
@@ -12,7 +16,9 @@ import { getFeaturedTrainers } from "@/lib/services/trainers";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const baseUrl = (process.env.APP_URL || "https://training-seven-taupe.vercel.app").replace(/\/$/, "");
+  const baseUrl = (
+    process.env.APP_URL || "https://training-seven-taupe.vercel.app"
+  ).replace(/\/$/, "");
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -21,7 +27,8 @@ export default async function Home() {
         "@id": `${baseUrl}/#organization`,
         name: "Spotter",
         url: baseUrl,
-        description: "Online marketplace for discovering and booking verified personal trainers.",
+        description:
+          "Online marketplace for discovering and booking verified personal trainers.",
       },
       {
         "@type": "WebSite",
@@ -43,7 +50,9 @@ export default async function Home() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData).replace(/</g, "\\u003c"),
+        }}
       />
       <HeroSection />
       <section className="section container featured-section" id="trainers">
@@ -53,10 +62,7 @@ export default async function Home() {
               <p className="eyebrow">
                 <span className="section-index">01 /</span> FEATURED COACHES
               </p>
-              <h2>
-                Find someone worth
-                <span className="quiet-heading"> showing up for.</span>
-              </h2>
+              <SplitHeading lines={["Find someone worth", "showing up for."]} />
             </div>
             <div className="featured-intro-copy">
               <p>
@@ -69,8 +75,8 @@ export default async function Home() {
             </div>
           </div>
         </Reveal>
-        <div className={`featured-grid count-${Math.min(trainers.length, 3)}`}>
-          {trainers.slice(0, 3).map((t) => (
+        <HorizontalShowcase count={trainers.length}>
+          {trainers.map((t) => (
             <TrainerCard key={t.id} trainer={t} variant="featured" />
           ))}
           {trainers.length > 0 && trainers.length < 3 && (
@@ -79,7 +85,7 @@ export default async function Home() {
               available.
             </p>
           )}
-        </div>
+        </HorizontalShowcase>
         {!trainers.length && (
           <div className="empty-state compact">
             <h3>
@@ -98,18 +104,18 @@ export default async function Home() {
           </div>
         )}
       </section>
+      <HowItWorks />
       <HomeMatchExperience trainers={trainers} />
       <CoachingStory />
       <TrustSection />
       <section className="spotter-final">
+        <Atmosphere className="final-atmosphere" />
         <div className="container">
           <p className="eyebrow">YOUR NEXT CHAPTER STARTS HERE</p>
           <div>
-            <h2>
-              The right trainer
-              <br />
-              changes everything<span>.</span>
-            </h2>
+            <SplitHeading
+              lines={["The right trainer", "changes everything."]}
+            />
             <div className="spotter-final-actions">
               <Link href="/match" className="btn lime">
                 Get Matched <ArrowRight size={20} />

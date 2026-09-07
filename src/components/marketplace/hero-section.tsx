@@ -1,10 +1,12 @@
+import { HeroMotion } from "@/components/motion/hero-motion";
+import { Atmosphere } from "@/components/three/atmosphere";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowDown, ArrowRight, Check } from "lucide-react";
 
 export function HeroSection() {
   return (
-    <section className="spotter-hero" aria-labelledby="spotter-hero-title">
+    <HeroMotion>
       <div className="spotter-hero-media" aria-hidden="true">
         <video
           autoPlay
@@ -29,17 +31,16 @@ export function HeroSection() {
         <div className="spotter-hero-shade" />
       </div>
 
+      <Atmosphere className="hero-atmosphere" />
       <div className="container spotter-hero-content">
         <div className="spotter-hero-copy">
           <p className="eyebrow hero-enter">
             <span className="live-dot" /> VERIFIED ONLINE PERSONAL TRAINING
           </p>
           <h1 id="spotter-hero-title">
-            {["Train Better.", "Wherever", "You Are."].map((line, index) => (
+            {["Train Better.", "Wherever", "You Are."].map((line) => (
               <span className="masked-line" key={line}>
-                <span style={{ animationDelay: `${0.08 + index * 0.1}s` }}>
-                  {line}
-                </span>
+                <span>{line}</span>
               </span>
             ))}
           </h1>
@@ -55,10 +56,19 @@ export function HeroSection() {
                 Explore trainers <ArrowRight size={15} />
               </Link>
             </div>
-            <div className="spotter-hero-trust" aria-label="Spotter trust features">
-              <span><Check size={13} /> Identity reviewed</span>
-              <span><Check size={13} /> Transparent pricing</span>
-              <span><Check size={13} /> Live 1-on-1 coaching</span>
+            <div
+              className="spotter-hero-trust"
+              aria-label="Spotter trust features"
+            >
+              <span>
+                <Check size={13} /> Identity reviewed
+              </span>
+              <span>
+                <Check size={13} /> Transparent pricing
+              </span>
+              <span>
+                <Check size={13} /> Live 1-on-1 coaching
+              </span>
             </div>
           </div>
         </div>
@@ -68,8 +78,10 @@ export function HeroSection() {
         <a href="#trainers" aria-label="Explore featured trainers">
           <ArrowDown size={16} /> MEET THE COACHES
         </a>
-        <span>ONLINE COACHING <i /> BUILT AROUND YOU</span>
+        <span>
+          ONLINE COACHING <i /> BUILT AROUND YOU
+        </span>
       </div>
-    </section>
+    </HeroMotion>
   );
 }
