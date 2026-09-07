@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, BadgeCheck, Check, Heart, Plus, Star } from "lucide-react";
+import { ArrowRight, BadgeCheck, Check, Heart, Plus, Star } from "lucide-react";
 import type { Trainer } from "@/types/trainer";
 import { useStore } from "./store";
 import { localAvailabilityLabel, money } from "@/lib/marketplace";
@@ -13,7 +13,7 @@ export function TrainerCard({
   variant = "default",
 }: {
   trainer: Trainer;
-  variant?: "default" | "compact" | "horizontal";
+  variant?: "default" | "compact" | "horizontal" | "featured";
 }) {
   const { state, update, notify, toggleSaved } = useStore();
   const saved = state.saved.includes(t.id);
@@ -70,12 +70,16 @@ export function TrainerCard({
         </div>
 
         <div className="trainer-price">
-          <p><span>From</span> <strong>{money(t.basePrice)}</strong><small> / session</small></p>
-          <Link href={`/trainers/${t.slug}`} className="trial-link">View profile <ArrowUpRight size={15} /></Link>
+          {t.packages.length ? (
+            <p><span>From</span> <strong>{money(t.basePrice)}</strong><small> / session</small></p>
+          ) : (
+            <p><span>Packages coming soon</span></p>
+          )}
+          <Link href={`/trainers/${t.slug}`} className="trial-link">View profile <ArrowRight size={15} /></Link>
         </div>
 
         <div className="card-secondary" aria-label="Trainer card secondary actions">
-          <Link href={`/booking?trainer=${t.slug}`}>Book session</Link>
+          {t.packages.length > 0 && <Link href={`/booking?trainer=${t.slug}`}>Book session</Link>}
           <button
             aria-pressed={compared}
             onClick={() => {

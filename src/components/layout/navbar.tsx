@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, ArrowRight, Menu } from "lucide-react";
+import { ArrowRight, Menu } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import {
   Sheet,
@@ -153,14 +153,14 @@ export function Navbar() {
                   <SheetTitle>Explore Spotter</SheetTitle>
                 </div>
                 <nav className="mobile-links">
-                  {siteConfig.mainNav.map((item) => (
+                  {siteConfig.mainNav.map((item, index) => (
                     <Link
                       key={item.href}
                       href={item.href}
                       onClick={() => setOpen(false)}
                     >
-                      {item.title}
-                      <ArrowUpRight size={20} />
+                      <span><small>0{index + 1}</small>{item.title}</span>
+                      <ArrowRight size={20} />
                     </Link>
                   ))}
                   <div className="mobile-menu-spacer" />
@@ -170,7 +170,7 @@ export function Navbar() {
                     onClick={() => setOpen(false)}
                   >
                     {state.role === "visitor" ? "Log in" : "Dashboard"}
-                    <ArrowUpRight size={18} />
+                    <ArrowRight size={18} />
                   </Link>
                   <Link
                     href="/match"

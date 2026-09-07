@@ -1,73 +1,71 @@
 "use client";
 import Image from "next/image";
 
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import { ArrowLeft, ArrowRight, Check, Clock, ShieldCheck, Target, UserRound, Wallet } from "lucide-react";
 import { useApi } from "@/lib/client-api";
-import { BUDGET_OPTIONS, DEFAULT_CATEGORIES, EXPERIENCE_LEVELS, PREFERRED_TIMES } from "@/lib/catalog";
+import { DEFAULT_CATEGORIES } from "@/lib/catalog";
+import { useMatchState } from "@/hooks/use-match-state";
+import {
+  buildMatchQuestions,
+  findFirstIncompleteMatchStep,
+  isMatchComplete,
+  matchParams,
+  type MatchAnswerKey,
+} from "@/lib/match-state";
 
 type FacetResponse = { facets?: { categories?: { name: string; count: number }[] } };
 
 type Question = {
-  id: "goal" | "experience" | "time" | "budget";
+  id: MatchAnswerKey;
   title: string;
   copy: string;
   options: { label: string; value: string }[];
   icon: typeof Target;
 };
 
-export function MatchWizard({ initial }: { initial: Record<string, string> }) {
+export function MatchWizard({
+  initial,
+  edit = false,
+}: {
+  initial: Record<string, string>;
+  edit?: boolean;
+}) {
   const { data } = useApi<FacetResponse>("trainers?limit=1");
   const categories = data?.facets?.categories?.map((item) => item.name).filter(Boolean) || [];
   const availableCategories = categories.length ? categories : [...DEFAULT_CATEGORIES];
-  const questions = useMemo<Question[]>(
-    () => [
-      {
-        id: "goal",
-        title: "What are you working toward?",
-        copy: "Choose the closest fit. We only match you with approved trainers.",
-        options: availableCategories.map((value) => ({ label: value, value })),
-        icon: Target,
-      },
-      {
-        id: "experience",
-        title: "Where are you starting from?",
-        copy: "This helps us favor coaches whose experience fits your current level.",
-        options: EXPERIENCE_LEVELS.map((value) => ({ label: value, value })),
-        icon: UserRound,
-      },
-      {
-        id: "time",
-        title: "When do you usually want to train?",
-        copy: "We compare this with real trainer availability over the next seven days.",
-        options: PREFERRED_TIMES.map((value) => ({ label: value, value })),
-        icon: Clock,
-      },
-      {
-        id: "budget",
-        title: "What feels comfortable per session?",
-        copy: "We use each trainer’s real active package pricing—not placeholder prices.",
-        options: BUDGET_OPTIONS.map((item) => ({ label: item.label, value: item.value || "0" })),
-        icon: Wallet,
-      },
-    ],
-    [availableCategories.join("|")],
+  const questions: Question[] = buildMatchQuestions(availableCategories).map(
+    (question) => ({
+      ...question,
+      icon: {
+        goal: Target,
+        experience: UserRound,
+        time: Clock,
+        budget: Wallet,
+      }[question.id],
+    }),
   );
 
-  const normalizedInitial = {
-    goal: initial.goal || "",
-    experience: initial.experience || "",
-    time: initial.time || "",
-    budget: initial.budget || "",
-  };
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>(normalizedInitial);
+  const { answers, answer, hydrated } = useMatchState(initial);
   const [processing, setProcessing] = useState(false);
   const router = useRouter();
   const q = questions[step];
   const Icon = q.icon;
+  const restoredStep = useRef(false);
+
+  useEffect(() => {
+    if (!hydrated || restoredStep.current) return;
+    restoredStep.current = true;
+    if (!edit && isMatchComplete(answers)) {
+      router.replace(`/match/results?${matchParams(answers, true).toString()}`);
+      return;
+    }
+    const nextStep = edit ? 0 : findFirstIncompleteMatchStep(answers);
+    queueMicrotask(() => setStep(nextStep));
+  }, [answers, edit, hydrated, router]);
 
   const next = () => {
     if (!answers[q.id]) return;
@@ -76,8 +74,7 @@ export function MatchWizard({ initial }: { initial: Record<string, string> }) {
       return;
     }
     setProcessing(true);
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-    router.push(`/match/results?${new URLSearchParams({ ...answers, timezone }).toString()}`);
+    router.push(`/match/results?${matchParams(answers, true).toString()}`);
   };
 
   return (
@@ -145,7 +142,7 @@ export function MatchWizard({ initial }: { initial: Record<string, string> }) {
                     key={option.value}
                     className={answers[q.id] === option.value ? "selected" : ""}
                     aria-pressed={answers[q.id] === option.value}
-                    onClick={() => setAnswers((current) => ({ ...current, [q.id]: option.value }))}
+                    onClick={() => answer(q.id, option.value)}
                   >
                     <span>{option.label}</span>
                     <span className="option-check">{answers[q.id] === option.value && <Check size={15} />}</span>

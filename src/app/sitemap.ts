@@ -19,7 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/cancellation",
     "/contact",
   ];
-  let trainerEntries: MetadataRoute.Sitemap = [];
+  const trainerEntries: MetadataRoute.Sitemap = [];
   try {
     let page = 1;
     let pages = 1;

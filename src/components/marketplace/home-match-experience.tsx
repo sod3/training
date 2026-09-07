@@ -2,20 +2,23 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Sparkles, Video } from "lucide-react";
 import type { Trainer } from "@/types/trainer";
-import { BUDGET_OPTIONS, EXPERIENCE_LEVELS, PREFERRED_TIMES } from "@/lib/catalog";
 import { matchesGoal, money } from "@/lib/marketplace";
 import { Reveal } from "@/components/motion/reveal";
+import { useMatchState } from "@/hooks/use-match-state";
+import {
+  buildMatchQuestions,
+  findFirstIncompleteMatchStep,
+  matchParams,
+} from "@/lib/match-state";
 
 const fallbackGoals = [
   "Strength & Muscle",
   "Fat Loss & General Fitness",
   "Mobility & Functional Fitness",
 ];
-
-type AnswerKey = "goal" | "experience" | "time" | "budget";
 
 export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
   const trainerGoals = useMemo(
@@ -24,20 +27,20 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
   );
   const goals = trainerGoals.length ? trainerGoals : fallbackGoals;
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<AnswerKey, string>>({
-    goal: goals[0],
-    experience: "",
-    time: "",
-    budget: "",
-  });
-
-  const questions: { id: AnswerKey; title: string; options: { label: string; value: string }[] }[] = [
-    { id: "goal", title: "What are you working toward?", options: goals.map((value) => ({ label: value, value })) },
-    { id: "experience", title: "Where are you starting from?", options: EXPERIENCE_LEVELS.map((value) => ({ label: value, value })) },
-    { id: "time", title: "When do you prefer to train?", options: PREFERRED_TIMES.map((value) => ({ label: value, value })) },
-    { id: "budget", title: "What feels comfortable per session?", options: BUDGET_OPTIONS.map((item) => ({ label: item.label, value: item.value || "0" })) },
-  ];
+  const { answers, answer, hydrated } = useMatchState();
+  const questions = useMemo(() => buildMatchQuestions(goals), [goals]);
   const question = questions[step];
+  const restoredStep = useRef(false);
+
+  useEffect(() => {
+    if (!hydrated || restoredStep.current) return;
+    restoredStep.current = true;
+    const nextStep = Math.min(
+      findFirstIncompleteMatchStep(answers),
+      questions.length - 1,
+    );
+    queueMicrotask(() => setStep(nextStep));
+  }, [answers, hydrated, questions.length]);
 
   const match = useMemo(() => {
     const budget = Number(answers.budget || 0);
@@ -47,9 +50,7 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
     return candidates[0] ?? trainers.find((trainer) => matchesGoal(trainer, answers.goal)) ?? trainers[0];
   }, [answers.goal, answers.budget, trainers]);
 
-  const params = new URLSearchParams(
-    Object.fromEntries(Object.entries(answers).filter(([, value]) => value)),
-  ).toString();
+  const params = matchParams(answers, true).toString();
   const canContinue = Boolean(answers[question.id]);
 
   return (
@@ -59,8 +60,8 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
           <div className="home-match-copy">
             <p className="eyebrow"><span className="section-index">02 /</span> GET MATCHED</p>
             <h2 id="home-match-title">
-              Less searching.
-              <span className="quiet-heading"> More compatibility.</span>
+              Your next coach,
+              <span className="quiet-heading"> narrowed to fit.</span>
             </h2>
             <p>
               A few preferences narrow the field around what actually matters:
@@ -88,7 +89,7 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
                     type="button"
                     className={selected ? "selected" : ""}
                     aria-pressed={selected}
-                    onClick={() => setAnswers((current) => ({ ...current, [question.id]: item.value }))}
+                    onClick={() => answer(question.id, item.value)}
                   >
                     <span>{item.label}</span>
                     <span className="match-choice-dot">{selected ? <Check size={13} /> : null}</span>
@@ -115,7 +116,7 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
                   Continue <ArrowRight size={16} />
                 </button>
               ) : (
-                <Link href={`/match?${params}`} className="btn home-match-cta">
+                <Link href={`/match/results?${params}`} className="btn home-match-cta">
                   See my matches <ArrowRight size={16} />
                 </Link>
               )}
@@ -143,7 +144,7 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
                   </div>
                   <div className="match-preview-meta">
                     <span><Video size={13} /> Live 1-on-1 online</span>
-                    <span>From {money(match.basePrice)} / session</span>
+                    {match.packages.length > 0 && <span>From {money(match.basePrice)} / session</span>}
                   </div>
                 </div>
               </>

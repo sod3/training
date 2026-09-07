@@ -5,7 +5,6 @@ import {
   ShieldCheck,
   BadgeCheck,
   CalendarDays,
-  ArrowUpRight,
 } from "lucide-react";
 import { Reveal } from "@/components/motion/reveal";
 import { FAQ } from "@/components/marketplace/faq";
@@ -116,7 +115,7 @@ const copy: Record<
       ],
       [
         "Service providers and device storage.",
-        "Hosting and database providers process information needed for these services. Secure cookies keep you signed in. Session storage remembers only your selected comparison identifiers.",
+        "Hosting and database providers process information needed for these services. Secure cookies keep you signed in. Session storage remembers your selected comparison identifiers and matching preferences for the current browser session.",
       ],
     ],
   },

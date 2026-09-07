@@ -8,7 +8,7 @@ import {
   Video,
   Heart,
   Share2,
-  ArrowUpRight,
+  ArrowRight,
   Check,
   Clock,
   MessageCircle,
@@ -47,7 +47,6 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
   );
   const availableDays =
     availability?.days.filter((day) => day.slots.length) || [];
-  const times = availableDays.flatMap((day) => day.slots);
   const selectedDate = availableDays.find((day) =>
     day.slots.some((slot) => slot.start === time),
   )?.date;
@@ -108,7 +107,7 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
         </div>
       </div>
       <div className="mobile-profile-summary" aria-label="Trainer booking summary">
-        <span><small>From</small><strong>{money(t.basePrice)}</strong></span>
+        {t.packages.length > 0 && <span><small>From</small><strong>{money(t.basePrice)}</strong></span>}
         <span><small>Next</small><strong>{localAvailabilityLabel(t)}</strong></span>
         {t.reviewCount > 0 && <span><small>Rating</small><strong>{t.rating.toFixed(1)} / 5</strong></span>}
         {t.verifiedIdentity && <span><small>Status</small><strong>Identity reviewed</strong></span>}
@@ -181,13 +180,13 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
               {t.verifiedIdentity && (
                 <span>
                   <BadgeCheck size={16} />
-                  Identity verified
+                  Identity reviewed
                 </span>
               )}
               {t.verifiedCredentials && (
                 <span>
                   <BadgeCheck size={16} />
-                  Credentials verified
+                  Credentials reviewed
                 </span>
               )}
             </div>
@@ -255,7 +254,7 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
                     className={`btn ${p.isPopular ? "" : "outline"}`}
                   >
                     {p.sessions === 1 ? "Book session" : "Choose package"}
-                    <ArrowUpRight size={16} />
+                    <ArrowRight size={16} />
                   </Link>
                 </article>
               ))}
@@ -268,7 +267,7 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
               See real available sessions for the next seven days. Booking shows times in your device timezone, with {t.timezone} shown as the trainer timezone.
             </p>
             <Link href={book} className="btn outline mt-5">
-              Explore available sessions <ArrowUpRight size={17} />
+              Explore available sessions <ArrowRight size={17} />
             </Link>
           </section>
           <section className="profile-section" id="reviews">
@@ -316,13 +315,19 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
         </div>
         <aside className="booking-sidebar">
           <p className="eyebrow">START WITH THE RIGHT SESSION</p>
-          <p className="booking-price">
-            {money(t.packages[0]?.price || 0)}{" "}
-            <span>/ {t.packages[0]?.sessions === 1 ? "session" : "package"}</span>
-          </p>
-          <p className="muted text-sm">
-            {t.packages[0]?.duration} minutes · A plan built around you
-          </p>
+          {t.packages[0] ? (
+            <>
+              <p className="booking-price">
+                {money(t.packages[0].price)}{" "}
+                <span>/ {t.packages[0].sessions === 1 ? "session" : "package"}</span>
+              </p>
+              <p className="muted text-sm">
+                {t.packages[0].duration} minutes · A plan built around you
+              </p>
+            </>
+          ) : (
+            <p className="muted">This trainer has not published a bookable package yet.</p>
+          )}
           <fieldset className="filter-group weekly-availability">
             <legend>Available times · your device timezone</legend>
             <p className="fine-print">Next 7 days</p>
@@ -362,9 +367,11 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
                 </p>
               )}
           </fieldset>
-          <Link href={book} className="btn w-full">
-            Book online session <ArrowRightIcon />
-          </Link>
+          {t.packages[0] && (
+            <Link href={book} className="btn w-full">
+              Book online session <ArrowRightIcon />
+            </Link>
+          )}
           <Link
             href={`/dashboard/customer/messages?trainer=${t.id}`}
             className="btn outline w-full mt-3"
@@ -391,18 +398,20 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
           </div>
         </section>
       )}
-      <div className={`mobile-booking-bar ${showMobileBooking ? "visible" : ""}`}>
-        <div>
-          <small>Online coaching</small>
-          <strong>{money(t.packages[0]?.price || 0)}</strong>
+      {t.packages[0] && (
+        <div className={`mobile-booking-bar ${showMobileBooking ? "visible" : ""}`}>
+          <div>
+            <small>Online coaching</small>
+            <strong>{money(t.packages[0].price)}</strong>
+          </div>
+          <Link href={book} className="btn">
+            Book session <ArrowRight size={17} />
+          </Link>
         </div>
-        <Link href={book} className="btn">
-          Book session <ArrowUpRight size={17} />
-        </Link>
-      </div>
+      )}
     </div>
   );
 }
 function ArrowRightIcon() {
-  return <ArrowUpRight size={17} />;
+  return <ArrowRight size={17} />;
 }

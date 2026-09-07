@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { HeroSection } from "@/components/marketplace/hero-section";
 import { TrainerCard } from "@/components/marketplace/trainer-card";
 import { Reveal } from "@/components/motion/reveal";
@@ -48,25 +48,37 @@ export default async function Home() {
       <HeroSection />
       <section className="section container featured-section" id="trainers">
         <Reveal>
-          <div className="section-heading">
+          <div className="featured-intro-grid">
             <div>
               <p className="eyebrow">
-                <span className="section-index">01 /</span> TRAIN WITH THE BEST
+                <span className="section-index">01 /</span> FEATURED COACHES
               </p>
               <h2>
-                Good people.{" "}
-                <span className="quiet-heading">Great training.</span>
+                Find someone worth
+                <span className="quiet-heading"> showing up for.</span>
               </h2>
             </div>
-            <Link href="/trainers" className="text-link">
-              Explore all trainers <ArrowUpRight size={18} />
-            </Link>
+            <div className="featured-intro-copy">
+              <p>
+                Approved online trainers selected around your goals, schedule
+                and coaching style.
+              </p>
+              <Link href="/trainers" className="text-link">
+                Explore all trainers <ArrowRight size={18} />
+              </Link>
+            </div>
           </div>
         </Reveal>
-        <div className="featured-grid">
+        <div className={`featured-grid count-${Math.min(trainers.length, 3)}`}>
           {trainers.slice(0, 3).map((t) => (
-            <TrainerCard key={t.id} trainer={t} />
+            <TrainerCard key={t.id} trainer={t} variant="featured" />
           ))}
+          {trainers.length > 0 && trainers.length < 3 && (
+            <p className="featured-availability-note">
+              More approved trainer profiles will appear here as they become
+              available.
+            </p>
+          )}
         </div>
         {!trainers.length && (
           <div className="empty-state compact">

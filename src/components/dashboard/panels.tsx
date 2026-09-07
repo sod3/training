@@ -27,11 +27,6 @@ const availabilityRows = (value: unknown): Item[] =>
       ? rule.endTime
       : "17:00",
   }));
-const csv = (value: unknown) =>
-  String(value || "")
-    .split(",")
-    .map((v) => v.trim())
-    .filter(Boolean);
 export const amount = (value: unknown) =>
   new Intl.NumberFormat("en-PK", { style: "currency", currency: "PKR" }).format(
     Number(value || 0) / 100,

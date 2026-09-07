@@ -45,15 +45,14 @@ export function HeroSection() {
           </h1>
           <div className="hero-enter hero-enter-copy">
             <p className="spotter-hero-description">
-              Find a personal trainer who fits your goals, schedule and the way
-              you want to train — then meet live, one-to-one, online.
+              Find a trainer matched to your goals, schedule and training style.
             </p>
             <div className="hero-actions">
               <Link href="/match" className="btn lime hero-main-cta">
                 Get Matched <ArrowRight size={18} />
               </Link>
               <Link href="/trainers" className="hero-secondary-link">
-                Browse trainers <ArrowRight size={15} />
+                Explore trainers <ArrowRight size={15} />
               </Link>
             </div>
             <div className="spotter-hero-trust" aria-label="Spotter trust features">

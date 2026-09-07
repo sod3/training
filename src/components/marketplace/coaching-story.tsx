@@ -6,7 +6,7 @@ import { Reveal, ImageReveal } from "@/components/motion/reveal";
 export function CoachingStory() {
   return (
     <section className="coaching-story" aria-labelledby="coaching-story-title">
-      <div className="container coaching-story-grid">
+      <div className="coaching-story-grid">
         <ImageReveal className="coaching-story-media">
           <Image
             src="/images/coaching.webp"

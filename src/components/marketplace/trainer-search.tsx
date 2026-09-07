@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion, MotionConfig } from "framer-motion";
-import { ArrowUpRight, Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowRight, Check, Search, SlidersHorizontal, X } from "lucide-react";
 import { useApi } from "@/lib/client-api";
 import type { Trainer } from "@/types/trainer";
 import { TrainerCard } from "./trainer-card";
 import { TrainerCardSkeleton } from "./trainer-card-skeleton";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { BUDGET_OPTIONS } from "@/lib/catalog";
 
 type Facet = { name: string; count: number };
 type TrainerResponse = {
@@ -22,6 +23,7 @@ export function TrainerSearch({ initial }: { initial: Record<string, string> }) 
     q: initial.q || "",
     category: initial.category || "",
     specialty: initial.specialty || "",
+    maxPrice: initial.maxPrice || "",
   });
   const [sort, setSort] = useState(initial.sort || "recommended");
   const [page, setPage] = useState(1);
@@ -43,7 +45,7 @@ export function TrainerSearch({ initial }: { initial: Record<string, string> }) 
   };
 
   const clear = () => {
-    const next = { q: "", category: "", specialty: "" };
+    const next = { q: "", category: "", specialty: "", maxPrice: "" };
     setFilters(next);
     setSort("recommended");
     setPage(1);
@@ -65,8 +67,11 @@ export function TrainerSearch({ initial }: { initial: Record<string, string> }) 
   const specialties = data?.facets?.specialties || [];
   const showCategory = categories.length > 1 || !!filters.category;
   const showSpecialty = specialties.length > 1 || !!filters.specialty;
-  const hasDynamicFilters = showCategory || showSpecialty;
-  const activeCount = Number(!!filters.category) + Number(!!filters.specialty);
+  const hasDynamicFilters = showCategory || showSpecialty || BUDGET_OPTIONS.length > 0;
+  const activeCount =
+    Number(!!filters.category) +
+    Number(!!filters.specialty) +
+    Number(!!filters.maxPrice);
 
   const filterUI = (
     <>
@@ -78,31 +83,42 @@ export function TrainerSearch({ initial }: { initial: Record<string, string> }) 
         {activeCount > 0 && <button onClick={clear}>Reset</button>}
       </div>
       {showCategory && (
-        <label className="field">
-          Category
-          <select value={filters.category} onChange={(e) => set("category", e.target.value)}>
-            <option value="">All categories</option>
-            {categories.map((item) => (
-              <option key={item.name} value={item.name}>
-                {item.name} ({item.count})
-              </option>
-            ))}
-          </select>
-        </label>
+        <fieldset className="directory-filter-group">
+          <legend>Goal</legend>
+          <button type="button" className={!filters.category ? "selected" : ""} onClick={() => set("category", "")}>
+            <span>All goals</span>{!filters.category && <Check size={14} />}
+          </button>
+          {categories.map((item) => (
+            <button type="button" key={item.name} className={filters.category === item.name ? "selected" : ""} onClick={() => set("category", item.name)}>
+              <span>{item.name}<small>{item.count}</small></span>{filters.category === item.name && <Check size={14} />}
+            </button>
+          ))}
+        </fieldset>
       )}
       {showSpecialty && (
-        <label className="field">
-          Specialty
-          <select value={filters.specialty} onChange={(e) => set("specialty", e.target.value)}>
-            <option value="">All specialties</option>
-            {specialties.map((item) => (
-              <option key={item.name} value={item.name}>
-                {item.name} ({item.count})
-              </option>
-            ))}
-          </select>
-        </label>
+        <fieldset className="directory-filter-group">
+          <legend>Specialty</legend>
+          <button type="button" className={!filters.specialty ? "selected" : ""} onClick={() => set("specialty", "")}>
+            <span>All specialties</span>{!filters.specialty && <Check size={14} />}
+          </button>
+          {specialties.slice(0, 8).map((item) => (
+            <button type="button" key={item.name} className={filters.specialty === item.name ? "selected" : ""} onClick={() => set("specialty", item.name)}>
+              <span>{item.name}<small>{item.count}</small></span>{filters.specialty === item.name && <Check size={14} />}
+            </button>
+          ))}
+        </fieldset>
       )}
+      <fieldset className="directory-filter-group">
+        <legend>Price</legend>
+        <button type="button" className={!filters.maxPrice ? "selected" : ""} onClick={() => set("maxPrice", "")}>
+          <span>Any price</span>{!filters.maxPrice && <Check size={14} />}
+        </button>
+        {BUDGET_OPTIONS.filter((item) => item.value).map((item) => (
+          <button type="button" key={item.value} className={filters.maxPrice === item.value ? "selected" : ""} onClick={() => set("maxPrice", item.value)}>
+            <span>{item.label}</span>{filters.maxPrice === item.value && <Check size={14} />}
+          </button>
+        ))}
+      </fieldset>
     </>
   );
 
@@ -127,32 +143,9 @@ export function TrainerSearch({ initial }: { initial: Record<string, string> }) 
         </div>
 
         <div className="search-layout">
-          {hasDynamicFilters && (
-            <div className="desktop-filter-bar compact-filter-bar">
-              {showCategory && (
-                <label className="field">
-                  Category
-                  <select value={filters.category} onChange={(e) => set("category", e.target.value)}>
-                    <option value="">All categories</option>
-                    {categories.map((item) => (
-                      <option key={item.name} value={item.name}>{item.name} ({item.count})</option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              {showSpecialty && (
-                <label className="field">
-                  Specialty
-                  <select value={filters.specialty} onChange={(e) => set("specialty", e.target.value)}>
-                    <option value="">All specialties</option>
-                    {specialties.map((item) => (
-                      <option key={item.name} value={item.name}>{item.name} ({item.count})</option>
-                    ))}
-                  </select>
-                </label>
-              )}
-            </div>
-          )}
+          <aside className="desktop-filter-rail" aria-label="Trainer filters">
+            {filterUI}
+          </aside>
 
           <div className="results-area">
             <div className="result-toolbar">
@@ -193,6 +186,9 @@ export function TrainerSearch({ initial }: { initial: Record<string, string> }) 
                 {filters.specialty && (
                   <button onClick={() => set("specialty", "")}>{filters.specialty}<X size={12} /></button>
                 )}
+                {filters.maxPrice && (
+                  <button onClick={() => set("maxPrice", "")}>Up to PKR {Number(filters.maxPrice).toLocaleString("en-PK")}<X size={12} /></button>
+                )}
                 <button onClick={clear}>Clear all</button>
               </div>
             )}
@@ -216,7 +212,7 @@ export function TrainerSearch({ initial }: { initial: Record<string, string> }) 
                     : "Approved trainer profiles will appear here as soon as onboarding and verification are complete."}
                 </p>
                 {(activeCount > 0 || filters.q) && (
-                  <button onClick={clear} className="btn">Show all trainers <ArrowUpRight size={17} /></button>
+                  <button onClick={clear} className="btn">Show all trainers <ArrowRight size={17} /></button>
                 )}
               </div>
             ) : (
@@ -253,7 +249,7 @@ export function TrainerSearch({ initial }: { initial: Record<string, string> }) 
             <SheetTitle>Filter available trainers</SheetTitle>
             <div className="filter-sheet-scroll">{filterUI}</div>
             <button className="btn" onClick={() => setOpen(false)}>
-              Show {results.length} trainers <ArrowUpRight size={16} />
+              Show {results.length} trainers <ArrowRight size={16} />
             </button>
           </SheetContent>
         </Sheet>

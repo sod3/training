@@ -23,7 +23,7 @@ export default async function Page({
 
   return (
     <div className="container section">
-      <Link className="text-link" href={`/match?${new URLSearchParams(params).toString()}`}>
+      <Link className="text-link" href={`/match?${new URLSearchParams({ ...params, edit: "1" }).toString()}`}>
         ← Edit your preferences
       </Link>
       <div className="page-heading mt-9">

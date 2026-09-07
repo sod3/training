@@ -9,7 +9,6 @@ import {
   Transaction,
   Upload,
   User,
-  TrainerProfile,
 } from "@/models";
 import { assert } from "@/lib/server/errors";
 import { type Actor } from "@/lib/server/security";

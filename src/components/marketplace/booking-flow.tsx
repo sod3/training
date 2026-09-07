@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -48,6 +48,22 @@ function Checkout({ trainer: t, params }: { trainer: Trainer; params: Record<str
   const [orderId, setOrderId] = useState("");
   const [key] = useState(() => crypto.randomUUID());
   const pkg = t.packages.find((p) => p.id === packageId);
+  const scheduleDays = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, offset) => {
+        const value = new Date();
+        value.setHours(12, 0, 0, 0);
+        value.setDate(value.getDate() + offset);
+        const key = `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+        return {
+          key,
+          day: value.toLocaleDateString(undefined, { weekday: "short" }),
+          date: value.toLocaleDateString(undefined, { day: "2-digit" }),
+          month: value.toLocaleDateString(undefined, { month: "short" }),
+        };
+      }),
+    [],
+  );
   const { data, loading, error: availabilityError } = useApi<{ slots: { start: string; label: string }[] }>(
     date && packageId
       ? `trainers/${t.id}/availability?${new URLSearchParams({ date, packageId })}`
@@ -62,13 +78,13 @@ function Checkout({ trainer: t, params }: { trainer: Trainer; params: Record<str
     ["JAZZCASH", paymentAccounts?.jazzcash],
     ["EASYPAISA", paymentAccounts?.easypaisa],
   ] as const).filter(([, number]) => Boolean(number));
-  const selectedPaymentNumber = paymentMethod === "JAZZCASH" ? paymentAccounts?.jazzcash : paymentAccounts?.easypaisa;
-  useEffect(() => {
-    if (paymentMethod === "JAZZCASH" && !paymentAccounts?.jazzcash && paymentAccounts?.easypaisa)
-      setPaymentMethod("EASYPAISA");
-    if (paymentMethod === "EASYPAISA" && !paymentAccounts?.easypaisa && paymentAccounts?.jazzcash)
-      setPaymentMethod("JAZZCASH");
-  }, [paymentAccounts?.easypaisa, paymentAccounts?.jazzcash, paymentMethod]);
+  const selectedPaymentMethod =
+    paymentMethod === "JAZZCASH" && !paymentAccounts?.jazzcash && paymentAccounts?.easypaisa
+      ? "EASYPAISA"
+      : paymentMethod === "EASYPAISA" && !paymentAccounts?.easypaisa && paymentAccounts?.jazzcash
+        ? "JAZZCASH"
+        : paymentMethod;
+  const selectedPaymentNumber = selectedPaymentMethod === "JAZZCASH" ? paymentAccounts?.jazzcash : paymentAccounts?.easypaisa;
   const resume = `/checkout?${new URLSearchParams({ trainer: t.slug, package: packageId, date, time: start })}`;
   const localSlot = start
     ? new Date(start).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
@@ -117,14 +133,28 @@ function Checkout({ trainer: t, params }: { trainer: Trainer; params: Record<str
           {step === 1 && (
             <>
               <h2>Choose a real available time.</h2>
-              <label className="field">
-                Date
-                <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setStart(""); }} />
-              </label>
+              <fieldset className="schedule-picker">
+                <legend>Next seven days</legend>
+                <div className="schedule-days">
+                  {scheduleDays.map((item) => (
+                    <button
+                      type="button"
+                      key={item.key}
+                      className={date === item.key ? "selected" : ""}
+                      aria-pressed={date === item.key}
+                      onClick={() => { setDate(item.key); setStart(""); }}
+                    >
+                      <small>{item.day}</small>
+                      <strong>{item.date}</strong>
+                      <span>{item.month}</span>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
               <p><strong>Times are shown in your device timezone.</strong>{t.timezone ? ` Trainer schedule: ${t.timezone}.` : ""}</p>
               {loading && <p role="status">Checking live availability…</p>}
               {availabilityError && <p role="alert" className="form-error">{availabilityError}</p>}
-              <div className="choice-chips">
+              <div className="choice-chips booking-time-slots">
                 {data?.slots.map((slot) => (
                   <button
                     type="button"
@@ -170,8 +200,8 @@ function Checkout({ trainer: t, params }: { trainer: Trainer; params: Record<str
                     <button
                       type="button"
                       key={method}
-                      className={`package-card ${paymentMethod === method ? "popular" : ""}`}
-                      aria-pressed={paymentMethod === method}
+                      className={`package-card ${selectedPaymentMethod === method ? "popular" : ""}`}
+                      aria-pressed={selectedPaymentMethod === method}
                       onClick={() => setPaymentMethod(method)}
                     >
                       <strong>{method === "JAZZCASH" ? "JazzCash" : "EasyPaisa"}</strong>
@@ -222,7 +252,7 @@ function Checkout({ trainer: t, params }: { trainer: Trainer; params: Record<str
                       const uploadResponse = await fetch("/api/uploads", { method: "POST", body: upload });
                       const uploadResult = await uploadResponse.json();
                       if (!uploadResponse.ok) throw new Error(uploadResult.error || "Screenshot upload failed");
-                      await api(`bookings/${id}/pay`, { method: paymentMethod, payerName: payerName.trim(), transactionId: transactionId.trim(), proofUploadId: uploadResult.id });
+                      await api(`bookings/${id}/pay`, { method: selectedPaymentMethod, payerName: payerName.trim(), transactionId: transactionId.trim(), proofUploadId: uploadResult.id });
                       router.push(`/booking/success?id=${id}`);
                     } catch (e) {
                       setError((e as Error).message);
@@ -255,8 +285,8 @@ function Checkout({ trainer: t, params }: { trainer: Trainer; params: Record<str
         <aside className="panel order-summary premium-order-summary">
           <div className="order-summary-media premium-media-container">
             <Image
-              src="/media/booking-session.avif"
-              alt="Your Spotter Session"
+              src={t.profileImage || "/media/fallback-trainer-profile.avif"}
+              alt={`${t.firstName} ${t.lastName}, your selected trainer`}
               fill
               quality={90}
               className="premium-image"

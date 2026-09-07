@@ -13,8 +13,11 @@ export default async function Page({
   const p = await searchParams;
   return (
     <MatchWizard
+      edit={p.edit === "1"}
       initial={Object.fromEntries(
-        Object.entries(p).map(([k, v]) => [k, v || ""]),
+        Object.entries(p)
+          .filter(([key]) => key !== "edit")
+          .map(([k, v]) => [k, v || ""]),
       )}
     />
   );
