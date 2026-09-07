@@ -10,6 +10,7 @@ export default defineConfig({
     headless: true,
     viewport: { width: 1440, height: 1000 },
     reducedMotion: "reduce",
+    timezoneId: "Asia/Karachi",
   },
   reporter: "list",
   webServer: {

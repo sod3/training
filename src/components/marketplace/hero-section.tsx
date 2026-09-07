@@ -26,7 +26,7 @@ export function HeroSection() {
           priority
           quality={90}
           className="hero-mobile-image"
-          sizes="100vw"
+          sizes="(max-width: 768px) 100vw, 1px"
         />
         <div className="spotter-hero-shade" />
       </div>

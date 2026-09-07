@@ -53,7 +53,11 @@ import {
   uploadFile,
 } from "@/services/storage";
 import { trainerAction } from "@/services/trainer-management";
-import { getTrainerBySlug, listTrainers, matchTrainers } from "@/services/trainers";
+import {
+  getTrainerBySlug,
+  listTrainers,
+  matchTrainers,
+} from "@/services/trainers";
 import { notifyUser } from "@/lib/server/email";
 import { exportData } from "@/services/export";
 import { DEFAULT_CATEGORIES, DEFAULT_SPECIALTIES } from "@/lib/catalog";
@@ -62,6 +66,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 type Context = { params: Promise<{ path: string[] }> };
+function requireMethod(method: string, ...allowed: string[]) {
+  assert(allowed.includes(method), "Method not allowed", 405);
+}
 async function handle(request: Request, context: Context) {
   let operation = "request.parse";
   try {
@@ -70,7 +77,27 @@ async function handle(request: Request, context: Context) {
     assert(path.length <= 3, "Not found", 404);
     const params = Object.fromEntries(new URL(request.url).searchParams);
     const method = request.method;
-    if (root === "auth" && id === "me" && method === "GET") {
+    if (
+      ["payment-methods", "catalog", "match", "trainers", "jobs"].includes(root)
+    )
+      requireMethod(method, "GET");
+    if (
+      method === "GET" &&
+      [
+        "uploads",
+        "contact",
+        "account",
+        "favorites",
+        "reviews",
+        "conversations",
+        "notifications",
+        "sessions",
+      ].includes(root)
+    )
+      requireMethod(method, "POST", "PATCH", "DELETE");
+    if (root === "auth" && method === "GET" && (id !== "me" || action))
+      requireMethod(method, "POST");
+    if (root === "auth" && id === "me" && !action && method === "GET") {
       const user = await currentUser();
       if (!user) return json({ user: null, saved: [], unread: 0 });
       const conversations = await Conversation.find({
@@ -97,11 +124,12 @@ async function handle(request: Request, context: Context) {
         unreadMessages,
       });
     }
-    if (root === "payment-methods" && method === "GET") {
+    if (root === "payment-methods" && !id && method === "GET") {
       const jazzcash = process.env.JAZZCASH_ACCOUNT_NUMBER?.trim() || "";
       const easypaisa = process.env.EASYPAISA_ACCOUNT_NUMBER?.trim() || "";
       return json({
-        accountName: process.env.PAYMENT_ACCOUNT_NAME?.trim() || "Spotter Training",
+        accountName:
+          process.env.PAYMENT_ACCOUNT_NAME?.trim() || "Spotter Training",
         jazzcash,
         easypaisa,
         configured: Boolean(jazzcash || easypaisa),
@@ -110,7 +138,7 @@ async function handle(request: Request, context: Context) {
     operation = "MongoDB.connect";
     await connectDB();
     operation = "request.dispatch";
-    if (root === "jobs" && method === "GET") {
+    if (root === "jobs" && !id && method === "GET") {
       assert(
         process.env.CRON_SECRET &&
           request.headers.get("authorization") ===
@@ -180,26 +208,48 @@ async function handle(request: Request, context: Context) {
             });
       }
       if (root === "match" && !id) return json(await matchTrainers(params));
-      if (root === "catalog") {
-        const configured = await Taxonomy.find({ kind: { $in: ["CATEGORY", "SPECIALTY", "FAQ"] } })
+      if (root === "catalog" && !id) {
+        const configured = await Taxonomy.find({
+          kind: { $in: ["CATEGORY", "SPECIALTY", "FAQ"] },
+        })
           .sort({ sortOrder: 1, name: 1 })
           .limit(300)
           .select("kind name slug body active sortOrder")
           .lean();
-        const configuredCategories = configured.filter((item) => item.kind === "CATEGORY");
-        const configuredSpecialties = configured.filter((item) => item.kind === "SPECIALTY");
+        const configuredCategories = configured.filter(
+          (item) => item.kind === "CATEGORY",
+        );
+        const configuredSpecialties = configured.filter(
+          (item) => item.kind === "SPECIALTY",
+        );
         const items = configured.filter((item) => item.active);
         return json({
           items,
           categories: configuredCategories.length
-            ? configuredCategories.filter((item) => item.active).map((item) => item.name)
+            ? configuredCategories
+                .filter((item) => item.active)
+                .map((item) => item.name)
             : [...DEFAULT_CATEGORIES],
           specialties: configuredSpecialties.length
-            ? configuredSpecialties.filter((item) => item.active).map((item) => item.name)
+            ? configuredSpecialties
+                .filter((item) => item.active)
+                .map((item) => item.name)
             : [...DEFAULT_SPECIALTIES],
         });
       }
-      if (root === "media" && id) return mediaResponse(id, await currentUser());
+      if (root === "media" && id && !action)
+        return mediaResponse(id, await currentUser());
+      if (
+        [
+          "trainers",
+          "match",
+          "catalog",
+          "payment-methods",
+          "jobs",
+          "media",
+        ].includes(root)
+      )
+        assert(false, "Not found", 404);
       operation = "authentication.requireUser";
       const user = await requireUser(
         root === "admin"
@@ -225,7 +275,7 @@ async function handle(request: Request, context: Context) {
       operation = "dashboard.read";
       if (root === "dashboard" || root === "admin" || root === "trainer")
         return json(await dashboardData(user, id || "overview", params));
-      if (root === "bookings" && id) {
+      if (root === "bookings" && id && !action) {
         const order = await ownedOrder(user, id);
         return json({
           order,
@@ -234,7 +284,7 @@ async function handle(request: Request, context: Context) {
             .lean(),
         });
       }
-      if (root === "messages" && id) {
+      if (root === "messages" && id && !action) {
         await ownConversation(user, id);
         const page = z.coerce
           .number()
@@ -257,7 +307,8 @@ async function handle(request: Request, context: Context) {
     }
     operation = "request.checkOrigin";
     checkOrigin(request);
-    if (root === "uploads") {
+    if (root === "uploads" && !id) {
+      requireMethod(method, "POST");
       const user = await requireUser();
       await rateLimit(`upload:${user.id}`, 15, 60);
       return json(await uploadFile(user, await request.formData()));
@@ -272,13 +323,16 @@ async function handle(request: Request, context: Context) {
       assert(false, "Invalid JSON");
     }
     if (root === "auth") {
+      assert(!action, "Not found", 404);
+      requireMethod(method, "POST");
       if (id === "logout") {
         await logout();
         return json({ message: "Signed out" });
       }
       return json(await authAction(id || "", data, request));
     }
-    if (root === "contact") {
+    if (root === "contact" && !id) {
+      requireMethod(method, "POST");
       await rateLimit(`contact:${requestIp(request)}`, 5, 60);
       return json(await contact(data, await currentUser()));
     }
@@ -293,20 +347,36 @@ async function handle(request: Request, context: Context) {
     operation = "RateLimit.findOneAndUpdate";
     await rateLimit(`write:${user.id}`, 150, 15);
     operation = "request.action";
-    if (root === "admin")
+    if (root === "admin") {
+      requireMethod(method, "POST", "PATCH");
       return json(await adminAction(user, id || "", action, data));
+    }
     if (root === "trainer") {
       operation = "trainer.action";
+      if (method === "DELETE")
+        assert(id === "exceptions" && action, "Method not allowed", 405);
+      else requireMethod(method, "POST", "PATCH");
       if (id === "payouts") return json(await requestPayout(user, data));
       return json(await trainerAction(user, id || "", action, data, method));
     }
-    if (root === "account")
+    if (root === "account") {
+      requireMethod(method, "POST", "PATCH");
       return json(await accountAction(user, id || "", data));
-    if (root === "favorites") return json(await favorite(user, data));
-    if (root === "reviews") return json(await createReview(user, data));
-    if (root === "conversations")
+    }
+    if (root === "favorites" && !id) {
+      requireMethod(method, "POST");
+      return json(await favorite(user, data));
+    }
+    if (root === "reviews" && !id) {
+      requireMethod(method, "POST");
+      return json(await createReview(user, data));
+    }
+    if (root === "conversations" && !id) {
+      requireMethod(method, "POST");
       return json(await createConversation(user, data));
+    }
     if (root === "messages" && id) {
+      requireMethod(method, "POST", "PATCH");
       await rateLimit(`message:${user.id}`, 30, 15);
       if (action === "read") {
         await ownConversation(user, id);
@@ -318,7 +388,8 @@ async function handle(request: Request, context: Context) {
       }
       return json(await sendMessage(user, id, data));
     }
-    if (root === "notifications") {
+    if (root === "notifications" && !action) {
+      requireMethod(method, "POST", "PATCH");
       await Notification.updateMany(
         {
           userId: user.id,
@@ -329,7 +400,8 @@ async function handle(request: Request, context: Context) {
       );
       return json({ message: "Notifications marked read" });
     }
-    if (root === "media") {
+    if (root === "media" && !id) {
+      requireMethod(method, "POST", "PATCH");
       const input = z
         .object({
           uploadId: objectId,
@@ -340,6 +412,7 @@ async function handle(request: Request, context: Context) {
       return json(await attachPublic(user, input));
     }
     if (root === "bookings") {
+      requireMethod(method, "POST", "PATCH");
       if (!id) {
         await rateLimit(`checkout:${user.id}`, 10, 15);
         return json(await createBooking(user, data));
@@ -352,8 +425,10 @@ async function handle(request: Request, context: Context) {
         return json(await submitManualPayment(user, id, data));
       }
     }
-    if (root === "sessions" && id)
+    if (root === "sessions" && id && !action) {
+      requireMethod(method, "POST", "PATCH");
       return json(await completeSession(user, id, data));
+    }
     assert(false, "Not found", 404);
   } catch (error) {
     return errorResponse(error, {

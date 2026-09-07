@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, useApi } from "@/lib/client-api";
+import { api, apiResult, useApi } from "@/lib/client-api";
 import { ActionForm, UploadForm, type Field } from "./action-form";
 import { DEFAULT_CATEGORIES, PREFERRED_TIMES } from "@/lib/catalog";
 export type Item = Record<string, unknown>;
@@ -73,7 +73,7 @@ export function ProfilePanel({
         label: "Fitness goals",
         type: "checkbox-group",
         options: [...DEFAULT_CATEGORIES],
-        value: preferences.fitnessGoals as string[] || [],
+        value: (preferences.fitnessGoals as string[]) || [],
       },
       {
         name: "preferredSchedule",
@@ -469,112 +469,143 @@ export function VerificationPanel({
     <>
       <section className="panel">
         <h2>Identity verification</h2>
-      <p>Keep your legal name, phone number and CNIC current. Changing approved identity details sends them back for admin review; it does not submit the full application automatically.</p>
-      <span className="status">
-        {str(application, "status") || "Not submitted"}
-      </span>
-      <form
-        className="workspace-form"
-        onSubmit={async (event) => {
-          event.preventDefault();
-          if (busy) return;
-          setBusy(true);
-          setMessage("");
-          const form = event.currentTarget;
-          const values = new FormData(form);
-          try {
-            const file = values.get("cnicPicture");
-            const upload = new FormData();
-            upload.set("purpose", "PRIVATE");
-            upload.set("file", file as File);
-            const response = await fetch("/api/uploads", {
-              method: "POST",
-              body: upload,
-            });
-            const uploaded = await response.json();
-            if (!response.ok) throw new Error(uploaded.error);
-            const result = await api<{ message: string }>(
-              "trainer/verification",
-              {
-                name: values.get("name"),
-                phone: values.get("phone"),
-                cnic: values.get("cnic"),
-                uploadId: uploaded.id,
-              },
-            );
-            setMessage(result.message);
-            reload();
-          } catch (error) {
-            setMessage((error as Error).message);
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <label className="field">
-          Full name
-          <input
-            name="name"
-            required
-            defaultValue={str(trainer, "legalName") || str(trainer, "displayName")}
-            maxLength={170}
-          />
-        </label>
-        <label className="field">
-          Phone number
-          <input
-            name="phone"
-            required
-            defaultValue={str(trainer, "phone")}
-            maxLength={30}
-          />
-        </label>
-        <label className="field">
-          CNIC number
-          <input
-            name="cnic"
-            required
-            defaultValue={str(trainer, "cnic")}
-            placeholder="12345-1234567-1"
-            pattern="[0-9]{5}-[0-9]{7}-[0-9]"
-          />
-        </label>
-        <label className="field">
-          CNIC picture
-          <input
-            name="cnicPicture"
-            type="file"
-            required
-            accept=".jpg,.jpeg,.png,.webp"
-          />
-          <small>JPG, PNG, or WebP. Maximum 4 MB.</small>
-        </label>
-        {message && <p role="status">{message}</p>}
-        <button className="btn" disabled={busy}>
-          {busy ? "Saving…" : "Save identity details"}
-        </button>
-      </form>
-      {str(trainer, "cnicUploadId") && (
-        <a
-          className="text-link"
-          href={`/api/media/${str(trainer, "cnicUploadId")}`}
+        <p>
+          Keep your legal name, phone number and CNIC current. Changing approved
+          identity details sends them back for admin review; it does not submit
+          the full application automatically.
+        </p>
+        <span className="status">
+          {str(application, "status") || "Not submitted"}
+        </span>
+        <form
+          className="workspace-form"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (busy) return;
+            setBusy(true);
+            setMessage("");
+            const form = event.currentTarget;
+            const values = new FormData(form);
+            try {
+              const file = values.get("cnicPicture");
+              const upload = new FormData();
+              upload.set("purpose", "PRIVATE");
+              upload.set("file", file as File);
+              const response = await fetch("/api/uploads", {
+                method: "POST",
+                body: upload,
+              });
+              const uploaded = await apiResult<{ id: string }>(response);
+              const result = await api<{ message: string }>(
+                "trainer/verification",
+                {
+                  name: values.get("name"),
+                  phone: values.get("phone"),
+                  cnic: values.get("cnic"),
+                  uploadId: uploaded.id,
+                },
+              );
+              setMessage(result.message);
+              reload();
+            } catch (error) {
+              setMessage((error as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
         >
-          View submitted CNIC picture
-        </a>
-      )}
+          <label className="field">
+            Full name
+            <input
+              name="name"
+              required
+              defaultValue={
+                str(trainer, "legalName") || str(trainer, "displayName")
+              }
+              maxLength={170}
+            />
+          </label>
+          <label className="field">
+            Phone number
+            <input
+              name="phone"
+              required
+              defaultValue={str(trainer, "phone")}
+              maxLength={30}
+            />
+          </label>
+          <label className="field">
+            CNIC number
+            <input
+              name="cnic"
+              required
+              defaultValue={str(trainer, "cnic")}
+              placeholder="12345-1234567-1"
+              pattern="[0-9]{5}-[0-9]{7}-[0-9]"
+            />
+          </label>
+          <label className="field">
+            CNIC picture
+            <input
+              name="cnicPicture"
+              type="file"
+              required
+              accept=".jpg,.jpeg,.png,.webp"
+            />
+            <small>JPG, PNG, or WebP. Maximum 4 MB.</small>
+          </label>
+          {message && <p role="status">{message}</p>}
+          <button className="btn" disabled={busy}>
+            {busy ? "Saving…" : "Save identity details"}
+          </button>
+        </form>
+        {str(trainer, "cnicUploadId") && (
+          <a
+            className="text-link"
+            href={`/api/media/${str(trainer, "cnicUploadId")}`}
+          >
+            View submitted CNIC picture
+          </a>
+        )}
       </section>
       <section className="panel">
         <h2>Certificates & Credentials</h2>
-        <p>Add professional qualifications for admin review. Title and issuing organization are required.</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
-          {rows(data.credentials).filter(c => str(c, "type") === "CERTIFICATION").map((cred) => (
-             <div key={str(cred, "_id")} style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
-               <strong>{str(cred, "title") || "Untitled Certificate"}</strong> 
-               {str(cred, "issuingOrganization") ? ` - ${str(cred, "issuingOrganization")}` : ""}
-               <br />
-               <a className="text-link" href={`/api/media/${str(cred, "uploadId")}`}>View File</a>
-             </div>
-          ))}
+        <p>
+          Add professional qualifications for admin review. Title and issuing
+          organization are required.
+        </p>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "1rem",
+            marginBottom: "1rem",
+          }}
+        >
+          {rows(data.credentials)
+            .filter((c) => str(c, "type") === "CERTIFICATION")
+            .map((cred) => (
+              <div
+                key={str(cred, "_id")}
+                style={{
+                  padding: "1rem",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                }}
+              >
+                <strong>{str(cred, "title") || "Untitled Certificate"}</strong>
+                {str(cred, "issuingOrganization")
+                  ? ` - ${str(cred, "issuingOrganization")}`
+                  : ""}
+                <br />
+                <a
+                  className="text-link"
+                  href={`/api/media/${str(cred, "uploadId")}`}
+                >
+                  View File
+                </a>
+              </div>
+            ))}
         </div>
         <form
           className="workspace-form"
@@ -594,8 +625,7 @@ export function VerificationPanel({
                 method: "POST",
                 body: upload,
               });
-              const uploaded = await response.json();
-              if (!response.ok) throw new Error(uploaded.error);
+              const uploaded = await apiResult<{ id: string }>(response);
               const result = await api<{ message: string }>(
                 "trainer/credentials",
                 {
@@ -620,7 +650,12 @@ export function VerificationPanel({
         >
           <label className="field">
             Certificate image
-            <input name="file" type="file" required accept=".jpg,.jpeg,.png,.webp,.pdf" />
+            <input
+              name="file"
+              type="file"
+              required
+              accept=".jpg,.jpeg,.png,.webp,.pdf"
+            />
           </label>
           <label className="field">
             Certificate / qualification title
@@ -630,9 +665,18 @@ export function VerificationPanel({
             Issuing organization
             <input name="issuingOrganization" required maxLength={200} />
           </label>
-          <label className="field">Credential / licence number<input name="credentialNumber" maxLength={200} /></label>
-          <label className="field">Issue date<input name="issueDate" type="date" /></label>
-          <label className="field">Expiry date (if applicable)<input name="expiryDate" type="date" /></label>
+          <label className="field">
+            Credential / licence number
+            <input name="credentialNumber" maxLength={200} />
+          </label>
+          <label className="field">
+            Issue date
+            <input name="issueDate" type="date" />
+          </label>
+          <label className="field">
+            Expiry date (if applicable)
+            <input name="expiryDate" type="date" />
+          </label>
           <button className="btn small outline" disabled={busy}>
             {busy ? "Uploading…" : "Upload Certificate"}
           </button>

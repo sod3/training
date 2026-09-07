@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, useApi } from "@/lib/client-api";
@@ -77,6 +77,14 @@ const tabs = {
     "security",
   ],
 };
+function useDebouncedValue(value: string, delay = 300) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(timer);
+  }, [delay, value]);
+  return debounced;
+}
 export function Dashboard({
   role = "customer",
   tab = "overview",
@@ -99,7 +107,9 @@ export function Dashboard({
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [days, setDays] = useState("30");
-  const endpoint = `${selectedRole === "admin" ? "admin" : selectedRole === "trainer" ? "trainer" : "dashboard"}/${tab}?${new URLSearchParams({ q, status, page: String(page), days })}`;
+  const debouncedQuery = useDebouncedValue(q);
+  const debouncedStatus = useDebouncedValue(status);
+  const endpoint = `${selectedRole === "admin" ? "admin" : selectedRole === "trainer" ? "trainer" : "dashboard"}/${tab}?${new URLSearchParams({ q: debouncedQuery, status: debouncedStatus, page: String(page), days })}`;
   const { data, error, loading, reload } = useApi<Item>(endpoint);
   const items = rows(data?.items);
   const update = useCallback(() => {
@@ -225,25 +235,54 @@ export function Dashboard({
                   {selectedRole !== "admin" && (
                     <section className="panel dashboard-primary">
                       <div>
-                        <p className="eyebrow">{selectedRole === "customer" ? "YOUR NEXT SESSION" : "UP NEXT"}</p>
+                        <p className="eyebrow">
+                          {selectedRole === "customer"
+                            ? "YOUR NEXT SESSION"
+                            : "UP NEXT"}
+                        </p>
                         {rows(data.upcoming).length ? (
                           <>
                             <h2>{date(rows(data.upcoming)[0].start)}</h2>
-                            <p>Session {num(rows(data.upcoming)[0], "sessionNumber")} · Live online coaching</p>
+                            <p>
+                              Session{" "}
+                              {num(rows(data.upcoming)[0], "sessionNumber")} ·
+                              Live online coaching
+                            </p>
                           </>
                         ) : (
                           <>
                             <h2>No session scheduled yet.</h2>
-                            <p>{selectedRole === "customer" ? "Your next confirmed session will appear here." : "Confirmed client sessions will appear here."}</p>
+                            <p>
+                              {selectedRole === "customer"
+                                ? "Your next confirmed session will appear here."
+                                : "Confirmed client sessions will appear here."}
+                            </p>
                           </>
                         )}
                       </div>
                       <div className="dashboard-primary-actions">
-                        {rows(data.upcoming).length > 0 && str(rows(data.upcoming)[0], "meetingUrl") && (
-                          <a className="btn lime" href={str(rows(data.upcoming)[0], "meetingUrl")} target="_blank" rel="noreferrer">Join session →</a>
-                        )}
-                        <Link className="btn outline" href={selectedRole === "customer" ? `${base}/bookings` : `${base}/calendar`}>
-                          {selectedRole === "customer" ? "Manage booking" : "Open calendar"}
+                        {rows(data.upcoming).length > 0 &&
+                          str(rows(data.upcoming)[0], "meetingUrl") && (
+                            <a
+                              className="btn lime"
+                              href={str(rows(data.upcoming)[0], "meetingUrl")}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Join session →
+                            </a>
+                          )}
+                        <Link
+                          className="btn outline"
+                          href={
+                            selectedRole === "customer"
+                              ? `${base}/bookings`
+                              : `${base}/calendar`
+                          }
+                        >
+                          {selectedRole === "customer"
+                            ? "Manage booking"
+                            : "Open calendar"}
                         </Link>
                       </div>
                     </section>
@@ -363,7 +402,9 @@ export function Dashboard({
                       ...v,
                       newEmail: v.newEmail || undefined,
                       newPassword: v.newPassword || undefined,
-                      confirmPassword: v.newPassword ? v.confirmPassword : undefined,
+                      confirmPassword: v.newPassword
+                        ? v.confirmPassword
+                        : undefined,
                       revokeSessions: true,
                     })}
                     confirmation="This change will sign out all sessions. Account deletion requests deactivate your account immediately."
@@ -409,37 +450,60 @@ export function Dashboard({
               {tab === "verification" && selectedRole === "trainer" && (
                 <VerificationPanel data={data} reload={reload} />
               )}
-              {tab === "application" && selectedRole === "trainer" && (() => {
-                const application = record(data.application);
-                const trainer = record(data.trainer);
-                const applicationStatus = str(application, "status") || str(trainer, "applicationStatus") || "DRAFT";
-                const editable = ["DRAFT", "ACTION_REQUIRED", "REJECTED"].includes(applicationStatus);
-                return (
-                  <section className="panel application-status-panel">
-                    <p className="eyebrow">TRAINER APPLICATION</p>
-                    <div className="panel-title">
-                      <h2>{applicationStatus.replaceAll("_", " ")}</h2>
-                      <span className="status">{applicationStatus}</span>
-                    </div>
-                    <p>
-                      {applicationStatus === "APPROVED"
-                        ? "Your trainer application is approved. Continue managing your public profile, services and availability from the dashboard."
-                        : ["SUBMITTED", "UNDER_REVIEW"].includes(applicationStatus)
-                          ? "Your complete application has been submitted. You can review your verification status while the Spotter admin team checks your profile, identity and certification."
-                          : "Complete every onboarding step before submitting your application for admin review."}
-                    </p>
-                    {str(application, "adminNotes") && (
-                      <div className="payment-notice"><strong>Admin feedback</strong><p>{str(application, "adminNotes")}</p></div>
-                    )}
-                    {editable && (
-                      <Link className="btn mt-5" href="/trainer/onboarding">Continue onboarding →</Link>
-                    )}
-                    {["SUBMITTED", "UNDER_REVIEW"].includes(applicationStatus) && (
-                      <Link className="btn outline mt-5" href="/trainer/verification">View verification status →</Link>
-                    )}
-                  </section>
-                );
-              })()}
+              {tab === "application" &&
+                selectedRole === "trainer" &&
+                (() => {
+                  const application = record(data.application);
+                  const trainer = record(data.trainer);
+                  const applicationStatus =
+                    str(application, "status") ||
+                    str(trainer, "applicationStatus") ||
+                    "DRAFT";
+                  const editable = [
+                    "DRAFT",
+                    "ACTION_REQUIRED",
+                    "REJECTED",
+                  ].includes(applicationStatus);
+                  return (
+                    <section className="panel application-status-panel">
+                      <p className="eyebrow">TRAINER APPLICATION</p>
+                      <div className="panel-title">
+                        <h2>{applicationStatus.replaceAll("_", " ")}</h2>
+                        <span className="status">{applicationStatus}</span>
+                      </div>
+                      <p>
+                        {applicationStatus === "APPROVED"
+                          ? "Your trainer application is approved. Continue managing your public profile, services and availability from the dashboard."
+                          : ["SUBMITTED", "UNDER_REVIEW"].includes(
+                                applicationStatus,
+                              )
+                            ? "Your complete application has been submitted. You can review your verification status while the Spotter admin team checks your profile, identity and certification."
+                            : "Complete every onboarding step before submitting your application for admin review."}
+                      </p>
+                      {str(application, "adminNotes") && (
+                        <div className="payment-notice">
+                          <strong>Admin feedback</strong>
+                          <p>{str(application, "adminNotes")}</p>
+                        </div>
+                      )}
+                      {editable && (
+                        <Link className="btn mt-5" href="/trainer/onboarding">
+                          Continue onboarding →
+                        </Link>
+                      )}
+                      {["SUBMITTED", "UNDER_REVIEW"].includes(
+                        applicationStatus,
+                      ) && (
+                        <Link
+                          className="btn outline mt-5"
+                          href="/trainer/verification"
+                        >
+                          View verification status →
+                        </Link>
+                      )}
+                    </section>
+                  );
+                })()}
               {tab === "messages" && (
                 <MessagesPanel data={data} reload={update} />
               )}
@@ -456,14 +520,26 @@ export function Dashboard({
                   {items.map((r) => (
                     <article className="panel review-card" key={str(r, "_id")}>
                       <div className="review-card-head">
-                        <div className="review-stars" aria-label={`${num(r, "rating")} out of 5 stars`}>{"★".repeat(num(r, "rating"))}<span>{"★".repeat(Math.max(0, 5 - num(r, "rating")))}</span></div>
+                        <div
+                          className="review-stars"
+                          aria-label={`${num(r, "rating")} out of 5 stars`}
+                        >
+                          {"★".repeat(num(r, "rating"))}
+                          <span>
+                            {"★".repeat(Math.max(0, 5 - num(r, "rating")))}
+                          </span>
+                        </div>
                         <span className="status">Verified booking</span>
                       </div>
                       <blockquote>{str(r, "review")}</blockquote>
-                      <small>{str(r, "status")} · {date(r.createdAt)}</small>
+                      <small>
+                        {str(r, "status")} · {date(r.createdAt)}
+                      </small>
                     </article>
                   ))}
-                  {selectedRole === "customer" && <ReviewComposer eligible={data.eligible} onDone={reload} />}
+                  {selectedRole === "customer" && (
+                    <ReviewComposer eligible={data.eligible} onDone={reload} />
+                  )}
                 </>
               )}
               {["saved", "favorites", "trainers"].includes(tab) &&

@@ -32,6 +32,9 @@ async function main() {
       env: {
         ...process.env,
         NODE_ENV: "production",
+        // Deliberately differ from the browser timezone so SSR/client locale
+        // mismatches are caught by the end-to-end suite.
+        TZ: "UTC",
         AUTH_SECRET: randomBytes(32).toString("hex"),
         APP_URL: "https://spotter.test",
         CRON_SECRET: randomBytes(32).toString("hex"),

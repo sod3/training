@@ -30,12 +30,21 @@ import {
 } from "@/models";
 import { assert } from "@/lib/server/errors";
 import { databaseOperation } from "@/lib/server/diagnostics";
-import { appUrl, hashToken, randomToken, type Actor } from "@/lib/server/security";
+import {
+  appUrl,
+  hashToken,
+  randomToken,
+  type Actor,
+} from "@/lib/server/security";
 import { objectId, settingsSchema } from "@/lib/server/validation";
 import { lockTrainer, settings } from "./bookings";
 import { ownTrainer, reviewApplication } from "./trainer-management";
 import { reviewManualPayment, reviewManualRefund } from "./payments";
-import { DEFAULT_CATEGORIES, DEFAULT_LANGUAGES, DEFAULT_SPECIALTIES } from "@/lib/catalog";
+import {
+  DEFAULT_CATEGORIES,
+  DEFAULT_LANGUAGES,
+  DEFAULT_SPECIALTIES,
+} from "@/lib/catalog";
 
 const listQuery = z.object({
   page: z.coerce.number().int().min(1).max(10000).default(1),
@@ -76,17 +85,29 @@ const searchFields: Record<string, string[]> = {
 };
 
 async function catalogOptions() {
-  const items = await Taxonomy.find({ kind: { $in: ["CATEGORY", "SPECIALTY"] } })
+  const items = await Taxonomy.find({
+    kind: { $in: ["CATEGORY", "SPECIALTY"] },
+  })
     .sort({ sortOrder: 1, name: 1 })
     .select("kind name active")
     .lean();
   const configuredCategories = items.filter((item) => item.kind === "CATEGORY");
-  const configuredSpecialties = items.filter((item) => item.kind === "SPECIALTY");
-  const categories = configuredCategories.filter((item) => item.active).map((item) => item.name);
-  const specialties = configuredSpecialties.filter((item) => item.active).map((item) => item.name);
+  const configuredSpecialties = items.filter(
+    (item) => item.kind === "SPECIALTY",
+  );
+  const categories = configuredCategories
+    .filter((item) => item.active)
+    .map((item) => item.name);
+  const specialties = configuredSpecialties
+    .filter((item) => item.active)
+    .map((item) => item.name);
   return {
-    categories: configuredCategories.length ? categories : [...DEFAULT_CATEGORIES],
-    specialties: configuredSpecialties.length ? specialties : [...DEFAULT_SPECIALTIES],
+    categories: configuredCategories.length
+      ? categories
+      : [...DEFAULT_CATEGORIES],
+    specialties: configuredSpecialties.length
+      ? specialties
+      : [...DEFAULT_SPECIALTIES],
     languages: [...DEFAULT_LANGUAGES],
   };
 }
@@ -114,10 +135,15 @@ export async function dashboardData(
     const since = new Date(Date.now() - q.days * 86400000);
     const customerProfile =
       actor.role === "CUSTOMER"
-        ? await CustomerProfile.findOne({ userId: actor.id }).select("timezone").lean()
+        ? await CustomerProfile.findOne({ userId: actor.id })
+            .select("timezone")
+            .lean()
         : null;
-    const requestedZone = trainer?.timezone || customerProfile?.timezone || "Asia/Karachi";
-    const zone = DateTime.now().setZone(requestedZone).isValid ? requestedZone : "UTC";
+    const requestedZone =
+      trainer?.timezone || customerProfile?.timezone || "Asia/Karachi";
+    const zone = DateTime.now().setZone(requestedZone).isValid
+      ? requestedZone
+      : "UTC";
     const today = DateTime.now().setZone(zone).startOf("day");
     const [
       bookings,
@@ -312,9 +338,9 @@ export async function dashboardData(
           ? { kind: "CATEGORY" }
           : section === "specialties"
             ? { kind: "SPECIALTY" }
-          : section === "content"
-            ? { kind: "FAQ" }
-            : {};
+            : section === "content"
+              ? { kind: "FAQ" }
+              : {};
     if (q.status)
       filter[
         section === "bookings"
@@ -351,7 +377,9 @@ export async function dashboardData(
     if (section === "verification") {
       const trainerIds = items.map((item) => item.trainerId).filter(Boolean);
       const trainers = await TrainerProfile.find({ _id: { $in: trainerIds } })
-        .select("userId displayName legalName phone cnic cnicUploadId category specialties yearsExperience identityVerificationStatus credentialVerificationStatus applicationStatus profileVisibility")
+        .select(
+          "userId displayName legalName phone cnic cnicUploadId category specialties yearsExperience identityVerificationStatus credentialVerificationStatus applicationStatus profileVisibility",
+        )
         .lean();
       const trainerMap = new Map(trainers.map((row) => [String(row._id), row]));
       const userIds = trainers.map((row) => row.userId).filter(Boolean);
@@ -365,7 +393,9 @@ export async function dashboardData(
           return {
             ...item,
             trainer: trainerProfile,
-            account: trainerProfile ? accountMap.get(String(trainerProfile.userId)) : undefined,
+            account: trainerProfile
+              ? accountMap.get(String(trainerProfile.userId))
+              : undefined,
           };
         }),
         total,
@@ -374,20 +404,40 @@ export async function dashboardData(
     }
     if (section === "applications") {
       const trainerIds = items.map((item) => item.trainerId).filter(Boolean);
-      const trainers = await TrainerProfile.find({ _id: { $in: trainerIds } }).lean();
+      const trainers = await TrainerProfile.find({
+        _id: { $in: trainerIds },
+      }).lean();
       const trainerMap = new Map(trainers.map((row) => [String(row._id), row]));
       return {
-        items: await Promise.all(items.map(async (item) => {
-          const trainerProfile = trainerMap.get(String(item.trainerId));
-          if (!trainerProfile) return item;
-          const [account, credentials, packages, availability] = await Promise.all([
-            User.findById(trainerProfile.userId).select("name normalizedEmail phone status").lean(),
-            TrainerCredential.find({ trainerId: trainerProfile._id }).sort({ type: 1, createdAt: -1 }).lean(),
-            TrainerPackage.find({ trainerId: trainerProfile._id }).sort({ sortOrder: 1 }).lean(),
-            TrainerAvailability.find({ trainerId: trainerProfile._id }).sort({ dayOfWeek: 1, startTime: 1 }).lean(),
-          ]);
-          return { ...item, account, trainer: trainerProfile, credentials, packages, availability };
-        })),
+        items: await Promise.all(
+          items.map(async (item) => {
+            const trainerProfile = trainerMap.get(String(item.trainerId));
+            if (!trainerProfile) return item;
+            const [account, credentials, packages, availability] =
+              await Promise.all([
+                User.findById(trainerProfile.userId)
+                  .select("name normalizedEmail phone status")
+                  .lean(),
+                TrainerCredential.find({ trainerId: trainerProfile._id })
+                  .sort({ type: 1, createdAt: -1 })
+                  .lean(),
+                TrainerPackage.find({ trainerId: trainerProfile._id })
+                  .sort({ sortOrder: 1 })
+                  .lean(),
+                TrainerAvailability.find({ trainerId: trainerProfile._id })
+                  .sort({ dayOfWeek: 1, startTime: 1 })
+                  .lean(),
+              ]);
+            return {
+              ...item,
+              account,
+              trainer: trainerProfile,
+              credentials,
+              packages,
+              availability,
+            };
+          }),
+        ),
         total,
         page: q.page,
       };
@@ -502,8 +552,7 @@ export async function dashboardData(
       eligible = availableOrders.map((order) => ({
         orderId: String(order._id),
         bookingNumber: order.bookingNumber,
-        trainerName:
-          trainerMap.get(String(order.trainerId)) || "Your trainer",
+        trainerName: trainerMap.get(String(order.trainerId)) || "Your trainer",
         packageName: order.packageSnapshot?.name || "Online coaching",
         completedAt: order.updatedAt,
       }));
@@ -552,12 +601,23 @@ export async function dashboardData(
       };
     if (section === "verification" || section === "application")
       return {
-        application: await TrainerApplication.findOne({ trainerId: trainer._id }).lean(),
-        credentials: await TrainerCredential.find({ trainerId: trainer._id }).limit(40).lean(),
+        application: await TrainerApplication.findOne({
+          trainerId: trainer._id,
+        }).lean(),
+        credentials: await TrainerCredential.find({ trainerId: trainer._id })
+          .limit(40)
+          .lean(),
         trainer: trainer.toObject(),
-        account: await User.findById(actor.id).select("name normalizedEmail phone avatar").lean(),
-        packages: await TrainerPackage.find({ trainerId: trainer._id }).sort({ sortOrder: 1 }).limit(30).lean(),
-        rules: await TrainerAvailability.find({ trainerId: trainer._id }).sort({ dayOfWeek: 1, startTime: 1 }).lean(),
+        account: await User.findById(actor.id)
+          .select("name normalizedEmail phone avatar")
+          .lean(),
+        packages: await TrainerPackage.find({ trainerId: trainer._id })
+          .sort({ sortOrder: 1 })
+          .limit(30)
+          .lean(),
+        rules: await TrainerAvailability.find({ trainerId: trainer._id })
+          .sort({ dayOfWeek: 1, startTime: 1 })
+          .lean(),
         catalog: await catalogOptions(),
       };
     if (section === "clients") {
@@ -637,14 +697,43 @@ export async function adminAction(
   if (resource === "refunds" && id) return reviewManualRefund(actor, id, data);
   if (resource === "password-resets" && id) {
     const account = await User.findById(id).select("role status").lean();
-    assert(account && account.role !== "ADMIN" && account.status === "ACTIVE", "Account cannot be reset here", 403);
+    assert(
+      account && account.role !== "ADMIN" && account.status === "ACTIVE",
+      "Account cannot be reset here",
+      403,
+    );
     const token = randomToken();
     await mongoose.connection.transaction(async (session) => {
       await AuthToken.deleteMany({ userId: id, kind: "RESET" }, { session });
-      await AuthToken.create([{ userId: id, kind: "RESET", tokenHash: hashToken(token), expiresAt: new Date(Date.now() + 30 * 60 * 1000) }], { session });
-      await AuditLog.create([{ actorId: actor.id, actorRole: actor.role, action: "ISSUE_PASSWORD_RESET", entityType: "User", entityId: id }], { session });
+      await AuthToken.create(
+        [
+          {
+            userId: id,
+            kind: "RESET",
+            tokenHash: hashToken(token),
+            expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+          },
+        ],
+        { session },
+      );
+      await AuditLog.create(
+        [
+          {
+            actorId: actor.id,
+            actorRole: actor.role,
+            action: "ISSUE_PASSWORD_RESET",
+            entityType: "User",
+            entityId: id,
+          },
+        ],
+        { session },
+      );
     });
-    return { message: "One-time password reset link created. It expires in 30 minutes.", resetUrl: `${appUrl()}/reset-password?token=${token}` };
+    return {
+      message:
+        "One-time password reset link created. It expires in 30 minutes.",
+      resetUrl: `${appUrl()}/reset-password?token=${token}`,
+    };
   }
   return mongoose.connection.transaction(async (session) => {
     let before: unknown;
@@ -705,12 +794,18 @@ export async function adminAction(
           $or: [{ expiryDate: null }, { expiryDate: { $gt: new Date() } }],
         }).session(session),
       ]);
-      trainer.identityVerificationStatus = identityApproved ? "APPROVED" : "PENDING";
-      trainer.credentialVerificationStatus = certificationApproved ? "APPROVED" : "PENDING";
+      trainer.identityVerificationStatus = identityApproved
+        ? "APPROVED"
+        : "PENDING";
+      trainer.credentialVerificationStatus = certificationApproved
+        ? "APPROVED"
+        : "PENDING";
 
       const rejectionRequiresAction =
         input.status === "REJECTED" &&
-        (!wasApprovedTrainer || credential.type === "IDENTITY" || !certificationApproved);
+        (!wasApprovedTrainer ||
+          credential.type === "IDENTITY" ||
+          !certificationApproved);
       if (rejectionRequiresAction) {
         trainer.profileVisibility = "PRIVATE";
         trainer.applicationStatus = "ACTION_REQUIRED";
@@ -722,12 +817,14 @@ export async function adminAction(
       }
       await trainer.save({ session });
       await Notification.create(
-        [{
-          userId: trainer.userId,
-          title: `${credential.type === "IDENTITY" ? "Identity" : "Certification"} verification ${input.status.toLowerCase()}`,
-          body: input.notes,
-          href: "/trainer/verification",
-        }],
+        [
+          {
+            userId: trainer.userId,
+            title: `${credential.type === "IDENTITY" ? "Identity" : "Certification"} verification ${input.status.toLowerCase()}`,
+            body: input.notes,
+            href: "/trainer/verification",
+          },
+        ],
         { session },
       );
       after = input;
@@ -747,14 +844,20 @@ export async function adminAction(
         profileVisibility: trainer.profileVisibility,
         availabilityReviewStatus: trainer.availabilityReviewStatus,
       };
-      if (input.profileVisibility === "PUBLIC")
+      if (input.profileVisibility === "PUBLIC") {
+        const blockers = [
+          trainer.applicationStatus !== "APPROVED" && "application approval",
+          trainer.identityVerificationStatus !== "APPROVED" &&
+            "identity verification",
+          trainer.credentialVerificationStatus !== "APPROVED" &&
+            "credential verification",
+        ].filter(Boolean);
         assert(
-          trainer.applicationStatus === "APPROVED" &&
-            trainer.identityVerificationStatus === "APPROVED" &&
-            trainer.credentialVerificationStatus === "APPROVED",
-          "Approve the trainer application and verification evidence before publishing",
+          blockers.length === 0,
+          `This trainer cannot be published yet. Complete ${blockers.join(", ")} first.`,
           409,
         );
+      }
       trainer.set(input);
       trainer.availabilityReviewedBy = new mongoose.Types.ObjectId(actor.id);
       trainer.availabilityReviewedAt = new Date();

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/lib/client-api";
@@ -7,11 +7,14 @@ export function AuthForm({
   signup = false,
   initialRole = "customer",
   mode,
+  admin = false,
 }: {
   signup?: boolean;
   initialRole?: string;
   mode?: "forgot-password" | "reset-password";
+  admin?: boolean;
 }) {
+  const submitting = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -43,13 +46,21 @@ export function AuthForm({
         </div>
       </div>
       <div className="auth-form">
-        <p className="eyebrow">{signup && initialRole === "trainer" ? "TRAINER APPLICATION · STEP 1" : "YOUR NEXT CHAPTER"}</p>
+        <p className="eyebrow">
+          {admin
+            ? "SPOTTER ADMINISTRATION"
+            : signup && initialRole === "trainer"
+              ? "TRAINER APPLICATION · STEP 1"
+              : "YOUR NEXT CHAPTER"}
+        </p>
         <h1>
           {mode === "forgot-password"
             ? "Find your way back."
             : mode === "reset-password"
               ? "A fresh start."
-              : signup
+              : admin
+                ? "Administrator sign in."
+                : signup
                   ? initialRole === "trainer"
                     ? "Create your trainer account."
                     : "Start training differently."
@@ -58,16 +69,19 @@ export function AuthForm({
         <p>
           {mode === "forgot-password"
             ? "No email verification is required on Spotter. Submit your sign-in email and support can issue a secure one-time reset link after account verification."
-            : signup
-              ? initialRole === "trainer"
-                ? "Next you’ll complete your professional profile, CNIC verification, certification, services, pricing and availability before submitting for admin review."
-                : "Make a little space for your goals."
-              : "Your people, your sessions, your progress."}
+            : admin
+              ? "Authorized team members only. Administrative actions are access-controlled and audited."
+              : signup
+                ? initialRole === "trainer"
+                  ? "Next you’ll complete your professional profile, CNIC verification, certification, services, pricing and availability before submitting for admin review."
+                  : "Make a little space for your goals."
+                : "Your people, your sessions, your progress."}
         </p>
         <form
           onSubmit={async (e) => {
             e.preventDefault();
-            if (busy) return;
+            if (submitting.current || busy) return;
+            submitting.current = true;
             setBusy(true);
             setError("");
             const f = new FormData(e.currentTarget);
@@ -76,29 +90,27 @@ export function AuthForm({
               const body =
                 mode === "reset-password"
                   ? {
-                        token: params.get("token"),
-                        password: f.get("password"),
-                        confirmPassword: f.get("confirmPassword"),
+                      token: params.get("token"),
+                      password: f.get("password"),
+                      confirmPassword: f.get("confirmPassword"),
                     }
                   : mode === "forgot-password"
                     ? { email: f.get("email") }
-                      : signup
-                        ? {
-                            firstName: f.get("firstName"),
-                            lastName: f.get("lastName"),
-                            email: f.get("email"),
-                            password: f.get("password"),
-                            confirmPassword: f.get("confirmPassword"),
-                            role:
-                              initialRole === "trainer"
-                                ? "TRAINER"
-                                : "CUSTOMER",
-                            terms: f.get("terms") === "on",
-                          }
-                        : {
-                            email: f.get("email"),
-                            password: f.get("password"),
-                          };
+                    : signup
+                      ? {
+                          firstName: f.get("firstName"),
+                          lastName: f.get("lastName"),
+                          email: f.get("email"),
+                          password: f.get("password"),
+                          confirmPassword: f.get("confirmPassword"),
+                          role:
+                            initialRole === "trainer" ? "TRAINER" : "CUSTOMER",
+                          terms: f.get("terms") === "on",
+                        }
+                      : {
+                          email: f.get("email"),
+                          password: f.get("password"),
+                        };
               const result = await api<{ redirect?: string; message?: string }>(
                 `auth/${mode || (signup ? "signup" : "login")}`,
                 body,
@@ -124,6 +136,7 @@ export function AuthForm({
             } catch (e) {
               setError((e as Error).message);
             } finally {
+              submitting.current = false;
               setBusy(false);
             }
           }}
@@ -221,33 +234,43 @@ export function AuthForm({
                 : mode === "reset-password"
                   ? "Update password"
                   : signup
-                      ? initialRole === "trainer" ? "Create trainer account and continue" : "Create account"
+                    ? initialRole === "trainer"
+                      ? "Create trainer account and continue"
+                      : "Create account"
+                    : admin
+                      ? "Sign in to administration"
                       : "Log in"
             }
           >
             {busy
               ? "Please wait…"
               : mode === "forgot-password"
-                  ? "Request password reset"
-                  : mode === "reset-password"
-                    ? "Update password"
-                    : signup
-                      ? initialRole === "trainer" ? "Create trainer account and continue" : "Create account"
+                ? "Request password reset"
+                : mode === "reset-password"
+                  ? "Update password"
+                  : signup
+                    ? initialRole === "trainer"
+                      ? "Create trainer account and continue"
+                      : "Create account"
+                    : admin
+                      ? "Sign in to administration"
                       : "Log in"}{" "}
             →
           </button>
         </form>
-        {!signup && !mode && (
+        {!signup && !mode && !admin && (
           <Link className="text-link mt-5" href="/forgot-password">
             Forgot password?
           </Link>
         )}
-        <p className="auth-switch">
-          <Link href={signup || mode ? "/login" : "/signup"}>
-            {signup || mode ? "Back to log in" : "Create a customer account"}
-          </Link>
-        </p>
-        {!mode && (
+        {!admin && (
+          <p className="auth-switch">
+            <Link href={signup || mode ? "/login" : "/signup"}>
+              {signup || mode ? "Back to log in" : "Create a customer account"}
+            </Link>
+          </p>
+        )}
+        {!mode && !admin && (
           <Link className="text-link" href="/signup?role=trainer">
             Join as a trainer →
           </Link>

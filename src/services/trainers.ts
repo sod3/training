@@ -12,7 +12,7 @@ import {
   User,
 } from "@/models";
 import { connectDB } from "@/lib/server/db";
-import { getAvailableSlots } from "@/services/bookings";
+import { getAvailableWeek } from "@/services/bookings";
 import type { Trainer } from "@/types/trainer";
 
 const querySchema = z.object({
@@ -23,10 +23,15 @@ const querySchema = z.object({
   goal: z.string().max(120).optional(),
   price: z.coerce.number().min(0).max(1000000).optional(),
   maxPrice: z.coerce.number().min(0).max(1000000).optional(),
-  sort: z.enum(["recommended", "rating", "low", "high", "experience"]).default("recommended"),
+  sort: z
+    .enum(["recommended", "rating", "low", "high", "experience"])
+    .default("recommended"),
   page: z.coerce.number().int().min(1).max(1000).default(1),
   limit: z.coerce.number().int().min(1).max(24).default(12),
-  ids: z.string().regex(/^[a-f\d]{24}(,[a-f\d]{24}){0,5}$/i).optional(),
+  ids: z
+    .string()
+    .regex(/^[a-f\d]{24}(,[a-f\d]{24}){0,5}$/i)
+    .optional(),
 });
 
 const regex = (s: string) =>
@@ -59,7 +64,13 @@ export async function presentTrainer(t: ProfileData): Promise<Trainer> {
       Session.countDocuments({ trainerId: t._id, status: "COMPLETED" }),
       Review.aggregate<{ average: number; count: number }>([
         { $match: { trainerId: t._id, status: "VISIBLE" } },
-        { $group: { _id: null, average: { $avg: "$rating" }, count: { $sum: 1 } } },
+        {
+          $group: {
+            _id: null,
+            average: { $avg: "$rating" },
+            count: { $sum: 1 },
+          },
+        },
       ]),
       User.findById(t.userId).select("avatar").lean(),
     ]);
@@ -70,21 +81,18 @@ export async function presentTrainer(t: ProfileData): Promise<Trainer> {
   let nextAvailableAt: string | undefined;
   let nextAvailableDate: string | undefined;
   if (packages.length) {
-    for (let offset = 0; offset < 7; offset++) {
-      const date = DateTime.now().setZone(zone).plus({ days: offset }).toISODate()!;
-      const slots = await getAvailableSlots(
-        String(t._id),
-        date,
-        packages[0].sessionDuration,
-      );
-      if (slots[0]) {
-        nextAvailableAt = slots[0].start;
-        nextAvailable = DateTime.fromISO(slots[0].start)
-          .setZone(zone)
-          .toFormat("ccc, d LLL · h:mm a");
-        nextAvailableDate = date;
-        break;
-      }
+    const week = await getAvailableWeek(
+      String(t._id),
+      availabilityWeekStart,
+      packages[0].sessionDuration,
+    );
+    const availableDay = week.find((day) => day.slots.length > 0);
+    if (availableDay) {
+      nextAvailableAt = availableDay.slots[0].start;
+      nextAvailable = DateTime.fromISO(availableDay.slots[0].start)
+        .setZone(zone)
+        .toFormat("ccc, d LLL · h:mm a");
+      nextAvailableDate = availableDay.date;
     }
   }
 
@@ -137,7 +145,9 @@ export async function presentTrainer(t: ProfileData): Promise<Trainer> {
   };
 }
 
-async function trainerFacets(filters: { category?: string; specialty?: string } = {}) {
+async function trainerFacets(
+  filters: { category?: string; specialty?: string } = {},
+) {
   const profiles = await TrainerProfile.find({
     applicationStatus: "APPROVED",
     profileVisibility: "PUBLIC",
@@ -147,18 +157,24 @@ async function trainerFacets(filters: { category?: string; specialty?: string } 
     .lean();
   const userIds = profiles.map((p) => p.userId);
   const active = new Set(
-    (await User.find({ _id: { $in: userIds }, status: "ACTIVE" }).select("_id").lean()).map(
-      (u) => String(u._id),
-    ),
+    (
+      await User.find({ _id: { $in: userIds }, status: "ACTIVE" })
+        .select("_id")
+        .lean()
+    ).map((u) => String(u._id)),
   );
   const activeProfiles = profiles.filter((p) => active.has(String(p.userId)));
   const bookableTrainerIds = new Set(
-    (await TrainerPackage.distinct("trainerId", {
-      trainerId: { $in: activeProfiles.map((profile) => profile._id) },
-      active: true,
-    })).map(String),
+    (
+      await TrainerPackage.distinct("trainerId", {
+        trainerId: { $in: activeProfiles.map((profile) => profile._id) },
+        active: true,
+      })
+    ).map(String),
   );
-  const visible = activeProfiles.filter((profile) => bookableTrainerIds.has(String(profile._id)));
+  const visible = activeProfiles.filter((profile) =>
+    bookableTrainerIds.has(String(profile._id)),
+  );
   const count = (values: string[]) =>
     Object.entries(
       values.reduce<Record<string, number>>((acc, value) => {
@@ -169,13 +185,17 @@ async function trainerFacets(filters: { category?: string; specialty?: string } 
       .map(([name, total]) => ({ name, count: total }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   const categoryPool = filters.specialty
-    ? visible.filter((profile) => profile.specialties?.includes(filters.specialty!))
+    ? visible.filter((profile) =>
+        profile.specialties?.includes(filters.specialty!),
+      )
     : visible;
   const specialtyPool = filters.category
     ? visible.filter((profile) => profile.category === filters.category)
     : visible;
   return {
-    categories: count(categoryPool.map((p) => p.category || "").filter(Boolean)),
+    categories: count(
+      categoryPool.map((p) => p.category || "").filter(Boolean),
+    ),
     specialties: count(specialtyPool.flatMap((p) => p.specialties || [])),
   };
 }
@@ -203,9 +223,11 @@ export async function listTrainers(raw: Record<string, unknown> = {}) {
     const search = regex((q.q || q.search)!);
     match.$and = [
       {
-        $or: ["displayName", "headline", "category", "specialties"].map((field) => ({
-          [field]: search,
-        })),
+        $or: ["displayName", "headline", "category", "specialties"].map(
+          (field) => ({
+            [field]: search,
+          }),
+        ),
       },
     ];
   }
@@ -230,7 +252,9 @@ export async function listTrainers(raw: Record<string, unknown> = {}) {
         as: "prices",
         pipeline: [
           { $match: { active: true } },
-          { $project: { perSession: { $divide: ["$price", "$sessionCount"] } } },
+          {
+            $project: { perSession: { $divide: ["$price", "$sessionCount"] } },
+          },
         ],
       },
     },
@@ -249,7 +273,9 @@ export async function listTrainers(raw: Record<string, unknown> = {}) {
     {
       $addFields: {
         basePrice: { $min: "$prices.perSession" },
-        averageRating: { $ifNull: [{ $arrayElemAt: ["$ratingData.average", 0] }, 0] },
+        averageRating: {
+          $ifNull: [{ $arrayElemAt: ["$ratingData.average", 0] }, 0],
+        },
       },
     },
     {
@@ -270,12 +296,20 @@ export async function listTrainers(raw: Record<string, unknown> = {}) {
               ? { yearsExperience: -1, _id: 1 }
               : q.sort === "rating"
                 ? { averageRating: -1, _id: 1 }
-                : { featured: -1, averageRating: -1, yearsExperience: -1, _id: 1 },
+                : {
+                    featured: -1,
+                    averageRating: -1,
+                    yearsExperience: -1,
+                    _id: 1,
+                  },
     },
   ];
 
   const [result, facets] = await Promise.all([
-    TrainerProfile.aggregate<{ items: ProfileData[]; count: { value: number }[] }>([
+    TrainerProfile.aggregate<{
+      items: ProfileData[];
+      count: { value: number }[];
+    }>([
       ...pipeline,
       {
         $facet: {
@@ -304,21 +338,37 @@ export async function matchTrainers(raw: Record<string, unknown>) {
   const input = z
     .object({
       goal: z.string().max(120).default(""),
-      experience: z.enum(["Beginner", "Intermediate", "Advanced"]).default("Beginner"),
-      time: z.enum(["Morning", "Afternoon", "Evening", "Flexible"]).default("Flexible"),
+      experience: z
+        .enum(["Beginner", "Intermediate", "Advanced"])
+        .default("Beginner"),
+      time: z
+        .enum(["Morning", "Afternoon", "Evening", "Flexible"])
+        .default("Flexible"),
       budget: z.coerce.number().min(0).max(1000000).default(0),
       timezone: z.string().trim().max(100).default("UTC"),
     })
     .parse(raw);
-  const customerZone = DateTime.now().setZone(input.timezone).isValid ? input.timezone : "UTC";
+  const customerZone = DateTime.now().setZone(input.timezone).isValid
+    ? input.timezone
+    : "UTC";
   const pool = (await listTrainers({ limit: 24 })).trainers;
   const scored = await Promise.all(
     pool.map(async (trainer) => {
       let score = 0;
       const reasons: string[] = [];
-      const terms = [trainer.category, ...trainer.specialties].filter(Boolean).join(" ").toLowerCase();
-      const goalWords = input.goal.toLowerCase().split(/\s+|&/).filter((w) => w.length > 3);
-      if (!input.goal || trainer.category === input.goal || goalWords.some((w) => terms.includes(w))) {
+      const terms = [trainer.category, ...trainer.specialties]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      const goalWords = input.goal
+        .toLowerCase()
+        .split(/\s+|&/)
+        .filter((w) => w.length > 3);
+      if (
+        !input.goal ||
+        trainer.category === input.goal ||
+        goalWords.some((w) => terms.includes(w))
+      ) {
         score += 45;
         if (input.goal) reasons.push(`Matches ${input.goal}`);
       }
@@ -327,50 +377,70 @@ export async function matchTrainers(raw: Record<string, unknown>) {
         score += 25;
         if (input.budget) reasons.push("Fits your budget");
       }
-      const experienceTarget = input.experience === "Advanced" ? 5 : input.experience === "Intermediate" ? 2 : 0;
+      const experienceTarget =
+        input.experience === "Advanced"
+          ? 5
+          : input.experience === "Intermediate"
+            ? 2
+            : 0;
       if (trainer.experienceYears >= experienceTarget) {
         score += 15;
         reasons.push(`${trainer.experienceYears}+ years experience`);
       }
       if (input.time === "Flexible") score += 15;
       else if (trainer.packages[0]) {
-        const profile = await TrainerProfile.findById(trainer.id).select("timezone").lean();
-        const zone = profile?.timezone || "UTC";
-        let available = false;
-        for (let offset = 0; offset < 7 && !available; offset++) {
-          const date = DateTime.now().setZone(zone).plus({ days: offset }).toISODate()!;
-          const slots = await getAvailableSlots(trainer.id, date, trainer.packages[0].duration);
-          available = slots.some((slot) => {
-            const hour = DateTime.fromISO(slot.start).setZone(customerZone).hour;
+        const zone = trainer.timezone || "UTC";
+        const date = DateTime.now().setZone(zone).toISODate()!;
+        const week = await getAvailableWeek(
+          trainer.id,
+          date,
+          trainer.packages[0].duration,
+        );
+        const available = week.some((day) =>
+          day.slots.some((slot) => {
+            const hour = DateTime.fromISO(slot.start).setZone(
+              customerZone,
+            ).hour;
             return input.time === "Morning"
               ? hour < 12
               : input.time === "Afternoon"
                 ? hour >= 12 && hour < 17
                 : hour >= 17;
-          });
-        }
+          }),
+        );
         if (available) {
           score += 15;
           reasons.push(`Available ${input.time.toLowerCase()}`);
         }
       }
-      return { ...trainer, matchScore: score, matchReasons: reasons.slice(0, 3) };
+      return {
+        ...trainer,
+        matchScore: score,
+        matchReasons: reasons.slice(0, 3),
+      };
     }),
   );
   scored.sort((a, b) => b.matchScore - a.matchScore || b.rating - a.rating);
   return { best: scored.slice(0, 3), recommended: scored.slice(3, 7) };
 }
 
-export const getTrainerBySlug = cache(async (slug: string): Promise<Trainer | null> => {
-  await connectDB();
-  const trainer = await TrainerProfile.findOne({
-    slug,
-    applicationStatus: "APPROVED",
-    profileVisibility: "PUBLIC",
-  }).lean();
-  if (!trainer || !(await User.exists({ _id: trainer.userId, status: "ACTIVE" }))) return null;
-  return presentTrainer(trainer);
-});
+export const getTrainerBySlug = cache(
+  async (slug: string): Promise<Trainer | null> => {
+    await connectDB();
+    const trainer = await TrainerProfile.findOne({
+      slug,
+      applicationStatus: "APPROVED",
+      profileVisibility: "PUBLIC",
+    }).lean();
+    if (
+      !trainer ||
+      !(await User.exists({ _id: trainer.userId, status: "ACTIVE" }))
+    )
+      return null;
+    return presentTrainer(trainer);
+  },
+);
 
-export const getFeaturedTrainers = async () => (await listTrainers({ limit: 3 })).trainers;
+export const getFeaturedTrainers = async () =>
+  (await listTrainers({ limit: 3 })).trainers;
 export const getTrainers = async () => (await listTrainers()).trainers;

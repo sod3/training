@@ -56,7 +56,15 @@ export function errorResponse(
     status = 404;
     message = "Record not found. Reload and try again.";
   }
-  logRequestError(error, { ...context, requestId }, status);
+  // Expected validation, authorization, not-found and state-conflict responses
+  // are not server incidents. Keep unexpected driver/schema failures logged even
+  // when they map to a safe 4xx response so production diagnostics stay useful.
+  const expectedFailure =
+    (status < 500 &&
+      (error instanceof AppError || error instanceof ZodError)) ||
+    (status === 503 && error instanceof AppError);
+  if (!expectedFailure)
+    logRequestError(error, { ...context, requestId }, status);
   return Response.json(
     { error: message, requestId },
     {

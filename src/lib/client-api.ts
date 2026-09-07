@@ -1,5 +1,53 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public requestId?: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+export async function apiResult<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get("content-type") || "";
+  let result: { error?: string } & Record<string, unknown> = {};
+  if (contentType.includes("application/json")) {
+    try {
+      result = (await response.json()) as typeof result;
+    } catch {
+      // A truncated upstream response should still become a useful API error.
+    }
+  }
+  if (!response.ok) {
+    const fallback =
+      response.status === 401
+        ? "Your session has expired. Sign in and try again."
+        : response.status === 403
+          ? "You do not have permission to do that."
+          : response.status === 404
+            ? "The requested record was not found."
+            : response.status === 409
+              ? "This record changed or conflicts with another action. Refresh and try again."
+              : response.status === 413
+                ? "The submitted file or request is too large."
+                : response.status === 429
+                  ? "Too many attempts. Wait a moment and try again."
+                  : response.status === 503
+                    ? "This service is temporarily unavailable. Please try again shortly."
+                    : "Something went wrong. Please try again.";
+    throw new ApiError(
+      typeof result.error === "string" && result.error
+        ? result.error
+        : fallback,
+      response.status,
+      response.headers.get("x-request-id") || undefined,
+    );
+  }
+  return result as T;
+}
 export async function api<T = Record<string, unknown>>(
   path: string,
   data?: unknown,
@@ -13,10 +61,7 @@ export async function api<T = Record<string, unknown>>(
     body: data === undefined ? undefined : JSON.stringify(data),
     cache: "no-store",
   });
-  const result = await response.json();
-  if (!response.ok)
-    throw new Error(result.error || "Something went wrong. Please try again.");
-  return result as T;
+  return apiResult<T>(response);
 }
 export function useApi<T>(path: string | null) {
   const [state, setState] = useState<{

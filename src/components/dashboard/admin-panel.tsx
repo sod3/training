@@ -118,6 +118,12 @@ export function AdminPanel({
       )}
       {items.map((item) => {
         const id = str(item, "_id");
+        const publicationBlockers = [
+          str(item, "applicationStatus") !== "APPROVED" && "application approval",
+          str(item, "identityVerificationStatus") !== "APPROVED" && "identity verification",
+          str(item, "credentialVerificationStatus") !== "APPROVED" && "credential verification",
+        ].filter(Boolean) as string[];
+        const canPublish = publicationBlockers.length === 0;
         let fields: Field[] = [];
         let endpoint = `admin/${section}/${id}`;
         let label = "Save changes";
@@ -180,8 +186,11 @@ export function AdminPanel({
               name: "profileVisibility",
               label: "Visibility",
               type: "select",
-              options: ["PRIVATE", "PUBLIC"],
-              value: str(item, "profileVisibility"),
+              options: canPublish ? ["PRIVATE", "PUBLIC"] : ["PRIVATE"],
+              value: canPublish ? str(item, "profileVisibility") : "PRIVATE",
+              hint: canPublish
+                ? "This trainer has completed every publication prerequisite."
+                : `Public visibility unlocks after: ${publicationBlockers.join(", ")}.`,
             },
             {
               name: "availabilityReviewStatus",
@@ -394,7 +403,9 @@ export function AdminPanel({
               <div className={section === "trainers" ? "mt-5" : "mt-5"}>
                 {section === "trainers" && (
                   <p className="muted">
-                    Visibility can be PUBLIC only after the application, identity and certification checks are approved.
+                    {canPublish
+                      ? "Application, identity, and certification checks are approved."
+                      : `This profile must remain private until ${publicationBlockers.join(", ")} ${publicationBlockers.length === 1 ? "is" : "are"} complete.`}
                   </p>
                 )}
                 <ActionForm

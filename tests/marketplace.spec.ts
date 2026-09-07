@@ -6,6 +6,9 @@ test("public pages preserve layout, show honest empty states, and protect worksp
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
   for (const route of [
     "/",
     "/trainers",
@@ -43,6 +46,11 @@ test("public pages preserve layout, show honest empty states, and protect worksp
   }
   expect((await request.get("/api/admin/users")).status()).toBe(401);
   expect((await request.get("/trainers/nonexistent")).status()).toBe(404);
+  expect((await request.get("/api/auth/login")).status()).toBe(405);
+  expect(
+    (await request.delete("/api/contact", { headers: origin })).status(),
+  ).toBe(405);
+  expect((await request.get("/api/catalog/unexpected")).status()).toBe(404);
   expect(errors).toEqual([]);
 });
 test("registration, cookie login, role enforcement, logout and server persistence", async ({
@@ -117,7 +125,7 @@ test("registration, cookie login, role enforcement, logout and server persistenc
   await request.post("/api/auth/logout", { headers: origin, data: {} });
   expect((await request.get("/api/dashboard/bookings")).status()).toBe(401);
 });
-test("trainer signup creates a private draft and privileged signup is rejected", async ({
+test("trainer signup creates a private draft and invalid admin publishing is prevented", async ({
   request,
 }) => {
   const email = `trainer-${Date.now()}@spotter.test`;
@@ -137,6 +145,7 @@ test("trainer signup creates a private draft and privileged signup is rejected",
   expect(response.status()).toBe(200);
   const profile = await request.get("/api/trainer/verification");
   const data = await profile.json();
+  const trainerId = data.trainer._id as string;
   expect(data.application.status).toBe("DRAFT");
   expect(data.trainer.profileVisibility).toBe("PRIVATE");
   expect(
@@ -149,6 +158,41 @@ test("trainer signup creates a private draft and privileged signup is rejected",
   ).toBe(400);
   const publicTrainers = await request.get("/api/trainers");
   expect((await publicTrainers.json()).total).toBe(0);
+  expect(
+    (
+      await request.post("/api/auth/login", {
+        headers: origin,
+        data: {
+          email: "admin@spotter.test",
+          password: "integration-admin-password",
+        },
+      })
+    ).status(),
+  ).toBe(200);
+  const invalidPublish = await request.post(
+    `/api/admin/trainers/${trainerId}`,
+    {
+      headers: origin,
+      data: {
+        featured: false,
+        profileVisibility: "PUBLIC",
+        availabilityReviewStatus: "APPROVED",
+        availabilityReviewNotes: "",
+      },
+    },
+  );
+  expect(invalidPublish.status()).toBe(409);
+  expect((await invalidPublish.json()).error).toContain("application approval");
+  const safeEdit = await request.post(`/api/admin/trainers/${trainerId}`, {
+    headers: origin,
+    data: {
+      featured: false,
+      profileVisibility: "PRIVATE",
+      availabilityReviewStatus: "APPROVED",
+      availabilityReviewNotes: "Draft remains private",
+    },
+  });
+  expect(safeEdit.status()).toBe(200);
 });
 test("trainer availability persists after adding, editing and removing windows in the production build", async ({
   page,

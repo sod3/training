@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { api } from "@/lib/client-api";
+import { useRef, useState } from "react";
+import { api, apiResult } from "@/lib/client-api";
 export type Field = {
   name: string;
   label: string;
@@ -44,6 +44,7 @@ export function ActionForm({
   disabled?: boolean;
 }) {
   const [pending, setPending] = useState(false);
+  const submitting = useRef(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   return (
@@ -51,7 +52,13 @@ export function ActionForm({
       className="workspace-form"
       onSubmit={async (e) => {
         e.preventDefault();
-        if (pending || disabled || (confirmation && !window.confirm(confirmation))) return;
+        if (
+          submitting.current ||
+          pending ||
+          disabled ||
+          (confirmation && !window.confirm(confirmation))
+        )
+          return;
         const form = e.currentTarget;
         const values = new FormData(form);
         const input: Record<string, unknown> = {};
@@ -65,6 +72,7 @@ export function ActionForm({
                   ? Number(values.get(field.name))
                   : String(values.get(field.name) || "");
         });
+        submitting.current = true;
         setPending(true);
         setError("");
         setSuccess("");
@@ -79,6 +87,7 @@ export function ActionForm({
         } catch (e) {
           setError((e as Error).message);
         } finally {
+          submitting.current = false;
           setPending(false);
         }
       }}
@@ -114,9 +123,21 @@ export function ActionForm({
               defaultChecked={!!field.value}
             />
           ) : field.type === "checkbox-group" ? (
-            <div className="checkbox-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <div
+              className="checkbox-group"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.5rem",
+                marginTop: "0.5rem",
+              }}
+            >
               {field.options?.map((opt) => (
-                <label key={opt} className="check-label" style={{ fontWeight: 'normal' }}>
+                <label
+                  key={opt}
+                  className="check-label"
+                  style={{ fontWeight: "normal" }}
+                >
                   <input
                     type="checkbox"
                     name={field.name}
@@ -168,14 +189,17 @@ export function UploadForm({
   onUploaded?: (id: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const uploading = useRef(false);
   const [message, setMessage] = useState("");
   return (
     <form
       className="workspace-form"
       onSubmit={async (e) => {
         e.preventDefault();
+        if (uploading.current || busy) return;
         const data = new FormData(e.currentTarget);
         data.set("purpose", purpose);
+        uploading.current = true;
         setBusy(true);
         setMessage("");
         try {
@@ -183,14 +207,14 @@ export function UploadForm({
             method: "POST",
             body: data,
           });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error);
+          const result = await apiResult<{ id: string }>(response);
           if (field) await api("media", { uploadId: result.id, field });
           onUploaded?.(result.id);
           setMessage("File uploaded.");
         } catch (e) {
           setMessage((e as Error).message);
         } finally {
+          uploading.current = false;
           setBusy(false);
         }
       }}

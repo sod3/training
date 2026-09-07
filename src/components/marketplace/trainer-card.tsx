@@ -8,6 +8,9 @@ import type { Trainer } from "@/types/trainer";
 import { useStore } from "./store";
 import { localAvailabilityLabel, money } from "@/lib/marketplace";
 import { VerifiedBadge } from "./verified-badge";
+import { useSyncExternalStore } from "react";
+
+const subscribeToLocale = () => () => {};
 
 export function TrainerCard({
   trainer: t,
@@ -21,6 +24,13 @@ export function TrainerCard({
   const compared = state.compare.includes(t.id);
   const specialty =
     t.specialties.slice(0, 2).join(" · ") || t.category || t.headline;
+  // The server runs in UTC on Vercel while the browser may not. Hydrate with
+  // the server-provided trainer-time label, then localize after mount.
+  const availabilityLabel = useSyncExternalStore(
+    subscribeToLocale,
+    () => localAvailabilityLabel(t),
+    () => t.nextAvailable,
+  );
 
   return (
     <TiltCard className={`trainer-card ${variant}`}>
@@ -53,7 +63,7 @@ export function TrainerCard({
           <Heart size={18} fill={saved ? "currentColor" : "none"} />
         </button>
         <span className="photo-availability">
-          <i /> {localAvailabilityLabel(t)}
+          <i /> {availabilityLabel}
         </span>
       </div>
 
