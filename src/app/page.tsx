@@ -7,6 +7,7 @@ import { TrainerCard } from "@/components/marketplace/trainer-card";
 import { Reveal } from "@/components/motion/reveal";
 import { HomeMatchExperience } from "@/components/marketplace/home-match-experience";
 import { TrustSection } from "@/components/marketplace/trust-section";
+import { CoachingStory } from "@/components/marketplace/coaching-story";
 import { getFeaturedTrainers } from "@/lib/services/trainers";
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,7 @@ export default async function Home() {
         )}
       </section>
       <HomeMatchExperience trainers={trainers} />
+      <CoachingStory />
       <TrustSection />
       <section className="spotter-final">
         <div className="container">
@@ -96,9 +98,14 @@ export default async function Home() {
               <br />
               changes everything<span>.</span>
             </h2>
-            <Link href="/match" className="btn lime">
-              Get Matched <ArrowRight size={20} />
-            </Link>
+            <div className="spotter-final-actions">
+              <Link href="/match" className="btn lime">
+                Get Matched <ArrowRight size={20} />
+              </Link>
+              <Link href="/trainers" className="spotter-final-secondary">
+                Explore Trainers <ArrowRight size={16} />
+              </Link>
+            </div>
           </div>
           <p>One good match. A better way to train.</p>
         </div>

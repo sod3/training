@@ -36,7 +36,7 @@ export function TrustSection() {
           <div className="home-trust-heading">
             <div>
               <p className="eyebrow">
-                <span className="section-index">03 /</span> TRUST, WITHOUT THE
+                <span className="section-index">04 /</span> TRUST, WITHOUT THE
                 NOISE
               </p>
               <h2 id="home-trust-title">

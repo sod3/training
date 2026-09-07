@@ -6,6 +6,7 @@ import { ArrowUpRight, Search, SlidersHorizontal, X } from "lucide-react";
 import { useApi } from "@/lib/client-api";
 import type { Trainer } from "@/types/trainer";
 import { TrainerCard } from "./trainer-card";
+import { TrainerCardSkeleton } from "./trainer-card-skeleton";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 type Facet = { name: string; count: number };
@@ -110,8 +111,8 @@ export function TrainerSearch({ initial }: { initial: Record<string, string> }) 
       <div className="container search-page">
         <div className="page-heading">
           <p className="eyebrow">VERIFIED ONLINE COACHING</p>
-          <h1>Meet your trainer.</h1>
-          <p>Browse approved trainers and choose the coaching style that fits you.</p>
+          <h1>Find the coach who fits you.</h1>
+          <p>Search by goal, specialty and coaching style, then compare approved trainers without the noise.</p>
         </div>
 
         <div className="search-input">
@@ -202,7 +203,9 @@ export function TrainerSearch({ initial }: { initial: Record<string, string> }) 
                 <p>{error}</p>
               </div>
             ) : loading ? (
-              <div className="empty-state" role="status">Loading approved trainers…</div>
+              <div className="search-results" role="status" aria-label="Loading approved trainers">
+                {Array.from({ length: 6 }).map((_, index) => <TrainerCardSkeleton key={index} />)}
+              </div>
             ) : results.length === 0 ? (
               <div className="empty-state">
                 <Search size={36} />

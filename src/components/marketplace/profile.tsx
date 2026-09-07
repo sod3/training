@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BadgeCheck,
   Star,
@@ -23,6 +23,8 @@ import { TrainerCard } from "./trainer-card";
 export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; recommended?: Trainer[] }) {
   const { state, notify, toggleSaved } = useStore();
   const [time, setTime] = useState("");
+  const [showMobileBooking, setShowMobileBooking] = useState(false);
+  const heroRef = useRef<HTMLDivElement>(null);
   const saved = state.saved.includes(t.id);
   const {
     data: availability,
@@ -49,6 +51,16 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
   const selectedDate = availableDays.find((day) =>
     day.slots.some((slot) => slot.start === time),
   )?.date;
+  useEffect(() => {
+    const node = heroRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setShowMobileBooking(!entry.isIntersecting);
+    }, { threshold: 0.08 });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
   const book = `/booking?${new URLSearchParams({
     trainer: t.slug,
     date: selectedDate || t.nextAvailableDate || t.availabilityWeekStart,
@@ -59,7 +71,7 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
       <Link href="/trainers" className="text-link">
         ← All trainers
       </Link>
-      <div className="profile-heading">
+      <div className="profile-heading" ref={heroRef}>
         <div>
           <p className="eyebrow">A GOOD CONNECTION STARTS HERE</p>
           <h1>
@@ -95,10 +107,16 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
           </button>
         </div>
       </div>
+      <div className="mobile-profile-summary" aria-label="Trainer booking summary">
+        <span><small>From</small><strong>{money(t.basePrice)}</strong></span>
+        <span><small>Next</small><strong>{localAvailabilityLabel(t)}</strong></span>
+        {t.reviewCount > 0 && <span><small>Rating</small><strong>{t.rating.toFixed(1)} / 5</strong></span>}
+        {t.verifiedIdentity && <span><small>Status</small><strong>Identity reviewed</strong></span>}
+      </div>
       <div className="profile-gallery">
         <div>
           <Image
-            src={t.profileImage || "/Fallback-Trainer-Profile.png"}
+            src={t.profileImage || "/media/fallback-trainer-profile.avif"}
             alt={`${t.firstName} ${t.lastName}`}
             fill
             priority
@@ -107,7 +125,7 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
         </div>
         <div>
           <Image
-            src={t.coverImage || "/Fallback-Trainer-Profile.png"}
+            src={t.coverImage || "/media/fallback-trainer-profile.avif"}
             alt={`${t.firstName}'s online coaching approach`}
             fill
             sizes="(max-width:768px) 50vw, 35vw"
@@ -133,11 +151,11 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
               <Star size={17} />
               <strong>{t.reviewCount ? t.rating.toFixed(1) : "No reviews yet"}</strong>{t.reviewCount ? ` · ${t.reviewCount} reviews` : ""}
             </span>
-            <span>{t.sessionsCompleted} sessions completed</span>
-            <span>
+            {t.sessionsCompleted > 0 && <span>{t.sessionsCompleted} sessions completed</span>}
+            {t.responseTime && <span>
               <Clock size={16} />
               Replies {t.responseTime}
-            </span>
+            </span>}
           </div>
           <nav className="profile-anchors" aria-label="Profile sections">
             {["Overview", "Packages", "Availability", "Reviews"].map((n) => (
@@ -373,7 +391,7 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
           </div>
         </section>
       )}
-      <div className="mobile-booking-bar">
+      <div className={`mobile-booking-bar ${showMobileBooking ? "visible" : ""}`}>
         <div>
           <small>Online coaching</small>
           <strong>{money(t.packages[0]?.price || 0)}</strong>

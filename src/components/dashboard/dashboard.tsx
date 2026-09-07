@@ -222,6 +222,32 @@ export function Dashboard({
             <>
               {overview && (
                 <>
+                  {selectedRole !== "admin" && (
+                    <section className="panel dashboard-primary">
+                      <div>
+                        <p className="eyebrow">{selectedRole === "customer" ? "YOUR NEXT SESSION" : "UP NEXT"}</p>
+                        {rows(data.upcoming).length ? (
+                          <>
+                            <h2>{date(rows(data.upcoming)[0].start)}</h2>
+                            <p>Session {num(rows(data.upcoming)[0], "sessionNumber")} · Live online coaching</p>
+                          </>
+                        ) : (
+                          <>
+                            <h2>No session scheduled yet.</h2>
+                            <p>{selectedRole === "customer" ? "Your next confirmed session will appear here." : "Confirmed client sessions will appear here."}</p>
+                          </>
+                        )}
+                      </div>
+                      <div className="dashboard-primary-actions">
+                        {rows(data.upcoming).length > 0 && str(rows(data.upcoming)[0], "meetingUrl") && (
+                          <a className="btn lime" href={str(rows(data.upcoming)[0], "meetingUrl")} target="_blank" rel="noreferrer">Join session →</a>
+                        )}
+                        <Link className="btn outline" href={selectedRole === "customer" ? `${base}/bookings` : `${base}/calendar`}>
+                          {selectedRole === "customer" ? "Manage booking" : "Open calendar"}
+                        </Link>
+                      </div>
+                    </section>
+                  )}
                   <div className="workspace-stats">
                     {Object.entries(record(data.metrics)).map(
                       ([key, value]) => (

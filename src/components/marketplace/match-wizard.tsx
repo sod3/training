@@ -85,7 +85,7 @@ export function MatchWizard({ initial }: { initial: Record<string, string> }) {
       <div className="quiz-page premium-split">
         <div className="premium-split-media" aria-hidden="true">
           <Image
-            src="/Get-Matched.png"
+            src="/media/get-matched.avif"
             alt="Spotter matchmaking"
             fill
             priority

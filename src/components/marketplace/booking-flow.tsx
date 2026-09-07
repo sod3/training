@@ -255,7 +255,7 @@ function Checkout({ trainer: t, params }: { trainer: Trainer; params: Record<str
         <aside className="panel order-summary premium-order-summary">
           <div className="order-summary-media premium-media-container">
             <Image
-              src="/Booking-Session.png"
+              src="/media/booking-session.avif"
               alt="Your Spotter Session"
               fill
               quality={90}

@@ -147,8 +147,11 @@ export function Navbar() {
               >
                 <Menu />
               </SheetTrigger>
-              <SheetContent className="p-7">
-                <SheetTitle>Explore Spotter</SheetTitle>
+              <SheetContent className="spotter-mobile-menu" showCloseButton>
+                <div className="mobile-menu-head">
+                  <Logo />
+                  <SheetTitle>Explore Spotter</SheetTitle>
+                </div>
                 <nav className="mobile-links">
                   {siteConfig.mainNav.map((item) => (
                     <Link
@@ -160,23 +163,24 @@ export function Navbar() {
                       <ArrowUpRight size={20} />
                     </Link>
                   ))}
+                  <div className="mobile-menu-spacer" />
                   <Link
                     href={state.role === "visitor" ? "/login" : dashboard}
+                    className="mobile-account-link"
                     onClick={() => setOpen(false)}
                   >
                     {state.role === "visitor" ? "Log in" : "Dashboard"}
+                    <ArrowUpRight size={18} />
                   </Link>
                   <Link
                     href="/match"
-                    className="btn"
+                    className="btn lime mobile-match-cta"
                     onClick={() => setOpen(false)}
                   >
                     Get Matched <ArrowRight size={18} />
                   </Link>
                 </nav>
-                <p className="muted mt-8">
-                  Good training starts with the right person.
-                </p>
+                <p className="mobile-menu-note">Identity reviewed · Transparent pricing · Live coaching</p>
               </SheetContent>
             </Sheet>
           </>

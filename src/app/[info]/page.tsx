@@ -193,7 +193,7 @@ export default async function Page({
         <div className="container journey-grid premium-journey">
           <div className="journey-image sticky-media">
             <Image
-              src="/how-it-works.png"
+              src="/media/how-it-works.avif"
               alt="How Spotter works"
               fill
               priority
@@ -277,7 +277,7 @@ export default async function Page({
             </div>
             <div className="onboarding-photo premium-media-container">
               <Image
-                src="/Trainer-onboarding.png"
+                src="/media/trainer-onboarding.avif"
                 alt="Become a Spotter Trainer"
                 fill
                 quality={90}

@@ -20,7 +20,7 @@ export function AuthForm({
     <div className="auth-page">
       <div className="auth-photo">
         <Image
-          src="/Authentication.png"
+          src="/media/authentication.avif"
           alt="Focused personal training"
           fill
           priority
