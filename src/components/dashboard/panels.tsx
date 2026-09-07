@@ -105,7 +105,12 @@ export function ProfilePanel({
               : {}),
           })}
         />
-        <UploadForm purpose="PUBLIC" field="avatar" onUploaded={reload} />
+        <UploadForm
+          purpose="PUBLIC"
+          field="avatar"
+          currentUrl={str(profile, "avatar")}
+          onUploaded={reload}
+        />
       </section>
       {role === "trainer" && (
         <section className="panel">
@@ -180,9 +185,15 @@ export function ProfilePanel({
           <UploadForm
             purpose="PUBLIC"
             field="profileImage"
+            currentUrl={str(trainer, "profileImage")}
             onUploaded={reload}
           />
-          <UploadForm purpose="PUBLIC" field="coverImage" onUploaded={reload} />
+          <UploadForm
+            purpose="PUBLIC"
+            field="coverImage"
+            currentUrl={str(trainer, "coverImage")}
+            onUploaded={reload}
+          />
         </section>
       )}
     </>

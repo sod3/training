@@ -430,19 +430,23 @@ export async function trainerAction(
           (await settings(session)).trainerApplicationEnabled,
           "Applications are currently closed",
         );
+        const missingProfile = [
+          current.displayName.length < 2 && "professional display name",
+          !current.headline && "professional headline",
+          current.biography.length < 100 &&
+            "an About section of at least 100 characters",
+          !current.category && "training category",
+          !current.specialties.length && "at least one specialty",
+          !current.languages.length && "at least one coaching language",
+          !current.profileImage && "profile photo",
+          !current.phone && "phone number",
+          !current.legalName && "legal name",
+          !current.cnic && "CNIC number",
+          !current.cnicUploadId && "saved CNIC document",
+        ].filter(Boolean);
         assert(
-          current.displayName.length >= 2 &&
-            current.biography.length >= 100 &&
-            current.headline &&
-            current.category &&
-            current.specialties.length &&
-            current.languages.length &&
-            current.profileImage &&
-            current.phone &&
-            current.legalName &&
-            current.cnic &&
-            current.cnicUploadId,
-          "Complete your profile and identity details first",
+          missingProfile.length === 0,
+          `Finish your profile first: ${missingProfile.join(", ")}`,
         );
         assert(
           await TrainerPackage.exists({

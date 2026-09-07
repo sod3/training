@@ -182,67 +182,145 @@ export function ActionForm({
 export function UploadForm({
   purpose,
   field,
+  currentUrl,
+  pendingUpload,
   onUploaded,
 }: {
   purpose: "PUBLIC" | "PRIVATE";
   field?: "avatar" | "profileImage" | "coverImage";
-  onUploaded?: (id: string) => void;
+  currentUrl?: string;
+  pendingUpload?: UploadedFileInfo | null;
+  onUploaded?: (file: UploadedFileInfo) => void | Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
   const uploading = useRef(false);
   const [message, setMessage] = useState("");
+  const [selectedName, setSelectedName] = useState("");
+  const [lastUploaded, setLastUploaded] = useState<UploadedFileInfo | null>(
+    null,
+  );
+  const savedFile = pendingUpload || lastUploaded;
+  const visibleUrl = savedFile?.url || currentUrl;
   return (
-    <form
-      className="workspace-form"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        if (uploading.current || busy) return;
-        const data = new FormData(e.currentTarget);
-        data.set("purpose", purpose);
-        uploading.current = true;
-        setBusy(true);
-        setMessage("");
-        try {
-          const response = await fetch("/api/uploads", {
-            method: "POST",
-            body: data,
-          });
-          const result = await apiResult<{ id: string }>(response);
-          if (field) await api("media", { uploadId: result.id, field });
-          onUploaded?.(result.id);
-          setMessage("File uploaded.");
-        } catch (e) {
-          setMessage((e as Error).message);
-        } finally {
-          uploading.current = false;
-          setBusy(false);
-        }
-      }}
-    >
-      <label className="field">
-        {field
-          ? field === "coverImage"
-            ? "Cover image"
-            : "Profile image"
-          : "Verification document"}
-        <input
-          name="file"
-          type="file"
-          required
-          accept={
-            purpose === "PRIVATE"
-              ? ".pdf,.jpg,.jpeg,.png,.webp"
-              : ".jpg,.jpeg,.png,.webp"
+    <div className="upload-control">
+      {(visibleUrl || savedFile) && (
+        <div className="uploaded-file-card" aria-live="polite">
+          {field && visibleUrl ? (
+            // The media endpoint verifies ownership for unattached files and
+            // serves attached public images with the correct content type.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={visibleUrl} alt="Your uploaded profile" />
+          ) : (
+            <span className="uploaded-file-icon" aria-hidden="true">✓</span>
+          )}
+          <div>
+            <strong>
+              {field
+                ? "Photo saved to your profile"
+                : "Document uploaded and ready to save"}
+            </strong>
+            <small>{savedFile?.name || (field ? "Current profile photo" : "Uploaded document")}</small>
+            {visibleUrl && (
+              <a className="text-link" href={visibleUrl} target="_blank" rel="noreferrer">
+                {field ? "View full photo" : "View uploaded file"} →
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+      <form
+        className="workspace-form upload-form"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (uploading.current || busy) return;
+          const form = e.currentTarget;
+          const data = new FormData(form);
+          const file = data.get("file");
+          if (!(file instanceof File) || !file.size) {
+            setMessage("Choose a file first.");
+            return;
           }
-        />
-        <small>
-          Up to 4 MB. JPG, PNG, WebP{purpose === "PRIVATE" ? " or PDF" : ""}.
-        </small>
-      </label>
-      <button className="btn outline small" disabled={busy}>
-        {busy ? "Uploading…" : "Upload file"}
-      </button>
-      {message && <p role="status">{message}</p>}
-    </form>
+          data.set("purpose", purpose);
+          uploading.current = true;
+          setBusy(true);
+          setMessage("");
+          try {
+            const response = await fetch("/api/uploads", {
+              method: "POST",
+              body: data,
+            });
+            const result = await apiResult<{ id: string; url?: string }>(response);
+            let url = result.url || `/api/media/${result.id}`;
+            if (field) {
+              const attached = await api<{ url: string }>("media", {
+                uploadId: result.id,
+                field,
+              });
+              url = attached.url;
+            }
+            const uploaded = { id: result.id, name: file.name, url };
+            setLastUploaded(uploaded);
+            setSelectedName("");
+            form.reset();
+            await onUploaded?.(uploaded);
+            setMessage(
+              field
+                ? "Upload complete — this photo is saved to your profile."
+                : "Upload complete — now save the details below.",
+            );
+          } catch (e) {
+            setMessage((e as Error).message);
+          } finally {
+            uploading.current = false;
+            setBusy(false);
+          }
+        }}
+      >
+        <label className="field">
+          {field
+            ? currentUrl || savedFile
+              ? "Replace profile photo"
+              : "Choose profile photo"
+            : savedFile
+              ? "Replace document"
+              : "Choose verification document"}
+          <input
+            name="file"
+            type="file"
+            required
+            onChange={(event) =>
+              setSelectedName(event.currentTarget.files?.[0]?.name || "")
+            }
+            accept={
+              purpose === "PRIVATE"
+                ? ".pdf,.jpg,.jpeg,.png,.webp"
+                : ".jpg,.jpeg,.png,.webp"
+            }
+          />
+          <small>
+            {selectedName ? `Selected: ${selectedName}. ` : ""}
+            Up to 4 MB. JPG, PNG, WebP{purpose === "PRIVATE" ? " or PDF" : ""}.
+          </small>
+        </label>
+        <button className="btn outline small" disabled={busy || !selectedName}>
+          {busy
+            ? "Uploading…"
+            : field && (currentUrl || savedFile)
+              ? "Save replacement"
+              : "Upload and save"}
+        </button>
+        {message && (
+          <p className={message.includes("complete") ? "upload-success" : "form-error"} role="status">
+            {message}
+          </p>
+        )}
+      </form>
+    </div>
   );
 }
+
+export type UploadedFileInfo = {
+  id: string;
+  name: string;
+  url?: string;
+};

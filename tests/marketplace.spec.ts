@@ -125,7 +125,8 @@ test("registration, cookie login, role enforcement, logout and server persistenc
   await request.post("/api/auth/logout", { headers: origin, data: {} });
   expect((await request.get("/api/dashboard/bookings")).status()).toBe(401);
 });
-test("trainer signup creates a private draft and invalid admin publishing is prevented", async ({
+test("trainer signup preserves uploaded profile media and prevents invalid admin publishing", async ({
+  page,
   request,
 }) => {
   const email = `trainer-${Date.now()}@spotter.test`;
@@ -148,6 +149,33 @@ test("trainer signup creates a private draft and invalid admin publishing is pre
   const trainerId = data.trainer._id as string;
   expect(data.application.status).toBe("DRAFT");
   expect(data.trainer.profileVisibility).toBe("PRIVATE");
+  await page.route("**/api/auth/login", (route) =>
+    route.continue({
+      headers: { ...route.request().headers(), origin: "https://spotter.test" },
+    }),
+  );
+  await page.goto("/login");
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("integration-trainer-password");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page).toHaveURL(/trainer\/onboarding/);
+  await page.goto("/trainer/onboarding");
+  const photoInput = page.getByLabel("Choose profile photo");
+  await photoInput.setInputFiles("public/images/ahmed.webp");
+  await expect(page.getByText("Selected: ahmed.webp.")).toBeVisible();
+  await page.getByRole("button", { name: "Upload and save" }).click();
+  await expect(page.getByText("Photo saved to your profile")).toBeVisible();
+  await expect(page.getByText("Upload complete — this photo is saved to your profile.")).toBeVisible();
+  await page.locator(".onboarding-progress button").nth(1).click();
+  await page.locator(".onboarding-progress button").nth(0).click();
+  await expect(page.getByText("Photo saved to your profile")).toBeVisible();
+  await expect(page.getByAltText("Your uploaded profile")).toBeVisible();
+  const persistedApplication = await page.request.get("/api/trainer/application");
+  expect((await persistedApplication.json()).trainer.profileImage).toMatch(
+    /^\/api\/media\/[a-f\d]{24}$/,
+  );
   expect(
     (
       await request.post("/api/auth/signup", {

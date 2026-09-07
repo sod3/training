@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, useApi } from "@/lib/client-api";
-import { ActionForm, UploadForm } from "./action-form";
+import {
+  ActionForm,
+  UploadForm,
+  type UploadedFileInfo,
+} from "./action-form";
 import { AvailabilityPanel, PackagesPanel, record, rows, str, num, type Item } from "./panels";
 
 const steps = [
@@ -30,8 +34,11 @@ export function TrainerOnboarding() {
   const router = useRouter();
   const { data, loading, error, reload } = useApi<Item>("trainer/application");
   const [step, setStep] = useState(0);
-  const [identityUploadId, setIdentityUploadId] = useState("");
-  const [certificateUploadId, setCertificateUploadId] = useState("");
+  const [identityUpload, setIdentityUpload] = useState<UploadedFileInfo | null>(
+    null,
+  );
+  const [certificateUpload, setCertificateUpload] =
+    useState<UploadedFileInfo | null>(null);
   const application = record(data?.application);
   const trainer = record(data?.trainer);
   const account = record(data?.account);
@@ -80,25 +87,55 @@ export function TrainerOnboarding() {
     );
   }
 
+  const profileMissing = [
+    str(trainer, "displayName").length < 2 && "professional display name",
+    !str(trainer, "headline") && "professional headline",
+    str(trainer, "biography").length < 100 && "an About section of at least 100 characters",
+    !str(trainer, "category") && "training category",
+    (!(Array.isArray(trainer.specialties) && trainer.specialties.length > 0)) && "at least one specialty",
+    (!(Array.isArray(trainer.languages) && trainer.languages.length > 0)) && "at least one coaching language",
+    !str(trainer, "profileImage") && "profile photo",
+  ].filter(Boolean) as string[];
+  const identityMissing = [
+    !str(trainer, "legalName") && "legal name",
+    !str(trainer, "phone") && "phone number",
+    !str(trainer, "cnic") && "CNIC number",
+    !identity && "saved CNIC document",
+  ].filter(Boolean) as string[];
   const checklist = [
     {
       label: "Professional profile + photo",
-      done: Boolean(
-        str(trainer, "displayName") &&
-          str(trainer, "headline") &&
-          str(trainer, "biography").length >= 100 &&
-          str(trainer, "category") &&
-          Array.isArray(trainer.specialties) && trainer.specialties.length > 0 &&
-          Array.isArray(trainer.languages) && trainer.languages.length > 0 &&
-          str(trainer, "profileImage")
-      ),
+      done: profileMissing.length === 0,
+      missing: profileMissing,
+      step: 0,
     },
-    { label: "Identity details + CNIC", done: Boolean(str(trainer, "legalName") && str(trainer, "phone") && str(trainer, "cnic") && identity) },
-    { label: "Professional certification", done: certificates.length > 0 },
-    { label: "At least one active service", done: packages.some((item) => item.active !== false) },
-    { label: "Weekly availability", done: rules.length > 0 },
+    {
+      label: "Identity details + CNIC",
+      done: identityMissing.length === 0,
+      missing: identityMissing,
+      step: 1,
+    },
+    {
+      label: "Professional certification",
+      done: certificates.length > 0,
+      missing: certificates.length ? [] : ["at least one saved certificate"],
+      step: 2,
+    },
+    {
+      label: "At least one active service",
+      done: packages.some((item) => item.active !== false),
+      missing: packages.some((item) => item.active !== false) ? [] : ["an active coaching package"],
+      step: 3,
+    },
+    {
+      label: "Weekly availability",
+      done: rules.length > 0,
+      missing: rules.length ? [] : ["at least one weekly time window"],
+      step: 4,
+    },
   ];
   const ready = checklist.every((item) => item.done);
+  const completedCount = checklist.filter((item) => item.done).length;
 
   return (
     <div className="container section onboarding-shell">
@@ -121,10 +158,11 @@ export function TrainerOnboarding() {
         <section className="panel onboarding-card">
           <p className="eyebrow">STEP 1 OF 6</p>
           <h2>Professional profile</h2>
-          <p>This is what customers use to understand who you coach and how you can help.</p>
+          <p>This is what customers use to understand who you coach and how you can help. Your photo and profile details are saved separately, and both remain editable.</p>
+          <div className="onboarding-upload onboarding-upload-first"><h3>Profile photo <span aria-hidden="true">*</span></h3><p className="muted">Upload a clear professional headshot. Once saved, it appears here whenever you return.</p><UploadForm purpose="PUBLIC" field="profileImage" currentUrl={str(trainer, "profileImage")} onUploaded={() => reload()} /></div>
           <ActionForm
             endpoint="trainer/profile"
-            onDone={() => { reload(); setStep(1); }}
+            onDone={reload}
             fields={[
               { name: "displayName", label: "Professional display name", value: str(trainer, "displayName") || str(account, "name"), required: true },
               { name: "headline", label: "Professional headline", value: str(trainer, "headline"), required: true, hint: "Example: Online strength & body transformation coach" },
@@ -136,9 +174,18 @@ export function TrainerOnboarding() {
               { name: "timezone", label: "Your timezone", type: "select", options: zones, value: str(trainer, "timezone") || "Asia/Karachi", required: true },
             ]}
             transform={(value) => ({ ...value, yearsExperience: Number(value.yearsExperience), trainingGoals: [String(value.category)] })}
-            label="Save profile & continue"
+            label="Save profile details"
           />
-          <div className="onboarding-upload"><h3>Profile photo <span aria-hidden="true">*</span></h3><p className="muted">Required before you submit. Use a clear professional headshot.</p><UploadForm purpose="PUBLIC" field="profileImage" onUploaded={reload} /></div>
+          <div className="onboarding-next">
+            {profileMissing.length > 0 && (
+              <p className="onboarding-guidance">
+                To continue, add {profileMissing.join(", ")}.
+              </p>
+            )}
+            <button className="btn" onClick={() => setStep(1)} disabled={profileMissing.length > 0}>
+              Continue to identity
+            </button>
+          </div>
         </section>
       )}
 
@@ -148,20 +195,20 @@ export function TrainerOnboarding() {
           <h2>Identity verification</h2>
           <p>Your CNIC and identity details are private. They are visible only to authorized administrators for verification and are never shown publicly.</p>
           {identity && <div className="status-card"><strong>Current identity document</strong><span className="status">{str(identity, "verificationStatus")}</span><a className="text-link" href={`/api/media/${str(identity, "uploadId")}`}>View submitted CNIC →</a></div>}
-          <UploadForm purpose="PRIVATE" onUploaded={setIdentityUploadId} />
+          <UploadForm purpose="PRIVATE" pendingUpload={identityUpload} onUploaded={setIdentityUpload} />
           <ActionForm
             endpoint="trainer/verification"
-            onDone={() => { setIdentityUploadId(""); reload(); setStep(2); }}
+            onDone={() => { setIdentityUpload(null); reload(); setStep(2); }}
             fields={[
               { name: "name", label: "Legal full name", value: str(trainer, "legalName") || str(account, "name"), required: true },
               { name: "phone", label: "Phone number", value: str(trainer, "phone") || str(account, "phone"), required: true },
               { name: "cnic", label: "CNIC number", value: str(trainer, "cnic"), required: true, hint: "Format: 12345-1234567-1" },
             ]}
-            transform={(value) => ({ ...value, uploadId: identityUploadId || str(identity || {}, "uploadId") })}
+            transform={(value) => ({ ...value, uploadId: identityUpload?.id || str(identity || {}, "uploadId") })}
             label="Save identity & continue"
-            disabled={!identityUploadId && !identity}
+            disabled={!identityUpload && !identity}
           />
-          {!identityUploadId && !identity && <p className="form-error">Upload your CNIC document before saving identity details.</p>}
+          {!identityUpload && !identity && <p className="onboarding-guidance">Upload your CNIC document before saving identity details.</p>}
         </section>
       )}
 
@@ -180,10 +227,10 @@ export function TrainerOnboarding() {
               </article>
             ))}
           </div>
-          <UploadForm purpose="PRIVATE" onUploaded={setCertificateUploadId} />
+          <UploadForm purpose="PRIVATE" pendingUpload={certificateUpload} onUploaded={setCertificateUpload} />
           <ActionForm
             endpoint="trainer/credentials"
-            onDone={() => { setCertificateUploadId(""); reload(); setStep(3); }}
+            onDone={() => { setCertificateUpload(null); reload(); setStep(3); }}
             fields={[
               { name: "title", label: "Certificate / qualification title", required: true },
               { name: "issuingOrganization", label: "Issuing organization", required: true },
@@ -191,11 +238,11 @@ export function TrainerOnboarding() {
               { name: "issueDate", label: "Issue date", type: "date" },
               { name: "expiryDate", label: "Expiry date (if applicable)", type: "date" },
             ]}
-            transform={(value) => ({ ...value, type: "CERTIFICATION", uploadId: certificateUploadId, credentialNumber: value.credentialNumber || undefined, issueDate: value.issueDate || undefined, expiryDate: value.expiryDate || undefined })}
+            transform={(value) => ({ ...value, type: "CERTIFICATION", uploadId: certificateUpload?.id, credentialNumber: value.credentialNumber || undefined, issueDate: value.issueDate || undefined, expiryDate: value.expiryDate || undefined })}
             label="Add certification & continue"
-            disabled={!certificateUploadId}
+            disabled={!certificateUpload}
           />
-          {!certificateUploadId && <small>Upload the certificate file before adding a new certification.</small>}
+          {!certificateUpload && <p className="onboarding-guidance">Upload the certificate file before adding a new certification.</p>}
         </section>
       )}
 
@@ -220,8 +267,9 @@ export function TrainerOnboarding() {
           <p className="eyebrow">STEP 6 OF 6</p>
           <h2>Review & submit</h2>
           <p>Submitting locks the application for review. You will receive status updates in your Spotter notifications.</p>
+          <p className="onboarding-summary"><strong>{completedCount} of {checklist.length} sections complete.</strong> Each incomplete row tells you exactly what remains.</p>
           <div className="application-checklist">
-            {checklist.map((item) => <div key={item.label} className={item.done ? "done" : "missing"}><span>{item.done ? "✓" : "!"}</span><strong>{item.label}</strong></div>)}
+            {checklist.map((item) => <div key={item.label} className={item.done ? "done" : "missing"}><span>{item.done ? "✓" : "!"}</span><div><strong>{item.label}</strong>{!item.done && <small>Still needed: {item.missing.join(", ")}.</small>}</div>{!item.done && <button className="text-link" onClick={() => setStep(item.step)}>Fix this section →</button>}</div>)}
           </div>
           <button
             className="btn"
@@ -238,7 +286,7 @@ export function TrainerOnboarding() {
           >
             Submit application for review
           </button>
-          {!ready && <p className="form-error">Complete every required section before submitting.</p>}
+          {!ready && <p className="onboarding-guidance">Finish the highlighted sections above before submitting. Your completed sections and uploaded files are already saved.</p>}
         </section>
       )}
     </div>
