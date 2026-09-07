@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Sparkles, Video } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import type { Trainer } from "@/types/trainer";
 import { matchesGoal, money } from "@/lib/marketplace";
 import { Reveal } from "@/components/motion/reveal";
@@ -125,36 +126,52 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
           </div>
 
           <div className="match-preview-card" aria-live="polite">
-            {match ? (
-              <>
-                <div className="match-preview-kicker"><Sparkles size={14} /> LIVE MATCH PREVIEW</div>
-                <div className="match-preview-media" key={match.id}>
-                  <Image
-                    src={match.profileImage || "/media/fallback-trainer-profile.avif"}
-                    alt={`${match.firstName} ${match.lastName}, personal trainer`}
-                    fill
-                    sizes="(max-width: 900px) 100vw, 36vw"
-                  />
-                  <span className="match-score-pill">Strong fit</span>
-                </div>
-                <div className="match-preview-body">
-                  <div>
-                    <h3>{match.firstName} {match.lastName}</h3>
-                    <p>{match.specialties.slice(0, 2).join(" · ") || match.category}</p>
+            <AnimatePresence mode="wait" initial={false}>
+              {match ? (
+                <motion.div
+                  className="match-preview-inner"
+                  key={match.id}
+                  initial={{ opacity: 0, y: 10, scale: 0.985 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.99 }}
+                  transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] as const }}
+                >
+                  <div className="match-preview-kicker"><Sparkles size={14} /> LIVE MATCH PREVIEW</div>
+                  <div className="match-preview-media">
+                    <Image
+                      src={match.profileImage || "/media/fallback-trainer-profile.avif"}
+                      alt={`${match.firstName} ${match.lastName}, personal trainer`}
+                      fill
+                      sizes="(max-width: 900px) 100vw, 36vw"
+                    />
+                    <span className="match-score-pill">Strong fit</span>
                   </div>
-                  <div className="match-preview-meta">
-                    <span><Video size={13} /> Live 1-on-1 online</span>
-                    {match.packages.length > 0 && <span>From {money(match.basePrice)} / session</span>}
+                  <div className="match-preview-body">
+                    <div>
+                      <h3>{match.firstName} {match.lastName}</h3>
+                      <p>{match.specialties.slice(0, 2).join(" · ") || match.category}</p>
+                    </div>
+                    <div className="match-preview-meta">
+                      <span><Video size={13} /> Live 1-on-1 online</span>
+                      {match.packages.length > 0 && <span>From {money(match.basePrice)} / session</span>}
+                    </div>
                   </div>
-                </div>
-              </>
-            ) : (
-              <div className="match-preview-empty">
-                <Sparkles size={22} />
-                <h3>Your matches appear here.</h3>
-                <p>As approved trainers join Spotter, this preview updates using real marketplace data.</p>
-              </div>
-            )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  className="match-preview-empty"
+                  key="empty-match-preview"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Sparkles size={22} />
+                  <h3>Your matches appear here.</h3>
+                  <p>As approved trainers join Spotter, this preview updates using real marketplace data.</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

@@ -52,8 +52,8 @@ export function TrustSection() {
         </Reveal>
 
         <div className="home-trust-grid">
-          {trustItems.map(({ label, title, copy, icon: Icon }) => (
-            <Reveal key={label}>
+          {trustItems.map(({ label, title, copy, icon: Icon }, index) => (
+            <Reveal key={label} delay={index * 0.08}>
               <article className="home-trust-item">
                 <div className="home-trust-icon" aria-hidden="true">
                   <Icon size={19} />
