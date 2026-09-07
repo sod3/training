@@ -6,13 +6,13 @@ export function HeroSection() {
     <section className="spotter-hero">
       <div className="spotter-hero-media" aria-hidden="true">
         <video
-          src="/Trainer.mp4"
-          poster="/images/coaching.webp"
+          src="/hero.mp4"
           autoPlay
           loop
           muted
           playsInline
           preload="metadata"
+          className="premium-video"
         />
         <div className="spotter-hero-shade" />
       </div>

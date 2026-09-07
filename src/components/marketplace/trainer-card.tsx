@@ -32,7 +32,7 @@ export function TrainerCard({
           aria-label={`View ${t.firstName} ${t.lastName}'s profile`}
         >
           <Image
-            src={t.profileImage}
+            src={t.profileImage || "/Fallback-Trainer-Profile.png"}
             alt={`${t.firstName} ${t.lastName}, personal trainer`}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1100px) 45vw, 33vw"

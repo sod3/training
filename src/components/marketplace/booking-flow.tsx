@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { api, useApi } from "@/lib/client-api";
 import { useStore } from "./store";
@@ -251,7 +252,17 @@ function Checkout({ trainer: t, params }: { trainer: Trainer; params: Record<str
           </div>
         </section>
 
-        <aside className="panel order-summary">
+        <aside className="panel order-summary premium-order-summary">
+          <div className="order-summary-media premium-media-container">
+            <Image
+              src="/Booking-Session.png"
+              alt="Your Spotter Session"
+              fill
+              quality={90}
+              className="premium-image"
+              sizes="(max-width: 768px) 100vw, 30vw"
+            />
+          </div>
           <p className="eyebrow">YOUR ONLINE TRAINING PLAN</p>
           <h2>{t.firstName} {t.lastName}</h2>
           <h3>{pkg?.title || "Select a package"}</h3>

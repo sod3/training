@@ -5370,3 +5370,163 @@ textarea:focus-visible {
 @media (max-width: 760px) {
   .admin-verification-summary { grid-template-columns: 1fr; }
 }
+
+/* =========================================================================
+   PREMIUM REDESIGN UTILITIES & LAYOUTS
+   ========================================================================= */
+
+/* Hero Video */
+.premium-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+}
+.spotter-hero-shade {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.75) 100%);
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* Premium Images */
+.premium-image {
+  object-fit: cover;
+  object-position: center;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.8s ease-out;
+}
+.premium-media-container:hover .premium-image {
+  transform: scale(1.02);
+}
+.premium-media-container {
+  overflow: hidden;
+  position: relative;
+  border-radius: var(--radius);
+}
+
+/* How It Works Sticky Image */
+.premium-journey .sticky-media {
+  position: sticky;
+  top: 100px;
+  height: calc(100vh - 120px);
+  min-height: 500px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+/* Match Wizard Split Screen */
+.premium-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 80vh;
+  gap: 0;
+  background: #fff;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 15px 50px rgba(0,0,0,0.05);
+  margin-top: 40px;
+  margin-bottom: 40px;
+}
+.premium-split-media {
+  position: relative;
+  background: #000;
+}
+.premium-split-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  padding: 40px;
+  color: white;
+  z-index: 2;
+}
+.premium-split-overlay h2 {
+  font-size: clamp(2rem, 3vw, 2.5rem);
+  line-height: 1.1;
+}
+.premium-split-content {
+  padding: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Trust Section */
+.premium-trust-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+.premium-trust-media {
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
+  height: 600px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+}
+.premium-trust-grid {
+  grid-template-columns: 1fr;
+  gap: 30px;
+  margin-top: 40px;
+}
+.premium-feature-section {
+  padding-block: 120px;
+  background: linear-gradient(180deg, #f7f8f2 0%, #fff 100%);
+}
+
+/* Auth Gradient */
+.premium-auth-gradient {
+  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.85) 100%);
+}
+
+/* Booking Order Summary */
+.premium-order-summary {
+  padding-top: 0;
+  overflow: hidden;
+}
+.premium-order-summary .order-summary-media {
+  height: 180px;
+  margin: 0 -24px 24px -24px;
+  border-radius: 0;
+}
+
+/* Responsive Overrides */
+@media (max-width: 1024px) {
+  .premium-split {
+    grid-template-columns: 1fr;
+  }
+  .premium-split-media {
+    height: 350px;
+  }
+  .premium-split-content {
+    padding: 30px 20px;
+  }
+  .premium-trust-layout {
+    grid-template-columns: 1fr;
+  }
+  .premium-trust-media {
+    height: 400px;
+    order: -1;
+  }
+  .premium-journey .sticky-media {
+    position: relative;
+    top: auto;
+    height: 350px;
+    margin-bottom: 40px;
+  }
+}
+@media (max-width: 768px) {
+  .premium-split-media {
+    height: 250px;
+  }
+  .premium-trust-media {
+    height: 300px;
+  }
+  .premium-journey .sticky-media {
+    height: 300px;
+  }
+}

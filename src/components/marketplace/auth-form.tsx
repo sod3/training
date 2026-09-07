@@ -20,13 +20,15 @@ export function AuthForm({
     <div className="auth-page">
       <div className="auth-photo">
         <Image
-          src="/images/coaching.webp"
+          src="/Authentication.png"
           alt="Focused personal training"
           fill
           priority
+          quality={90}
+          className="premium-image"
           sizes="50vw"
         />
-        <div className="image-gradient" />
+        <div className="image-gradient premium-auth-gradient" />
         <div>
           <p className="eyebrow">A LITTLE GUIDANCE. A STRONGER YOU.</p>
           <h2>

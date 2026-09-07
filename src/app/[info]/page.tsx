@@ -190,13 +190,16 @@ export default async function Page({
             works.
           </p>
         </div>
-        <div className="container journey-grid">
-          <div className="journey-image">
+        <div className="container journey-grid premium-journey">
+          <div className="journey-image sticky-media">
             <Image
-              src="/images/coaching.webp"
-              alt="A male trainer coaching a male client"
+              src="/how-it-works.png"
+              alt="How Spotter works"
               fill
-              sizes="(max-width:768px) 100vw, 45vw"
+              priority
+              quality={90}
+              className="premium-image"
+              sizes="(max-width: 1024px) 100vw, 45vw"
             />
           </div>
           <div>
@@ -272,12 +275,14 @@ export default async function Page({
                 );
               })}
             </div>
-            <div className="onboarding-photo">
+            <div className="onboarding-photo premium-media-container">
               <Image
-                src="/images/coaching.webp"
-                alt="A coach guiding a client"
+                src="/Trainer-onboarding.png"
+                alt="Become a Spotter Trainer"
                 fill
-                sizes="50vw"
+                quality={90}
+                className="premium-image"
+                sizes="(max-width: 1024px) 100vw, 50vw"
               />
             </div>
           </div>

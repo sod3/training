@@ -98,7 +98,7 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
       <div className="profile-gallery">
         <div>
           <Image
-            src={t.profileImage}
+            src={t.profileImage || "/Fallback-Trainer-Profile.png"}
             alt={`${t.firstName} ${t.lastName}`}
             fill
             priority
@@ -107,7 +107,7 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
         </div>
         <div>
           <Image
-            src={t.coverImage || "/images/coaching.webp"}
+            src={t.coverImage || "/Fallback-Trainer-Profile.png"}
             alt={`${t.firstName}'s online coaching approach`}
             fill
             sizes="(max-width:768px) 50vw, 35vw"

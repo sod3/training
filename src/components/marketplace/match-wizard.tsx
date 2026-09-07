@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -81,8 +82,25 @@ export function MatchWizard({ initial }: { initial: Record<string, string> }) {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="quiz-page">
-        <div className="quiz-top">
+      <div className="quiz-page premium-split">
+        <div className="premium-split-media" aria-hidden="true">
+          <Image
+            src="/Get-Matched.png"
+            alt="Spotter matchmaking"
+            fill
+            priority
+            quality={90}
+            className="premium-image"
+            sizes="(max-width: 1024px) 100vw, 50vw"
+          />
+          <div className="image-gradient" />
+          <div className="premium-split-overlay">
+            <p className="eyebrow">YOUR PERFECT MATCH</p>
+            <h2>Find the trainer<br />who fits your life.</h2>
+          </div>
+        </div>
+        <div className="premium-split-content">
+          <div className="quiz-top">
           <button
             aria-label="Previous question"
             disabled={step === 0 || processing}
@@ -142,6 +160,7 @@ export function MatchWizard({ initial }: { initial: Record<string, string> }) {
             </motion.div>
           </AnimatePresence>
         )}
+        </div>
       </div>
     </MotionConfig>
   );
