@@ -512,6 +512,139 @@ export async function trainerAction(
   }
   assert(false, "Not found", 404);
 }
+export async function quickApproveApplication(actor: Actor, id: string) {
+  assert(actor.role === "ADMIN", "Admin access required", 403);
+  objectId.parse(id);
+
+  return mongoose.connection.transaction(async (session) => {
+    const application = await TrainerApplication.findById(id).session(session);
+    assert(application, "Application not found", 404);
+    assert(application.status !== "DRAFT", "Application must first be submitted");
+
+    const trainer = await lockTrainer(application.trainerId, session);
+    const now = new Date();
+
+    assert(
+      trainer.displayName.length >= 2 &&
+        trainer.headline &&
+        trainer.biography.length >= 100 &&
+        trainer.category &&
+        trainer.specialties.length > 0 &&
+        trainer.languages.length > 0 &&
+        trainer.profileImage &&
+        trainer.phone &&
+        trainer.cnic &&
+        trainer.cnicUploadId,
+      "Trainer profile or identity details are incomplete",
+      409,
+    );
+
+    const [activePackage, activeAvailability, activeAccount, credentials] =
+      await Promise.all([
+        TrainerPackage.exists({ trainerId: trainer._id, active: true }).session(
+          session,
+        ),
+        TrainerAvailability.exists({
+          trainerId: trainer._id,
+          active: true,
+        }).session(session),
+        User.exists({ _id: trainer.userId, status: "ACTIVE" }).session(session),
+        TrainerCredential.find({ trainerId: trainer._id }).session(session),
+      ]);
+
+    assert(activePackage, "Trainer needs at least one active package before approval", 409);
+    assert(activeAvailability, "Trainer needs active availability before approval", 409);
+    assert(activeAccount, "Trainer account must be active", 409);
+
+    const identityEvidence = credentials.find(
+      (credential) => credential.type === "IDENTITY" && credential.uploadId,
+    );
+    const certificationEvidence = credentials.find(
+      (credential) =>
+        credential.type === "CERTIFICATION" &&
+        credential.uploadId &&
+        (!credential.expiryDate || credential.expiryDate > now),
+    );
+
+    assert(identityEvidence, "Identity evidence is required before approval", 409);
+    assert(
+      certificationEvidence,
+      "A valid certification document is required before approval",
+      409,
+    );
+
+    const approverId = new mongoose.Types.ObjectId(actor.id);
+    for (const credential of credentials) {
+      const validCertification =
+        credential.type === "CERTIFICATION" &&
+        credential.uploadId &&
+        (!credential.expiryDate || credential.expiryDate > now);
+      const validIdentity = credential.type === "IDENTITY" && credential.uploadId;
+      if (!validIdentity && !validCertification) continue;
+
+      credential.verificationStatus = "APPROVED";
+      credential.adminNotes = "Approved with one-click trainer approval.";
+      credential.verifiedAt = now;
+      credential.verifiedBy = approverId;
+      await credential.save({ session });
+    }
+
+    const before = {
+      applicationStatus: application.status,
+      profileVisibility: trainer.profileVisibility,
+      identityVerificationStatus: trainer.identityVerificationStatus,
+      credentialVerificationStatus: trainer.credentialVerificationStatus,
+    };
+
+    application.status = "APPROVED";
+    application.adminNotes = "Approved by administrator.";
+    application.reviewedAt = now;
+    application.reviewedBy = approverId;
+
+    trainer.applicationStatus = "APPROVED";
+    trainer.identityVerificationStatus = "APPROVED";
+    trainer.credentialVerificationStatus = "APPROVED";
+    trainer.availabilityReviewStatus = "APPROVED";
+    trainer.availabilityReviewNotes = "Approved with trainer application.";
+    trainer.availabilityReviewedAt = now;
+    trainer.availabilityReviewedBy = approverId;
+    trainer.profileVisibility = "PUBLIC";
+
+    await application.save({ session });
+    await trainer.save({ session });
+
+    await AuditLog.create(
+      [
+        {
+          actorId: actor.id,
+          actorRole: actor.role,
+          action: "QUICK_APPROVE_TRAINER",
+          entityType: "TrainerApplication",
+          entityId: id,
+          previousValues: before,
+          newValues: {
+            applicationStatus: "APPROVED",
+            profileVisibility: "PUBLIC",
+            identityVerificationStatus: "APPROVED",
+            credentialVerificationStatus: "APPROVED",
+          },
+        },
+      ],
+      { session },
+    );
+
+    await notifyUser(
+      trainer.userId,
+      "Trainer application approved",
+      "Your trainer profile is approved and is now live on Spotter.",
+      "/trainer/profile",
+      session,
+    );
+
+    return { message: "Trainer approved and published." };
+  });
+}
+
 export async function reviewApplication(
   actor: Actor,
   id: string,

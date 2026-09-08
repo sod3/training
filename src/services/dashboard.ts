@@ -38,7 +38,7 @@ import {
 } from "@/lib/server/security";
 import { objectId, settingsSchema } from "@/lib/server/validation";
 import { lockTrainer, settings } from "./bookings";
-import { ownTrainer, reviewApplication } from "./trainer-management";
+import { ownTrainer, quickApproveApplication, reviewApplication } from "./trainer-management";
 import { reviewManualPayment, reviewManualRefund } from "./payments";
 import {
   DEFAULT_CATEGORIES,
@@ -690,6 +690,8 @@ export async function adminAction(
 ) {
   assert(actor.role === "ADMIN", "Admin access required", 403);
   if (id) objectId.parse(id);
+  if (resource === "approve-trainer" && id)
+    return quickApproveApplication(actor, id);
   if (resource === "applications" && id)
     return reviewApplication(actor, id, data);
   if (resource === "payments" && id)

@@ -5519,3 +5519,205 @@ h3 {
     flex-shrink: 0;
   }
 }
+
+/* ========================================================================== */
+/* SPOTTER UX PATCH — hero navigation + one-click trainer approvals           */
+/* ========================================================================== */
+
+/* Keep the hero navbar readable over moving video frames. */
+.site-nav.on-hero {
+  background: linear-gradient(
+    180deg,
+    rgb(7 9 7 / 91%) 0%,
+    rgb(7 9 7 / 78%) 64%,
+    rgb(7 9 7 / 58%) 100%
+  );
+  border-bottom-color: rgb(255 255 255 / 12%);
+  box-shadow: 0 8px 30px rgb(0 0 0 / 12%);
+  backdrop-filter: blur(16px) saturate(118%);
+  -webkit-backdrop-filter: blur(16px) saturate(118%);
+}
+.site-nav.on-hero:not(.scrolled) .brand,
+.site-nav.on-hero:not(.scrolled) .desktop-nav,
+.site-nav.on-hero:not(.scrolled) .login-link,
+.site-nav.on-hero:not(.scrolled) .account-trigger {
+  text-shadow: none;
+}
+
+/* The account menu previously inherited the hero's white text on a white
+   surface. Give the popover an explicit foreground and a fully legible glass
+   surface in both hero and non-hero contexts. */
+#account-menu-items {
+  z-index: 140;
+  color: var(--ink);
+  background: rgb(252 251 247 / 98%);
+  border-color: rgb(18 20 18 / 10%);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 20%);
+}
+#account-menu-items a,
+#account-menu-items button {
+  color: inherit;
+}
+.site-nav.on-hero #account-menu-items {
+  color: #f8f8f3;
+  background: rgb(15 17 15 / 97%);
+  border-color: rgb(255 255 255 / 13%);
+  box-shadow: 0 26px 76px rgb(0 0 0 / 40%);
+  backdrop-filter: blur(24px) saturate(125%);
+  -webkit-backdrop-filter: blur(24px) saturate(125%);
+}
+.site-nav.on-hero #account-menu-items a:hover,
+.site-nav.on-hero #account-menu-items button:hover {
+  background: rgb(255 255 255 / 9%);
+}
+
+/* Application review: surface only what an admin needs to make the decision. */
+.admin-application-review {
+  display: grid;
+  gap: 18px;
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 55%);
+}
+.admin-applicant-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.admin-applicant-summary > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+.admin-applicant-summary span {
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 680;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.admin-applicant-summary strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.admin-approval-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.admin-approval-checks > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 11px;
+  font-weight: 640;
+}
+.admin-approval-checks i {
+  width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 10px;
+  font-style: normal;
+}
+.admin-approval-checks .ready i {
+  background: var(--lime);
+  color: #10120e;
+}
+.admin-approval-checks .missing {
+  color: #7a342c;
+  border-color: rgb(122 52 44 / 20%);
+  background: rgb(122 52 44 / 5%);
+}
+.admin-approval-checks .missing i {
+  background: rgb(122 52 44 / 12%);
+}
+
+.admin-quick-approve {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  margin-top: 18px;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid rgb(168 224 38 / 48%);
+  background: linear-gradient(135deg, rgb(190 255 48 / 13%), rgb(255 255 255 / 62%));
+}
+.admin-quick-approve strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+.admin-quick-approve p {
+  max-width: 660px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.admin-approve-button {
+  min-width: 170px;
+  min-height: 48px;
+  justify-content: center;
+  white-space: nowrap;
+}
+.admin-action-success,
+.admin-quick-approve .form-error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.admin-action-success {
+  color: #496216 !important;
+  font-weight: 650;
+}
+
+.admin-application-details,
+.admin-advanced-review {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.admin-application-details > summary,
+.admin-advanced-review > summary {
+  cursor: pointer;
+  width: fit-content;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 650;
+}
+.admin-application-details[open] > summary,
+.admin-advanced-review[open] > summary {
+  margin-bottom: 16px;
+  color: var(--ink);
+}
+
+@media (max-width: 900px) {
+  .admin-applicant-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-quick-approve {
+    grid-template-columns: 1fr;
+  }
+  .admin-approve-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-applicant-summary {
+    grid-template-columns: 1fr;
+  }
+  .admin-application-review,
+  .admin-quick-approve {
+    padding: 16px;
+  }
+}

@@ -70,6 +70,143 @@ export function AdminSettings({
     </section>
   );
 }
+function ApplicationReviewSummary({ item }: { item: Item }) {
+  const trainer = (item.trainer as Item) || {};
+  const account = (item.account as Item) || {};
+  const credentials = rows(item.credentials);
+  const packages = rows(item.packages);
+  const availability = rows(item.availability);
+  const now = Date.now();
+
+  const identityReady = credentials.some(
+    (credential) =>
+      str(credential, "type") === "IDENTITY" && str(credential, "uploadId"),
+  );
+  const certificationReady = credentials.some((credential) => {
+    if (
+      str(credential, "type") !== "CERTIFICATION" ||
+      !str(credential, "uploadId")
+    )
+      return false;
+    const expiry = str(credential, "expiryDate");
+    return !expiry || new Date(expiry).getTime() > now;
+  });
+  const profileReady = Boolean(
+    str(trainer, "displayName") &&
+      str(trainer, "headline") &&
+      str(trainer, "biography").length >= 100 &&
+      str(trainer, "profileImage") &&
+      str(trainer, "phone") &&
+      str(trainer, "cnic") &&
+      str(trainer, "cnicUploadId"),
+  );
+  const packageReady = packages.some((pkg) => pkg.active !== false);
+  const availabilityReady = availability.some((slot) => slot.active !== false);
+  const accountReady = str(account, "status") === "ACTIVE";
+
+  const checks = [
+    ["Profile", profileReady],
+    ["Identity", identityReady],
+    ["Certification", certificationReady],
+    ["Package", packageReady],
+    ["Availability", availabilityReady],
+    ["Account", accountReady],
+  ] as const;
+
+  return (
+    <div className="admin-application-review">
+      <div className="admin-applicant-summary">
+        <div>
+          <span>Trainer</span>
+          <strong>{str(trainer, "displayName") || "Unnamed trainer"}</strong>
+        </div>
+        <div>
+          <span>Email</span>
+          <strong>{str(account, "normalizedEmail") || "—"}</strong>
+        </div>
+        <div>
+          <span>Phone</span>
+          <strong>{str(trainer, "phone") || str(account, "phone") || "—"}</strong>
+        </div>
+        <div>
+          <span>Category</span>
+          <strong>{str(trainer, "category") || "—"}</strong>
+        </div>
+      </div>
+      <div className="admin-approval-checks" aria-label="Approval readiness">
+        {checks.map(([label, ready]) => (
+          <span className={ready ? "ready" : "missing"} key={label}>
+            <i aria-hidden="true">{ready ? "✓" : "!"}</i>
+            {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QuickApproveTrainer({
+  applicationId,
+  trainerName,
+  onDone,
+}: {
+  applicationId: string;
+  trainerName: string;
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  return (
+    <div className="admin-quick-approve">
+      <div>
+        <strong>Ready to approve?</strong>
+        <p>
+          One click verifies the submitted identity/certification evidence,
+          approves availability and publishes the trainer profile.
+        </p>
+      </div>
+      <button
+        type="button"
+        className="btn lime admin-approve-button"
+        disabled={busy}
+        onClick={async () => {
+          if (
+            !window.confirm(
+              `Approve ${trainerName || "this trainer"} and publish the profile?`,
+            )
+          )
+            return;
+          setBusy(true);
+          setMessage("");
+          setError("");
+          try {
+            const result = await api<{ message?: string }>(
+              `admin/approve-trainer/${applicationId}`,
+              {},
+            );
+            setMessage(result.message || "Trainer approved and published.");
+            onDone();
+          } catch (err) {
+            setError((err as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? "Approving…" : "Approve trainer"}
+      </button>
+      {message && <p className="admin-action-success">{message}</p>}
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function AdminPanel({
   section,
   items,
@@ -139,24 +276,21 @@ export function AdminPanel({
             },
           ];
         }
-        if (section === "applications")
+        if (section === "applications" && str(item, "status") !== "APPROVED")
           fields = [
             {
               name: "status",
-              label: "Decision",
+              label: "Advanced decision",
               type: "select",
-              options: [
-                "UNDER_REVIEW",
-                "ACTION_REQUIRED",
-                "APPROVED",
-                "REJECTED",
-              ],
+              options: ["UNDER_REVIEW", "ACTION_REQUIRED", "REJECTED"],
+              value: str(item, "status") === "SUBMITTED" ? "UNDER_REVIEW" : str(item, "status"),
             },
             {
               name: "notes",
               label: "Reason / feedback for trainer",
               type: "textarea",
               required: true,
+              hint: "Use advanced review only when you are not approving the trainer.",
             },
           ];
         if (section === "verification")
@@ -294,6 +428,7 @@ export function AdminPanel({
                   str(item, "bookingStatus")}
               </span>
             </div>
+            {section === "applications" && <ApplicationReviewSummary item={item} />}
             {section === "verification" && (() => {
               const trainer = (item.trainer as Item) || {};
               const account = (item.account as Item) || {};
@@ -330,7 +465,13 @@ export function AdminPanel({
                 </div>
               );
             })()}
-            <RecordDetails item={item} />
+            {section !== "applications" && <RecordDetails item={item} />}
+            {section === "applications" && (
+              <details className="admin-application-details">
+                <summary>View full application details</summary>
+                <RecordDetails item={item} />
+              </details>
+            )}
             {section === "verification" && (
               <div className="admin-evidence-links">
                 <a
@@ -385,6 +526,13 @@ export function AdminPanel({
                 <Link className="text-link" href="/admin/verification">Review all credential evidence →</Link>
               </div>
             )}
+            {section === "applications" && str(item, "status") !== "APPROVED" && (
+              <QuickApproveTrainer
+                applicationId={id}
+                trainerName={str((item.trainer as Item) || {}, "displayName")}
+                onDone={reload}
+              />
+            )}
             {section === "payments" && item.status === "SUBMITTED" && (
               <p>
                 Confirm the transfer against your JazzCash or EasyPaisa account
@@ -400,7 +548,7 @@ export function AdminPanel({
               <PasswordResetControl userId={id} />
             )}
             {fields.length > 0 && (
-              <div className={section === "trainers" ? "mt-5" : "mt-5"}>
+              <div className="mt-5">
                 {section === "trainers" && (
                   <p className="muted">
                     {canPublish
@@ -408,13 +556,26 @@ export function AdminPanel({
                       : `This profile must remain private until ${publicationBlockers.join(", ")} ${publicationBlockers.length === 1 ? "is" : "are"} complete.`}
                   </p>
                 )}
-                <ActionForm
-                  endpoint={endpoint}
-                  fields={fields}
-                  label={label}
-                  onDone={reload}
-                  confirmation="Save this administrative change? It will be recorded in the audit log."
-                />
+                {section === "applications" ? (
+                  <details className="admin-advanced-review">
+                    <summary>Advanced review options</summary>
+                    <ActionForm
+                      endpoint={endpoint}
+                      fields={fields}
+                      label="Save review decision"
+                      onDone={reload}
+                      confirmation="Save this review decision?"
+                    />
+                  </details>
+                ) : (
+                  <ActionForm
+                    endpoint={endpoint}
+                    fields={fields}
+                    label={label}
+                    onDone={reload}
+                    confirmation="Save this administrative change? It will be recorded in the audit log."
+                  />
+                )}
               </div>
             )}
           </article>
