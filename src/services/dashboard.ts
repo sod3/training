@@ -261,13 +261,144 @@ export async function dashboardData(
           paymentStatus: "PAID",
         })
       ).length;
+    const payoutHistory = trainer
+      ? await Payout.find({ trainerId: trainer._id })
+          .sort({ createdAt: -1 })
+          .limit(20)
+          .lean()
+      : [];
+
+    let trainerEarningsData = {};
+    if (trainer) {
+      const completedOrders = await Order.find({
+        trainerId: trainer._id,
+        bookingStatus: "COMPLETED",
+        paymentStatus: "PAID",
+      }).select("_id");
+      const completedLedger = await Transaction.find({
+        trainerId: trainer._id,
+        orderId: { $in: completedOrders.map((o) => o._id) },
+      });
+      const trainerPayouts = await Payout.find({
+        trainerId: trainer._id,
+        status: { $in: ["REQUESTED", "PROCESSING", "PAID"] },
+      });
+      const availableBalance = Math.max(
+        0,
+        completedLedger.reduce((sum, t) => sum + t.trainerAmount, 0) -
+          trainerPayouts.reduce((sum, p) => sum + p.amount, 0),
+      );
+      const startOfMonth = DateTime.now().setZone(zone).startOf("month").toJSDate();
+      const allTransactions = await Transaction.find({ trainerId: trainer._id });
+      const thisMonthEarnings = allTransactions
+        .filter((t) => t.createdAt >= startOfMonth)
+        .reduce((sum, t) => sum + t.trainerAmount, 0);
+      const lifetimeEarnings = allTransactions.reduce(
+        (sum, t) => sum + t.trainerAmount,
+        0,
+      );
+      const pendingPayouts = await Payout.find({
+        trainerId: trainer._id,
+        status: { $in: ["REQUESTED", "PROCESSING"] },
+      });
+      const pendingAmount = pendingPayouts.reduce((sum, p) => sum + p.amount, 0);
+
+      const completedSessions = await Session.find({
+        trainerId: trainer._id,
+        status: "COMPLETED",
+      })
+        .sort({ completedAt: -1, start: -1 })
+        .limit(20)
+        .lean();
+      const sessionOrderIds = Array.from(
+        new Set(completedSessions.map((s) => String(s.orderId))),
+      );
+      const sessionOrders = await Order.find({
+        _id: { $in: sessionOrderIds },
+      }).lean();
+      const orderMap = new Map(sessionOrders.map((o) => [String(o._id), o]));
+
+      const sessionCustomerIds = Array.from(
+        new Set(completedSessions.map((s) => String(s.customerId))),
+      );
+      const sessionCustomers = await User.find({
+        _id: { $in: sessionCustomerIds },
+      })
+        .select("name")
+        .lean();
+      const customerMap = new Map(
+        sessionCustomers.map((c) => [String(c._id), c.name]),
+      );
+
+      let completedEarningsHistory = completedSessions.map((s) => {
+        const order = orderMap.get(String(s.orderId));
+        const clientName = customerMap.get(String(s.customerId)) || "Client";
+        const totalSessions = order?.packageSnapshot?.sessionCount || 1;
+        const totalEarning =
+          order?.packageSnapshot?.trainerEarning ??
+          (order ? Math.round(order.total * 0.9) : 0);
+        const earnedAmount = Math.round(totalEarning / totalSessions);
+        return {
+          _id: String(s._id),
+          date: s.completedAt || s.start,
+          clientName,
+          packageName: order?.packageSnapshot?.name || "Coaching Session",
+          bookingNumber: order?.bookingNumber || "—",
+          sessionNumber: s.sessionNumber,
+          totalSessions,
+          earnedAmount,
+        };
+      });
+
+      if (completedEarningsHistory.length === 0) {
+        const completedOrdersList = await Order.find({
+          trainerId: trainer._id,
+          bookingStatus: "COMPLETED",
+          paymentStatus: "PAID",
+        })
+          .sort({ updatedAt: -1 })
+          .limit(20)
+          .lean();
+        const custIds = Array.from(
+          new Set(completedOrdersList.map((o) => String(o.customerId))),
+        );
+        const custs = await User.find({ _id: { $in: custIds } })
+          .select("name")
+          .lean();
+        const custMap = new Map(custs.map((c) => [String(c._id), c.name]));
+
+        completedEarningsHistory = completedOrdersList.map((order) => ({
+          _id: String(order._id),
+          date: order.updatedAt,
+          clientName: custMap.get(String(order.customerId)) || "Client",
+          packageName: order.packageSnapshot?.name || "Coaching Package",
+          bookingNumber: order.bookingNumber,
+          sessionNumber: 1,
+          totalSessions: order.packageSnapshot?.sessionCount || 1,
+          earnedAmount:
+            order.packageSnapshot?.trainerEarning ?? Math.round(order.total * 0.9),
+        }));
+      }
+
+      trainerEarningsData = {
+        availableBalance,
+        thisMonthEarnings,
+        lifetimeEarnings,
+        pendingAmount,
+        completedEarningsHistory,
+      };
+    }
+
     return {
       metrics,
       upcoming,
       series,
       finance: finance[0] || { gross: 0, fees: 0, earnings: 0 },
       payouts,
+      payoutHistory,
+      items: payoutHistory,
       trainer: trainer?.toObject(),
+      ...trainerEarningsData,
     };
   }
   if (

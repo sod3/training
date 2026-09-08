@@ -196,7 +196,7 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
                         <Video size={13} /> Live 1-on-1 online
                       </span>
                       {match.packages.length > 0 && (
-                        <span>From {money(match.basePrice)} / session</span>
+                        <span>From {money(match.basePrice)} / {match.priceUnit || "session"}</span>
                       )}
                     </div>
                   </div>

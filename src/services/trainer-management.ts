@@ -16,7 +16,7 @@ import {
 import { assert } from "@/lib/server/errors";
 import { connectDB } from "@/lib/server/db";
 import { databaseOperation } from "@/lib/server/diagnostics";
-import { availabilityConflict } from "@/lib/server/rules";
+import { availabilityConflict, validateDailyAvailability } from "@/lib/server/rules";
 import { notifyUser } from "@/lib/server/email";
 import { type Actor } from "@/lib/server/security";
 import {
@@ -28,7 +28,7 @@ import {
   timezone,
 } from "@/lib/server/validation";
 import { lockTrainer, settings } from "./bookings";
-import { DEFAULT_CATEGORIES, DEFAULT_LANGUAGES, DEFAULT_SPECIALTIES } from "@/lib/catalog";
+import { DEFAULT_CATEGORIES, DEFAULT_SPECIALTIES } from "@/lib/catalog";
 
 // Mongoose forwards these options to the driver's withTransaction(). Bound its
 // retry budget below the route's 60-second Vercel limit so failures can be logged.
@@ -37,7 +37,7 @@ const availabilityTransactionOptions = {
   timeoutMS: 25000,
 };
 
-async function assertMenuValues(category: string, specialties: string[], languages: string[], session: mongoose.ClientSession) {
+async function assertMenuValues(category: string, specialties: string[], session: mongoose.ClientSession) {
   const [allCategories, allSpecialties] = await Promise.all([
     Taxonomy.find({ kind: "CATEGORY" }).select("name active").session(session).lean(),
     Taxonomy.find({ kind: "SPECIALTY" }).select("name active").session(session).lean(),
@@ -46,10 +46,8 @@ async function assertMenuValues(category: string, specialties: string[], languag
   const activeSpecialties = allSpecialties.filter((value) => value.active).map((value) => value.name);
   const categories = new Set([...DEFAULT_CATEGORIES, "Fat Loss & General Fitness", "Mobility & Functional Fitness", ...activeCategories]);
   const specialtyMenu = new Set([...DEFAULT_SPECIALTIES, ...activeSpecialties]);
-  const languageMenu = new Set<string>(DEFAULT_LANGUAGES);
   assert(categories.has(category), "Choose a valid active training category");
   assert(specialties.length > 0 && specialties.every((value) => specialtyMenu.has(value)), "Choose specialties from the available menu");
-  assert(languages.length > 0 && languages.every((value) => languageMenu.has(value as typeof DEFAULT_LANGUAGES[number])), "Choose languages from the available menu");
 }
 
 export async function ownTrainer(actor: Actor) {
@@ -73,12 +71,6 @@ export async function trainerAction(
   if (resource === "verification") {
     const input = z
       .object({
-        name: z.string().trim().min(2).max(170),
-        phone: z.string().trim().min(7).max(30),
-        cnic: z
-          .string()
-          .trim()
-          .regex(/^\d{5}-\d{7}-\d$/, "Use CNIC format 12345-1234567-1"),
         uploadId: objectId,
       })
       .strict()
@@ -91,13 +83,10 @@ export async function trainerAction(
         purpose: "PRIVATE",
         status: { $in: ["READY", "ATTACHED"] },
       }).session(session);
-      assert(upload, "Upload your CNIC picture first");
+      assert(upload, "Upload your CNIC document first");
       assert(upload.status === "READY" || String(current.cnicUploadId || "") === String(upload._id), "This identity upload is already attached elsewhere", 409);
       const user = await User.findById(actor.id).session(session);
       assert(user, "Trainer account not found", 404);
-      current.legalName = input.name;
-      current.phone = input.phone;
-      current.cnic = input.cnic;
       current.cnicUploadId = upload._id;
       current.identityVerificationStatus = "PENDING";
       const wasApproved = current.applicationStatus === "APPROVED";
@@ -113,7 +102,6 @@ export async function trainerAction(
       if (existingIdentity) {
         existingIdentity.title = "CNIC identity document";
         existingIdentity.issuingOrganization = "NADRA";
-        existingIdentity.credentialNumber = input.cnic;
         existingIdentity.uploadId = upload._id;
         existingIdentity.verificationStatus = "PENDING";
         existingIdentity.adminNotes = "";
@@ -126,34 +114,31 @@ export async function trainerAction(
           type: "IDENTITY",
           title: "CNIC identity document",
           issuingOrganization: "NADRA",
-          credentialNumber: input.cnic,
           uploadId: upload._id,
           verificationStatus: "PENDING",
         }], { session });
       }
-      user.phone = input.phone;
-      await user.save({ session });
       upload.status = "ATTACHED";
       await upload.save({ session });
       await TrainerApplication.updateOne(
         { trainerId: current._id },
         {
           $set: wasApproved
-            ? { status: "ACTION_REQUIRED", adminNotes: "Identity details changed and require re-verification." }
+            ? { status: "ACTION_REQUIRED", adminNotes: "Identity document changed and requires re-verification." }
             : { status: "DRAFT" },
           $max: { step: 2 },
           ...(wasApproved ? {} : { $unset: { submittedAt: 1 } }),
         },
         { session },
       );
-      return { message: "Identity details saved for verification" };
+      return { message: "CNIC document uploaded and saved for verification" };
     });
   }
   if (resource === "profile") {
     const input = profileSchema.parse(data);
     return mongoose.connection.transaction(async (session) => {
       const current = await lockTrainer(trainer._id, session);
-      await assertMenuValues(input.category, input.specialties, input.languages, session);
+      await assertMenuValues(input.category, input.specialties, session);
       if (input.timezone !== current.timezone)
         assert(
           !(await Session.exists({
@@ -217,6 +202,12 @@ export async function trainerAction(
       !conflict,
       `Time windows ${conflict?.join(" and ")} overlap. Combine them or adjust their times.`,
       409,
+    );
+    const dailyValidation = validateDailyAvailability(input.rules);
+    assert(
+      dailyValidation.valid,
+      dailyValidation.message || "Daily availability cannot exceed 4 hours (240 minutes)",
+      400,
     );
     return databaseOperation("TrainerAvailability.transaction", () =>
       mongoose.connection.transaction(async (session) => {
@@ -437,11 +428,7 @@ export async function trainerAction(
             "an About section of at least 100 characters",
           !current.category && "training category",
           !current.specialties.length && "at least one specialty",
-          !current.languages.length && "at least one coaching language",
           !current.profileImage && "profile photo",
-          !current.phone && "phone number",
-          !current.legalName && "legal name",
-          !current.cnic && "CNIC number",
           !current.cnicUploadId && "saved CNIC document",
         ].filter(Boolean);
         assert(
@@ -530,10 +517,7 @@ export async function quickApproveApplication(actor: Actor, id: string) {
         trainer.biography.length >= 100 &&
         trainer.category &&
         trainer.specialties.length > 0 &&
-        trainer.languages.length > 0 &&
         trainer.profileImage &&
-        trainer.phone &&
-        trainer.cnic &&
         trainer.cnicUploadId,
       "Trainer profile or identity details are incomplete",
       409,
@@ -681,10 +665,7 @@ export async function reviewApplication(
           trainer.biography.length >= 100 &&
           trainer.category &&
           trainer.specialties.length > 0 &&
-          trainer.languages.length > 0 &&
           trainer.profileImage &&
-          trainer.phone &&
-          trainer.cnic &&
           trainer.cnicUploadId,
         "Trainer profile or identity details are incomplete",
         409,

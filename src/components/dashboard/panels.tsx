@@ -161,13 +161,6 @@ export function ProfilePanel({
                 value: (trainer.specialties as string[]) || [],
               },
               {
-                name: "languages",
-                label: "Languages",
-                type: "checkbox-group",
-                options: (record(data.catalog).languages as string[]) || [],
-                value: (trainer.languages as string[]) || [],
-              },
-              {
                 name: "timezone",
                 label: "Timezone",
                 value: str(trainer, "timezone") || "Asia/Karachi",
@@ -179,7 +172,6 @@ export function ProfilePanel({
               yearsExperience: Number(v.yearsExperience),
               specialties: v.specialties,
               trainingGoals: [String(v.category)],
-              languages: v.languages,
             })}
           />
           <UploadForm
@@ -298,6 +290,23 @@ export function PackagesPanel({
     </>
   );
 }
+function getRuleDurationMinutes(startTime: string, endTime: string) {
+  if (!startTime || !endTime) return 0;
+  const startMin = Number(startTime.slice(0, 2)) * 60 + Number(startTime.slice(3));
+  let endMin = Number(endTime.slice(0, 2)) * 60 + Number(endTime.slice(3));
+  if (endMin <= startMin) endMin += 1440;
+  return endMin - startMin;
+}
+
+function formatDurationText(mins: number) {
+  if (mins <= 0) return "0m";
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+}
+
 export function AvailabilityPanel({
   data,
   reload,
@@ -310,83 +319,145 @@ export function AvailabilityPanel({
   const [busy, setBusy] = useState(false);
   const set = (index: number, key: string, value: unknown) =>
     setRules(rules.map((r, i) => (i === index ? { ...r, [key]: value } : r)));
+
+  const dayLabels = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const dailyStats = dayLabels.map((dayName, dayIndex) => {
+    const dayRules = rules.filter((r) => num(r, "dayOfWeek") === dayIndex);
+    const totalMins = dayRules.reduce(
+      (sum, r) => sum + getRuleDurationMinutes(str(r, "startTime"), str(r, "endTime")),
+      0,
+    );
+    return {
+      dayIndex,
+      dayName,
+      count: dayRules.length,
+      totalMins,
+      exceeds: totalMins > 240,
+    };
+  });
+
+  const totalExceededDay = dailyStats.find((s) => s.exceeds);
+
   return (
     <>
       <section className="panel">
         <h2>Your weekly schedule</h2>
         <p>
-          Times are in {str(data, "timezone")}. An end earlier than the start
-          continues into the following day. Existing bookings remain scheduled.
+          Times are in {str(data, "timezone")}. Maximum availability is <strong>4 hours (240 minutes) per day</strong>. Split ranges on the same day are supported.
         </p>
-        {rules.map((r, i) => (
-          <div className="schedule-rule" key={i}>
-            <label className="field">
-              Day
-              <select
-                value={num(r, "dayOfWeek")}
-                onChange={(e) => set(i, "dayOfWeek", Number(e.target.value))}
-              >
-                {[
-                  "Sunday",
-                  "Monday",
-                  "Tuesday",
-                  "Wednesday",
-                  "Thursday",
-                  "Friday",
-                  "Saturday",
-                ].map((d, n) => (
-                  <option key={d} value={n}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              Start
-              <input
-                type="time"
-                value={str(r, "startTime")}
-                onChange={(e) => set(i, "startTime", e.target.value)}
-              />
-            </label>
-            <label className="field">
-              End
-              <input
-                type="time"
-                value={str(r, "endTime")}
-                onChange={(e) => set(i, "endTime", e.target.value)}
-              />
-            </label>
 
-            <button
-              className="text-link"
-              onClick={() => setRules(rules.filter((_, n) => n !== i))}
-            >
-              Remove
-            </button>
+        <div className="daily-availability-summary" style={{ marginBottom: "1.25rem", marginTop: "0.75rem" }}>
+          <strong style={{ fontSize: "0.9rem" }}>Daily availability limits (Max 4h / 240m per day):</strong>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.5rem" }}>
+            {dailyStats.map((stat) => (
+              <div
+                key={stat.dayIndex}
+                style={{
+                  padding: "0.4rem 0.65rem",
+                  borderRadius: "var(--radius, 6px)",
+                  border: stat.exceeds
+                    ? "1px solid var(--danger, #ef4444)"
+                    : stat.totalMins > 0
+                      ? "1px solid var(--primary, #10b981)"
+                      : "1px solid var(--border, #e5e7eb)",
+                  background: stat.exceeds
+                    ? "rgba(239, 68, 68, 0.1)"
+                    : stat.totalMins === 240
+                      ? "rgba(16, 185, 129, 0.1)"
+                      : "transparent",
+                  fontSize: "0.85rem",
+                }}
+              >
+                <strong>{stat.dayName}:</strong>{" "}
+                <span>{formatDurationText(stat.totalMins)} of 4h used</span>
+                {stat.exceeds && (
+                  <span style={{ color: "var(--danger, #ef4444)", fontWeight: "bold", marginLeft: "0.25rem" }}>
+                    (Exceeds limit!)
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-        <div className="workspace-actions">
+        </div>
+
+        {rules.map((r, i) => {
+          const ruleMins = getRuleDurationMinutes(str(r, "startTime"), str(r, "endTime"));
+          return (
+            <div className="schedule-rule" key={i}>
+              <label className="field">
+                Day
+                <select
+                  value={num(r, "dayOfWeek")}
+                  onChange={(e) => set(i, "dayOfWeek", Number(e.target.value))}
+                >
+                  {dayLabels.map((d, n) => (
+                    <option key={d} value={n}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                Start
+                <input
+                  type="time"
+                  value={str(r, "startTime")}
+                  onChange={(e) => set(i, "startTime", e.target.value)}
+                />
+              </label>
+              <label className="field">
+                End
+                <input
+                  type="time"
+                  value={str(r, "endTime")}
+                  onChange={(e) => set(i, "endTime", e.target.value)}
+                />
+              </label>
+
+              <span className="muted" style={{ alignSelf: "center", fontSize: "0.85rem", minWidth: "60px" }}>
+                ({formatDurationText(ruleMins)})
+              </span>
+
+              <button
+                className="text-link"
+                onClick={() => setRules(rules.filter((_, n) => n !== i))}
+              >
+                Remove
+              </button>
+            </div>
+          );
+        })}
+
+        {totalExceededDay && (
+          <p className="form-error" role="alert" style={{ marginTop: "0.75rem" }}>
+            Daily availability limit is 4 hours (240 minutes) per day. {totalExceededDay.dayName} has {formatDurationText(totalExceededDay.totalMins)} configured. Please adjust time windows to stay within 4 hours.
+          </p>
+        )}
+
+        <div className="workspace-actions" style={{ marginTop: "1rem" }}>
           <button
             className="btn outline small"
             disabled={rules.length >= 28}
-            onClick={() =>
+            onClick={() => {
+              // Pick first day with available minutes
+              const targetDay = dailyStats.find((s) => s.totalMins < 240)?.dayIndex ?? 1;
               setRules([
                 ...rules,
                 {
-                  dayOfWeek: 1,
+                  dayOfWeek: targetDay,
                   startTime: "09:00",
-                  endTime: "17:00",
+                  endTime: "11:00",
                 },
-              ])
-            }
+              ]);
+            }}
           >
             Add time window
           </button>
           <button
             className="btn small"
-            disabled={busy}
+            disabled={busy || Boolean(totalExceededDay)}
             onClick={async () => {
+              if (totalExceededDay) return;
               setBusy(true);
               try {
                 const result = await api<{ message: string }>(
@@ -481,9 +552,7 @@ export function VerificationPanel({
       <section className="panel">
         <h2>Identity verification</h2>
         <p>
-          Keep your legal name, phone number and CNIC current. Changing approved
-          identity details sends them back for admin review; it does not submit
-          the full application automatically.
+          Upload a clear picture of your CNIC so the SPOTTER team can verify your identity. Your document is private and never shown publicly.
         </p>
         <span className="status">
           {str(application, "status") || "Not submitted"}
@@ -499,9 +568,14 @@ export function VerificationPanel({
             const values = new FormData(form);
             try {
               const file = values.get("cnicPicture");
+              if (!(file instanceof File) || !file.size) {
+                setMessage("Please select a CNIC picture to upload.");
+                setBusy(false);
+                return;
+              }
               const upload = new FormData();
               upload.set("purpose", "PRIVATE");
-              upload.set("file", file as File);
+              upload.set("file", file);
               const response = await fetch("/api/uploads", {
                 method: "POST",
                 body: upload,
@@ -510,13 +584,11 @@ export function VerificationPanel({
               const result = await api<{ message: string }>(
                 "trainer/verification",
                 {
-                  name: values.get("name"),
-                  phone: values.get("phone"),
-                  cnic: values.get("cnic"),
                   uploadId: uploaded.id,
                 },
               );
               setMessage(result.message);
+              form.reset();
               reload();
             } catch (error) {
               setMessage((error as Error).message);
@@ -526,56 +598,28 @@ export function VerificationPanel({
           }}
         >
           <label className="field">
-            Full name
-            <input
-              name="name"
-              required
-              defaultValue={
-                str(trainer, "legalName") || str(trainer, "displayName")
-              }
-              maxLength={170}
-            />
-          </label>
-          <label className="field">
-            Phone number
-            <input
-              name="phone"
-              required
-              defaultValue={str(trainer, "phone")}
-              maxLength={30}
-            />
-          </label>
-          <label className="field">
-            CNIC number
-            <input
-              name="cnic"
-              required
-              defaultValue={str(trainer, "cnic")}
-              placeholder="12345-1234567-1"
-              pattern="[0-9]{5}-[0-9]{7}-[0-9]"
-            />
-          </label>
-          <label className="field">
-            CNIC picture
+            CNIC picture / document
             <input
               name="cnicPicture"
               type="file"
               required
-              accept=".jpg,.jpeg,.png,.webp"
+              accept=".jpg,.jpeg,.png,.webp,.pdf"
             />
-            <small>JPG, PNG, or WebP. Maximum 4 MB.</small>
+            <small>JPG, PNG, WebP, or PDF. Maximum 4 MB.</small>
           </label>
           {message && <p role="status">{message}</p>}
           <button className="btn" disabled={busy}>
-            {busy ? "Saving…" : "Save identity details"}
+            {busy ? "Uploading…" : "Upload CNIC & save"}
           </button>
         </form>
         {str(trainer, "cnicUploadId") && (
           <a
             className="text-link"
             href={`/api/media/${str(trainer, "cnicUploadId")}`}
+            target="_blank"
+            rel="noreferrer"
           >
-            View submitted CNIC picture
+            View submitted CNIC picture →
           </a>
         )}
       </section>
@@ -785,3 +829,213 @@ export function MessagesPanel({
     </div>
   );
 }
+
+export function EarningsPanel({
+  data,
+  reload,
+}: {
+  data: Item;
+  reload: () => void;
+}) {
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const availableBalancePaisa = num(data, "availableBalance");
+  const thisMonthPaisa = num(data, "thisMonthEarnings");
+  const lifetimePaisa = num(data, "lifetimeEarnings");
+  const pendingPaisa = num(data, "pendingAmount");
+
+  const payoutHistoryRows = rows(data.payoutHistory || data.items);
+  const completedEarningsHistoryRows = rows(data.completedEarningsHistory);
+
+  const getStatusBadge = (rawStatus: string) => {
+    const s = rawStatus.toUpperCase();
+    if (s === "PAID")
+      return <span className="status-badge status-badge-paid">Paid</span>;
+    if (s === "PROCESSING")
+      return (
+        <span className="status-badge status-badge-processing">Processing</span>
+      );
+    if (s === "REQUESTED" || s === "PENDING")
+      return <span className="status-badge status-badge-pending">Pending</span>;
+    if (s === "REJECTED" || s === "FAILED")
+      return <span className="status-badge status-badge-failed">Failed</span>;
+    return <span className="status-badge">{rawStatus}</span>;
+  };
+
+  return (
+    <div className="earnings-container">
+      {/* Available Balance Hero Banner */}
+      <section className="panel earnings-hero-card">
+        <div className="earnings-hero-header">
+          <div>
+            <span className="eyebrow">AVAILABLE BALANCE</span>
+            <h2 className="earnings-hero-balance">
+              {amount(availableBalancePaisa)}
+            </h2>
+            <p className="earnings-hero-subtext">
+              Settled earnings from completed packages ready for withdrawal.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn lime earnings-request-btn"
+            onClick={() => setShowRequestModal(true)}
+          >
+            REQUEST PAYOUT
+          </button>
+        </div>
+
+        {/* Modal / Inline Payout Request Form */}
+        {showRequestModal && (
+          <div className="payout-modal-overlay">
+            <div className="panel payout-modal-content">
+              <div className="payout-modal-header">
+                <h3>Request a Payout</h3>
+                <button
+                  type="button"
+                  className="payout-modal-close"
+                  onClick={() => setShowRequestModal(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <p>
+                Available balance for payout:{" "}
+                <strong>{amount(availableBalancePaisa)}</strong>
+              </p>
+              {availableBalancePaisa < 10000 ? (
+                <p className="form-notice">
+                  Minimum payout threshold is {amount(10000)}. Completed earnings will be available here once accrued.
+                </p>
+              ) : (
+                <ActionForm
+                  endpoint="trainer/payouts"
+                  fields={[
+                    {
+                      name: "amount",
+                      label: "Amount in PKR",
+                      type: "number",
+                      value: availableBalancePaisa / 100,
+                      min: 100,
+                      max: availableBalancePaisa / 100,
+                      required: true,
+                    },
+                  ]}
+                  transform={(v) => ({
+                    amount: Math.round(Number(v.amount) * 100),
+                    idempotencyKey: crypto.randomUUID(),
+                  })}
+                  label="Submit Payout Request"
+                  onDone={() => {
+                    setShowRequestModal(false);
+                    reload();
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Summary Metrics */}
+      <div className="earnings-metrics-grid">
+        <article className="panel earnings-metric-card">
+          <span className="eyebrow">THIS MONTH</span>
+          <strong>{amount(thisMonthPaisa)}</strong>
+        </article>
+        <article className="panel earnings-metric-card">
+          <span className="eyebrow">LIFETIME EARNINGS</span>
+          <strong>{amount(lifetimePaisa)}</strong>
+        </article>
+        <article className="panel earnings-metric-card">
+          <span className="eyebrow">PENDING AMOUNT</span>
+          <strong>{amount(pendingPaisa)}</strong>
+        </article>
+      </div>
+
+      {/* Payout History */}
+      <section className="panel">
+        <h2>Payout History</h2>
+        {payoutHistoryRows.length > 0 ? (
+          <div className="earnings-table-wrapper">
+            <table className="earnings-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Method</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payoutHistoryRows.map((p) => (
+                  <tr key={str(p, "_id")}>
+                    <td>{date(p.createdAt)}</td>
+                    <td>
+                      <strong>{amount(p.amount)}</strong>
+                    </td>
+                    <td>{str(p, "reference") || "Bank Transfer"}</td>
+                    <td>{getStatusBadge(str(p, "status"))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="muted">No payout history yet.</p>
+        )}
+      </section>
+
+      {/* Completed Session Earning History */}
+      <section className="panel">
+        <h2>Completed Session Earnings</h2>
+        <p className="muted" style={{ marginBottom: "1rem" }}>
+          Recent earnings breakdown from completed training sessions.
+        </p>
+        {completedEarningsHistoryRows.length > 0 ? (
+          <div className="earnings-table-wrapper">
+            <table className="earnings-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Client</th>
+                  <th>Package / Service</th>
+                  <th>Net Earned</th>
+                </tr>
+              </thead>
+              <tbody>
+                {completedEarningsHistoryRows.map((item) => (
+                  <tr key={str(item, "_id")}>
+                    <td>{date(item.date)}</td>
+                    <td>
+                      <strong>{str(item, "clientName")}</strong>
+                      {str(item, "bookingNumber") !== "—" && (
+                        <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>
+                          {str(item, "bookingNumber")}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {str(item, "packageName")}{" "}
+                      <span style={{ fontSize: "0.85rem", opacity: 0.8 }}>
+                        (Session {num(item, "sessionNumber")} of{" "}
+                        {num(item, "totalSessions")})
+                      </span>
+                    </td>
+                    <td>
+                      <strong style={{ color: "var(--primary, #10b981)" }}>
+                        +{amount(num(item, "earnedAmount"))}
+                      </strong>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="muted">No completed session earnings recorded yet.</p>
+        )}
+      </section>
+    </div>
+  );
+}
+

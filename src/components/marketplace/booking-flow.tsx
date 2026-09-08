@@ -62,6 +62,7 @@ function Checkout({
   const [paymentMethod, setPaymentMethod] = useState<"JAZZCASH" | "EASYPAISA">(
     "JAZZCASH",
   );
+  const [showAllSlots, setShowAllSlots] = useState(false);
   const [payerName, setPayerName] = useState("");
   const [transactionId, setTransactionId] = useState("");
   const [proof, setProof] = useState<File | null>(null);
@@ -95,6 +96,11 @@ function Checkout({
       ? `trainers/${t.id}/availability?${new URLSearchParams({ date, packageId })}`
       : null,
   );
+  const allSlots = data?.slots || [];
+  const visibleSlots = showAllSlots
+    ? allSlots
+    : allSlots.filter((s, i) => i < 6 || s.start === start);
+
   const {
     data: paymentAccounts,
     loading: paymentMethodsLoading,
@@ -176,6 +182,7 @@ function Checkout({
                     onClick={() => {
                       setPackage(p.id);
                       setStart("");
+                      setShowAllSlots(false);
                     }}
                   >
                     <h3>{p.title}</h3>
@@ -205,6 +212,7 @@ function Checkout({
                       onClick={() => {
                         setDate(item.key);
                         setStart("");
+                        setShowAllSlots(false);
                       }}
                     >
                       <small>{item.day}</small>
@@ -225,7 +233,7 @@ function Checkout({
                 </p>
               )}
               <div className="choice-chips booking-time-slots">
-                {data?.slots.map((slot) => (
+                {visibleSlots.map((slot) => (
                   <button
                     type="button"
                     key={slot.start}
@@ -244,7 +252,27 @@ function Checkout({
                   </button>
                 ))}
               </div>
-              {data && !data.slots.length && (
+              {!showAllSlots && allSlots.length > visibleSlots.length && (
+                <button
+                  type="button"
+                  className="btn outline small"
+                  style={{ marginTop: "0.75rem" }}
+                  onClick={() => setShowAllSlots(true)}
+                >
+                  Show more times ({allSlots.length - visibleSlots.length} more)
+                </button>
+              )}
+              {showAllSlots && allSlots.length > 6 && (
+                <button
+                  type="button"
+                  className="text-link small"
+                  style={{ marginTop: "0.75rem", display: "inline-block" }}
+                  onClick={() => setShowAllSlots(false)}
+                >
+                  Show fewer times
+                </button>
+              )}
+              {data && !allSlots.length && (
                 <p>No open times on this date. Choose another day.</p>
               )}
               {start && (

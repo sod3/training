@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DateTime } from "luxon";
+import { validateDailyAvailability } from "./rules";
 export const objectId = z
   .string()
   .regex(/^[a-f\d]{24}$/i, "Invalid identifier");
@@ -50,7 +51,6 @@ export const profileSchema = z
     specialties: words,
     trainingGoals: words.default([]),
     timezone,
-    languages: words,
   })
   .strict();
 export const packageSchema = z
@@ -87,7 +87,15 @@ export const availabilitySchema = z
       )
       .max(28),
   })
-  .strict();
+  .strict()
+  .refine(
+    (v) => validateDailyAvailability(v.rules).valid,
+    (v) => ({
+      message:
+        validateDailyAvailability(v.rules).message ||
+        "Daily availability cannot exceed 4 hours (240 minutes) per day",
+    }),
+  );
 export const exceptionSchema = z
   .object({
     start: z.string().datetime(),

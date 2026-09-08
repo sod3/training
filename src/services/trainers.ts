@@ -98,52 +98,72 @@ export async function presentTrainer(t: ProfileData): Promise<Trainer> {
   }
 
   const [firstName, ...last] = t.displayName.split(" ");
-  return {
-    id: String(t._id),
-    slug: t.slug,
-    firstName,
-    lastName: last.join(" "),
-    profileImage: t.profileImage || account?.avatar || "/avatar.svg",
-    coverImage: t.coverImage || undefined,
-    headline: t.headline,
-    bio: t.biography,
-    verifiedIdentity: t.identityVerificationStatus === "APPROVED",
-    verifiedCredentials: credentials.length > 0,
-    rating: stats[0]?.average || 0,
-    reviewCount: stats[0]?.count || 0,
-    sessionsCompleted: completed,
-    experienceYears: t.yearsExperience,
-    responseTime: "when available",
-    category: t.category || undefined,
-    languages: t.languages || [],
-    specialties: t.specialties,
-    certifications: credentials.map((c) => c.title),
-    packages: packages.map((p) => ({
-      id: String(p._id),
-      title: p.name,
-      price: p.price / 100,
-      sessions: p.sessionCount,
-      duration: p.sessionDuration,
-      description: p.description,
-    })),
-    reviews: reviews.map((r) => ({
-      id: String(r._id),
-      clientName: r.customerName,
-      rating: r.rating,
-      date: r.createdAt.toISOString().slice(0, 10),
-      goal: r.trainingGoal,
-      comment: r.review,
-      verified: r.verifiedBooking,
-    })),
-    basePrice: packages.length
-      ? Math.min(...packages.map((p) => p.price / p.sessionCount / 100))
-      : 0,
-    nextAvailable,
-    nextAvailableAt,
-    nextAvailableDate,
-    availabilityWeekStart,
-    timezone: zone,
-  };
+    const singleSessionPackages = packages.filter((p) => p.sessionCount === 1);
+    let basePrice = 0;
+    let priceUnit: "session" | "package" = "session";
+    let perSessionPrice: number | undefined = undefined;
+    if (singleSessionPackages.length > 0) {
+      basePrice = Math.min(...singleSessionPackages.map((p) => p.price / 100));
+      priceUnit = "session";
+      perSessionPrice = basePrice;
+    } else if (packages.length > 0) {
+      const lowestPkg = packages.reduce(
+        (min, p) => (p.price < min.price ? p : min),
+        packages[0],
+      );
+      basePrice = lowestPkg.price / 100;
+      priceUnit = "package";
+      perSessionPrice = Math.round(
+        lowestPkg.price / lowestPkg.sessionCount / 100,
+      );
+    }
+
+    return {
+      id: String(t._id),
+      slug: t.slug,
+      firstName,
+      lastName: last.join(" "),
+      profileImage: t.profileImage || account?.avatar || "/avatar.svg",
+      coverImage: t.coverImage || undefined,
+      headline: t.headline,
+      bio: t.biography,
+      verifiedIdentity: t.identityVerificationStatus === "APPROVED",
+      verifiedCredentials: credentials.length > 0,
+      rating: stats[0]?.average || 0,
+      reviewCount: stats[0]?.count || 0,
+      sessionsCompleted: completed,
+      experienceYears: t.yearsExperience,
+      responseTime: "when available",
+      category: t.category || undefined,
+      languages: t.languages || [],
+      specialties: t.specialties,
+      certifications: credentials.map((c) => c.title),
+      packages: packages.map((p) => ({
+        id: String(p._id),
+        title: p.name,
+        price: p.price / 100,
+        sessions: p.sessionCount,
+        duration: p.sessionDuration,
+        description: p.description,
+      })),
+      reviews: reviews.map((r) => ({
+        id: String(r._id),
+        clientName: r.customerName,
+        rating: r.rating,
+        date: r.createdAt.toISOString().slice(0, 10),
+        goal: r.trainingGoal,
+        comment: r.review,
+        verified: r.verifiedBooking,
+      })),
+      basePrice,
+      priceUnit,
+      perSessionPrice,
+      nextAvailable,
+      nextAvailableAt,
+      nextAvailableDate,
+      availabilityWeekStart,
+      timezone: zone,
+    };
 }
 
 async function trainerFacets(

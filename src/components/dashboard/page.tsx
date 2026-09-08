@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requirePage } from "@/lib/server/security";
 import { Dashboard } from "./dashboard";
 import type { Role } from "@/lib/server/rules";
@@ -32,6 +32,7 @@ const allowed = {
     "bookings",
     "clients",
     "packages",
+    "services-pricing",
     "availability",
     "messages",
     "reviews",
@@ -43,8 +44,18 @@ const allowed = {
     "application",
     "notifications",
     "security",
+    "settings",
   ],
 };
+
+const legacyRedirects: Record<string, string> = {
+  calendar: "availability",
+  payouts: "earnings",
+  analytics: "overview",
+  "services-pricing": "packages",
+  settings: "profile",
+};
+
 export async function DashboardPage({
   role,
   section,
@@ -53,7 +64,11 @@ export async function DashboardPage({
   section?: string[];
 }) {
   await requirePage(role as Role);
-  const tab = section?.[0] || "overview";
-  if ((section?.length || 0) > 1 || !allowed[role].includes(tab)) notFound();
-  return <Dashboard role={role.toLowerCase()} tab={tab} />;
+  const rawTab = section?.[0] || "overview";
+  if ((section?.length || 0) > 1) notFound();
+  if (role === "TRAINER" && rawTab in legacyRedirects) {
+    redirect(`/trainer/${legacyRedirects[rawTab]}`);
+  }
+  if (!allowed[role].includes(rawTab)) notFound();
+  return <Dashboard role={role.toLowerCase()} tab={rawTab} />;
 }

@@ -123,21 +123,9 @@ export function ActionForm({
               defaultChecked={!!field.value}
             />
           ) : field.type === "checkbox-group" ? (
-            <div
-              className="checkbox-group"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.5rem",
-                marginTop: "0.5rem",
-              }}
-            >
+            <div className="checkbox-group">
               {field.options?.map((opt) => (
-                <label
-                  key={opt}
-                  className="check-label"
-                  style={{ fontWeight: "normal" }}
-                >
+                <label key={opt} className="check-label">
                   <input
                     type="checkbox"
                     name={field.name}
@@ -148,7 +136,7 @@ export function ActionForm({
                         : String(field.value || "").includes(opt)
                     }
                   />
-                  {opt}
+                  <span>{opt}</span>
                 </label>
               ))}
             </div>

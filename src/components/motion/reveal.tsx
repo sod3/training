@@ -37,9 +37,11 @@ export function Reveal({
 export function SplitHeading({
   lines,
   className = "",
+  id,
 }: {
   lines: string[];
   className?: string;
+  id?: string;
 }) {
   const ref = useRef<HTMLHeadingElement>(null);
   useGSAP(
@@ -59,7 +61,7 @@ export function SplitHeading({
     { scope: ref },
   );
   return (
-    <h2 ref={ref} className={className}>
+    <h2 ref={ref} id={id} className={className}>
       {lines.map((line) => (
         <span className="heading-mask" key={line}>
           <span className="heading-line">{line}</span>

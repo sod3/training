@@ -63,7 +63,7 @@ export default function Page() {
                 </h2>
                 <dl className="comparison-details">
                   {[
-                    ["Session price", money(t.basePrice)],
+                    ["Starting price", `${money(t.basePrice)} / ${t.priceUnit || "session"}`],
                     ["Rating", `${t.rating} · ${t.reviewCount} reviews`],
                     ["Experience", `${t.experienceYears} years`],
                     ["Specialties", t.specialties.join(", ")],

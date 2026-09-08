@@ -151,7 +151,7 @@ export function TrainerSearch({ initial }: { initial: Record<string, string> }) 
             <div className="result-toolbar">
               <div>
                 <h2>Approved trainers</h2>
-                <p aria-live="polite">{data?.total || 0} available · prices shown per session</p>
+                <p aria-live="polite">{data?.total || 0} available · starting prices shown</p>
               </div>
               <div className="result-controls">
                 {hasDynamicFilters && (

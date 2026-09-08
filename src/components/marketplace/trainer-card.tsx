@@ -104,7 +104,7 @@ export function TrainerCard({
           {t.packages.length ? (
             <p>
               <span>From</span> <strong>{money(t.basePrice)}</strong>
-              <small> / session</small>
+              <small> / {t.priceUnit || "session"}</small>
             </p>
           ) : (
             <p>

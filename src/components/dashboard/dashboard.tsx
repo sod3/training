@@ -2,12 +2,42 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  Award,
+  BarChart3,
+  Bell,
+  Bookmark,
+  CalendarCheck,
+  Clock,
+  CreditCard,
+  FileCode,
+  FileText,
+  Folder,
+  Headphones,
+  Layers,
+  LayoutDashboard,
+  Lock,
+  LogOut,
+  MessageSquare,
+  Package,
+  PanelLeftClose,
+  PanelLeftOpen,
+  RefreshCw,
+  Settings,
+  ShieldCheck,
+  Star,
+  Tag,
+  TrendingUp,
+  User,
+  Users,
+} from "lucide-react";
 import { api, useApi } from "@/lib/client-api";
 import { useStore } from "@/components/marketplace/store";
 import { ActionForm } from "./action-form";
 import { AdminPanel, AdminSettings, RecordDetails } from "./admin-panel";
 import {
   AvailabilityPanel,
+  EarningsPanel,
   MessagesPanel,
   PackagesPanel,
   ProfilePanel,
@@ -22,7 +52,8 @@ import {
 } from "./panels";
 import { BookingList, StartConversation } from "./bookings-panel";
 import { ReviewComposer } from "./review-composer";
-const tabs = {
+
+const primaryTabsByRole: Record<string, string[]> = {
   customer: [
     "overview",
     "bookings",
@@ -31,27 +62,16 @@ const tabs = {
     "messages",
     "reviews",
     "payments",
-    "notifications",
-    "profile",
-    "security",
   ],
   trainer: [
     "overview",
-    "calendar",
     "bookings",
     "clients",
-    "packages",
     "availability",
+    "packages",
     "messages",
     "reviews",
     "earnings",
-    "analytics",
-    "payouts",
-    "profile",
-    "verification",
-    "application",
-    "notifications",
-    "security",
   ],
   admin: [
     "overview",
@@ -69,14 +89,111 @@ const tabs = {
     "categories",
     "specialties",
     "content",
-    "notifications",
     "support",
     "reports",
     "audit-logs",
-    "settings",
-    "security",
   ],
 };
+
+const accountTabsByRole: Record<string, string[]> = {
+  customer: ["notifications", "profile", "security"],
+  trainer: ["profile", "verification", "application", "notifications", "security"],
+  admin: ["notifications", "settings", "security"],
+};
+
+function getNavIcon(tabKey: string) {
+  switch (tabKey) {
+    case "overview":
+      return <LayoutDashboard size={18} className="sidebar-nav-icon" />;
+    case "bookings":
+      return <CalendarCheck size={18} className="sidebar-nav-icon" />;
+    case "clients":
+    case "users":
+    case "customers":
+      return <Users size={18} className="sidebar-nav-icon" />;
+    case "trainers":
+      return <Award size={18} className="sidebar-nav-icon" />;
+    case "availability":
+    case "sessions":
+      return <Clock size={18} className="sidebar-nav-icon" />;
+    case "packages":
+      return <Package size={18} className="sidebar-nav-icon" />;
+    case "messages":
+      return <MessageSquare size={18} className="sidebar-nav-icon" />;
+    case "reviews":
+      return <Star size={18} className="sidebar-nav-icon" />;
+    case "earnings":
+    case "payouts":
+      return <TrendingUp size={18} className="sidebar-nav-icon" />;
+    case "saved":
+      return <Bookmark size={18} className="sidebar-nav-icon" />;
+    case "payments":
+      return <CreditCard size={18} className="sidebar-nav-icon" />;
+    case "refunds":
+      return <RefreshCw size={18} className="sidebar-nav-icon" />;
+    case "profile":
+      return <User size={18} className="sidebar-nav-icon" />;
+    case "verification":
+      return <ShieldCheck size={18} className="sidebar-nav-icon" />;
+    case "application":
+    case "applications":
+      return <FileText size={18} className="sidebar-nav-icon" />;
+    case "notifications":
+      return <Bell size={18} className="sidebar-nav-icon" />;
+    case "security":
+      return <Lock size={18} className="sidebar-nav-icon" />;
+    case "settings":
+      return <Settings size={18} className="sidebar-nav-icon" />;
+    case "categories":
+      return <Folder size={18} className="sidebar-nav-icon" />;
+    case "specialties":
+      return <Tag size={18} className="sidebar-nav-icon" />;
+    case "content":
+      return <Layers size={18} className="sidebar-nav-icon" />;
+    case "support":
+      return <Headphones size={18} className="sidebar-nav-icon" />;
+    case "reports":
+      return <BarChart3 size={18} className="sidebar-nav-icon" />;
+    case "audit-logs":
+      return <FileCode size={18} className="sidebar-nav-icon" />;
+    default:
+      return <LayoutDashboard size={18} className="sidebar-nav-icon" />;
+  }
+}
+
+function getTabLabel(t: string) {
+  if (t === "packages") return "Services & Pricing";
+  if (t === "application") return "Application status";
+  if (t === "audit-logs") return "Audit logs";
+  return t.charAt(0).toUpperCase() + t.slice(1).replaceAll("-", " ");
+}
+
+function formatMetricKey(key: string) {
+  const customMap: Record<string, string> = {
+    grossRs: "Gross Revenue",
+    feesRs: "Platform Fees",
+    earningsRs: "Net Earnings",
+    gross: "Gross Revenue",
+    fees: "Platform Fees",
+    earnings: "Net Earnings",
+    totalBookings: "Total Bookings",
+    activeTrainers: "Active Trainers",
+    totalCustomers: "Total Customers",
+    activePackages: "Active Packages",
+    completedSessions: "Completed Sessions",
+    upcomingSessions: "Upcoming Sessions",
+    netEarnings: "Net Earnings",
+    totalRevenue: "Total Revenue",
+    platformFees: "Platform Fees",
+  };
+  if (customMap[key]) return customMap[key];
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/_/g, " ")
+    .replace(/^./, (str) => str.toUpperCase())
+    .trim();
+}
+
 function useDebouncedValue(value: string, delay = 300) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -85,6 +202,7 @@ function useDebouncedValue(value: string, delay = 300) {
   }, [delay, value]);
   return debounced;
 }
+
 export function Dashboard({
   role = "customer",
   tab = "overview",
@@ -95,7 +213,7 @@ export function Dashboard({
   trainerId?: string;
 }) {
   const router = useRouter();
-  const selectedRole = role in tabs ? (role as keyof typeof tabs) : "customer";
+  const selectedRole = role in primaryTabsByRole ? role : "customer";
   const base =
     selectedRole === "admin"
       ? "/admin"
@@ -103,6 +221,7 @@ export function Dashboard({
         ? "/trainer"
         : "/dashboard/customer";
   const { state, notify, refresh } = useStore();
+  const [collapsed, setCollapsed] = useState(false);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
@@ -116,44 +235,118 @@ export function Dashboard({
     reload();
     refresh();
   }, [refresh, reload]);
-  const overview = ["overview", "analytics", "reports", "earnings"].includes(
-    tab,
-  );
+  const overview =
+    ["overview", "analytics", "reports"].includes(tab) ||
+    (tab === "earnings" && selectedRole !== "trainer");
+
+  const primaryNavItems = primaryTabsByRole[selectedRole] || [];
+  const accountNavItems = accountTabsByRole[selectedRole] || [];
+
   return (
-    <div className="workspace">
+    <div className={`workspace ${collapsed ? "collapsed" : ""}`}>
       <aside className="workspace-sidebar">
-        <p className="eyebrow">SPOTTER / {selectedRole}</p>
-        <strong>{state.name}</strong>
-        <nav aria-label="Dashboard navigation">
-          {tabs[selectedRole].map((t) => (
-            <Link
-              key={t}
-              className={tab === t ? "active" : ""}
-              href={t === "overview" ? base : `${base}/${t}`}
-            >
-              {t.replaceAll("-", " ")}
-              {t === "notifications" && state.unread > 0 && (
-                <span>{state.unread}</span>
-              )}
-              {t === "messages" && state.unreadMessages > 0 && (
-                <span>{state.unreadMessages}</span>
-              )}
-            </Link>
-          ))}
-        </nav>
-        <button
-          className="text-link"
-          onClick={async () => {
-            try {
-              await api("auth/logout", {});
-              router.push("/");
-            } catch (e) {
-              notify((e as Error).message);
-            }
-          }}
-        >
-          Log out →
-        </button>
+        {/* Identity Header */}
+        <div className="sidebar-identity">
+          <div className="sidebar-identity-info">
+            <p className="eyebrow">SPOTTER / {selectedRole}</p>
+            <strong className="sidebar-user-name" title={state.name || "Workspace"}>
+              {state.name || "Workspace"}
+            </strong>
+          </div>
+          <button
+            type="button"
+            className="sidebar-collapse-btn"
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
+        </div>
+
+        {/* Scrollable Navigation Area */}
+        <div className="sidebar-scroll-area">
+          <div className="sidebar-section">
+            {!collapsed && <p className="eyebrow sidebar-section-title">WORKSPACE</p>}
+            <nav aria-label="Dashboard primary navigation">
+              {primaryNavItems.map((t) => {
+                const isActive = tab === t;
+                const label = getTabLabel(t);
+                const href = t === "overview" ? base : `${base}/${t}`;
+                const unreadCount =
+                  t === "notifications"
+                    ? state.unread
+                    : t === "messages"
+                      ? state.unreadMessages
+                      : 0;
+
+                return (
+                  <Link
+                    key={t}
+                    className={`sidebar-nav-item ${isActive ? "active" : ""}`}
+                    href={href}
+                    title={label}
+                  >
+                    <span className="sidebar-nav-icon-container">{getNavIcon(t)}</span>
+                    {!collapsed && <span className="sidebar-nav-label">{label}</span>}
+                    {unreadCount > 0 && (
+                      <span className="sidebar-nav-badge">{unreadCount}</span>
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="sidebar-section sidebar-account-section">
+            {!collapsed && <p className="eyebrow sidebar-section-title">ACCOUNT</p>}
+            <nav aria-label="Account navigation">
+              {accountNavItems.map((t) => {
+                const isActive = tab === t;
+                const label = getTabLabel(t);
+                const href = `${base}/${t}`;
+                const unreadCount = t === "notifications" ? state.unread : 0;
+
+                return (
+                  <Link
+                    key={t}
+                    className={`sidebar-nav-item ${isActive ? "active" : ""}`}
+                    href={href}
+                    title={label}
+                  >
+                    <span className="sidebar-nav-icon-container">{getNavIcon(t)}</span>
+                    {!collapsed && <span className="sidebar-nav-label">{label}</span>}
+                    {unreadCount > 0 && (
+                      <span className="sidebar-nav-badge">{unreadCount}</span>
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+
+        {/* Footer Area with Log Out */}
+        <div className="sidebar-footer">
+          <button
+            type="button"
+            className="sidebar-logout-btn"
+            title="Log out"
+            onClick={async () => {
+              try {
+                await api("auth/logout", {});
+                refresh();
+                router.push("/");
+                notify("Signed out successfully.");
+              } catch (e) {
+                notify((e as Error).message);
+              }
+            }}
+          >
+            <LogOut size={18} className="sidebar-logout-icon" />
+            {!collapsed && <span>Log out</span>}
+          </button>
+        </div>
       </aside>
       <div className="workspace-main">
         <div className="page-heading">
@@ -161,7 +354,11 @@ export function Dashboard({
           <h1>
             {tab === "overview"
               ? `Welcome${state.name ? `, ${state.name.split(" ")[0]}` : ""}.`
-              : `${tab.replaceAll("-", " ")}.`}
+              : tab === "packages"
+                ? "Services & Pricing."
+                : tab === "application"
+                  ? "Application status."
+                  : `${tab.replaceAll("-", " ")}.`}
           </h1>
         </div>
         {trainerId && tab === "messages" && (
@@ -277,12 +474,12 @@ export function Dashboard({
                           href={
                             selectedRole === "customer"
                               ? `${base}/bookings`
-                              : `${base}/calendar`
+                              : `${base}/availability`
                           }
                         >
                           {selectedRole === "customer"
                             ? "Manage booking"
-                            : "Open calendar"}
+                            : "Manage availability"}
                         </Link>
                       </div>
                     </section>
@@ -290,30 +487,30 @@ export function Dashboard({
                   <div className="workspace-stats">
                     {Object.entries(record(data.metrics)).map(
                       ([key, value]) => (
-                        <article className="panel" key={key}>
-                          <span>{key}</span>
-                          <strong>{String(value)}</strong>
+                        <article className="panel workspace-stat-card" key={key}>
+                          <span className="stat-label">{formatMetricKey(key)}</span>
+                          <strong className="stat-value">{String(value)}</strong>
                         </article>
                       ),
                     )}
                   </div>
-                  <section className="panel">
+                  <section className="panel financial-overview-section">
                     <h2>
                       {selectedRole === "customer"
                         ? "Your payments"
                         : "Financial overview"}
                     </h2>
-                    <div className="workspace-stats">
+                    <div className="financial-overview-grid">
                       {Object.entries(record(data.finance))
                         .filter(([key]) => key !== "_id")
                         .map(([key, value]) => (
-                          <div key={key}>
-                            <span>{key}</span>
-                            <strong>{amount(value)}</strong>
-                          </div>
+                          <article className="financial-metric-card" key={key}>
+                            <span className="financial-metric-label">{formatMetricKey(key)}</span>
+                            <strong className="financial-metric-value">{amount(value)}</strong>
+                          </article>
                         ))}
                     </div>
-                    <p>
+                    <p className="financial-notice-text">
                       Financial totals come from recorded payments and refunds.
                       Payouts require settlement review.
                     </p>
@@ -359,6 +556,9 @@ export function Dashboard({
                     )}
                   </section>
                 </>
+              )}
+              {tab === "earnings" && selectedRole === "trainer" && (
+                <EarningsPanel data={data} reload={reload} />
               )}
               {["profile", "progress"].includes(tab) && (
                 <ProfilePanel data={data} role={selectedRole} reload={update} />
@@ -422,31 +622,27 @@ export function Dashboard({
               {tab === "packages" && (
                 <PackagesPanel items={items} reload={reload} />
               )}
-              {["availability", "calendar"].includes(tab) &&
-                selectedRole === "trainer" && (
-                  <>
-                    <AvailabilityPanel
-                      key={JSON.stringify(data.rules)}
-                      data={data}
-                      reload={reload}
-                    />
-                    {tab === "calendar" && (
-                      <section className="panel">
-                        <h2>Session calendar</h2>
-                        {items.length ? (
-                          items.map((s) => (
-                            <p key={str(s, "_id")}>
-                              {date(s.start)} — {date(s.end)} ·{" "}
-                              {str(s, "status")}
-                            </p>
-                          ))
-                        ) : (
-                          <p>No sessions on your calendar.</p>
-                        )}
-                      </section>
+              {tab === "availability" && selectedRole === "trainer" && (
+                <>
+                  <AvailabilityPanel
+                    key={JSON.stringify(data.rules)}
+                    data={data}
+                    reload={reload}
+                  />
+                  <section className="panel mt-5">
+                    <h2>Session calendar</h2>
+                    {items.length ? (
+                      items.map((s) => (
+                        <p key={str(s, "_id")}>
+                          {date(s.start)} — {date(s.end)} · {str(s, "status")}
+                        </p>
+                      ))
+                    ) : (
+                      <p>No sessions on your calendar.</p>
                     )}
-                  </>
-                )}
+                  </section>
+                </>
+              )}
               {tab === "verification" && selectedRole === "trainer" && (
                 <VerificationPanel data={data} reload={reload} />
               )}
@@ -596,40 +792,6 @@ export function Dashboard({
                     ))}
                   </section>
                 ))}
-              {tab === "payouts" && selectedRole === "trainer" && (
-                <>
-                  <section className="panel">
-                    <h2>Request a payout</h2>
-                    <p>
-                      Only settled earnings from completed packages are
-                      available.
-                    </p>
-                    <ActionForm
-                      endpoint="trainer/payouts"
-                      fields={[
-                        {
-                          name: "amount",
-                          label: "Amount in PKR",
-                          type: "number",
-                          min: 100,
-                          required: true,
-                        },
-                      ]}
-                      transform={(v) => ({
-                        amount: Math.round(Number(v.amount) * 100),
-                        idempotencyKey: crypto.randomUUID(),
-                      })}
-                      label="Request payout"
-                      onDone={reload}
-                    />
-                  </section>
-                  {items.map((p) => (
-                    <section className="panel" key={str(p, "_id")}>
-                      <RecordDetails item={p} />
-                    </section>
-                  ))}
-                </>
-              )}
               {selectedRole === "admin" &&
                 ![
                   "overview",
@@ -642,7 +804,7 @@ export function Dashboard({
                 )}
               {Array.isArray(data.items) &&
                 !items.length &&
-                !["packages", "availability", "calendar", "messages"].includes(
+                !["packages", "availability", "messages", "earnings"].includes(
                   tab,
                 ) && (
                   <div className="empty-state">

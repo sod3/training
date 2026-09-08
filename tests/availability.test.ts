@@ -113,9 +113,10 @@ test("add, edit, delete one, delete all and reload retain timezone and another t
 });
 
 test("duplicate/overlapping windows including overnight week wrap conflict; adjacent windows succeed", async () => {
+  const r2 = { ...rule, endTime: "11:00" };
   for (const invalid of [
-    [rule, rule],
-    [rule, { ...rule, startTime: "11:00", endTime: "13:00" }],
+    [r2, r2],
+    [r2, { ...rule, startTime: "10:00", endTime: "12:00" }],
     [
       { ...rule, dayOfWeek: 6, startTime: "23:00", endTime: "02:00" },
       { ...rule, dayOfWeek: 0, startTime: "01:00", endTime: "03:00" },
@@ -129,7 +130,7 @@ test("duplicate/overlapping windows including overnight week wrap conflict; adja
       save(invalid),
       (error: unknown) => error instanceof AppError && error.status === 409,
     );
-  const adjacent = [rule, { ...rule, startTime: "12:00", endTime: "14:00" }];
+  const adjacent = [rule, { ...rule, startTime: "12:00", endTime: "13:00" }];
   await save(adjacent);
   assert.deepEqual(fields(await read()), adjacent);
   const overnight = [
@@ -330,7 +331,7 @@ test("public availability uses schedule training types when the legacy profile l
     date,
     pkg.sessionDuration,
   );
-  assert.equal(all.length, 10);
+  assert.equal(all.length, 6);
   const week = await getAvailableWeek(
     String(trainer._id),
     date,
@@ -338,7 +339,7 @@ test("public availability uses schedule training types when the legacy profile l
   );
   assert.equal(week.length, 7);
   assert.equal(week[0].date, date);
-  assert.equal(week[0].slots.length, 10);
+  assert.equal(week[0].slots.length, 6);
 
 });
 

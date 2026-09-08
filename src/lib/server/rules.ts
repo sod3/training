@@ -47,6 +47,51 @@ export type AvailabilityRule = {
   startTime: string;
   endTime: string;
 };
+export const DAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const;
+
+export function ruleMinutes(rule: AvailabilityRule) {
+  const startMin = Number(rule.startTime.slice(0, 2)) * 60 + Number(rule.startTime.slice(3));
+  let endMin = Number(rule.endTime.slice(0, 2)) * 60 + Number(rule.endTime.slice(3));
+  if (endMin <= startMin) endMin += 1440;
+  return endMin - startMin;
+}
+
+export function calculateDayMinutes(rules: AvailabilityRule[], dayOfWeek: number) {
+  return rules
+    .filter((r) => r.dayOfWeek === dayOfWeek)
+    .reduce((sum, r) => sum + ruleMinutes(r), 0);
+}
+
+export function validateDailyAvailability(
+  rules: AvailabilityRule[],
+  maxMinutesPerDay = 240,
+) {
+  for (let day = 0; day <= 6; day++) {
+    const total = calculateDayMinutes(rules, day);
+    if (total > maxMinutesPerDay) {
+      const hours = Math.floor(total / 60);
+      const mins = total % 60;
+      const formatted = mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+      return {
+        valid: false,
+        dayOfWeek: day,
+        dayName: DAY_NAMES[day],
+        totalMinutes: total,
+        message: `Daily availability limit is 4 hours (240 minutes) per day. ${DAY_NAMES[day]} has ${formatted} configured.`,
+      };
+    }
+  }
+  return { valid: true };
+}
+
 // Recurring wall-clock minutes, including overnight and Saturday/Sunday wrap.
 // Adjacent windows are valid. Combine training types into one window when times overlap.
 export function availabilityConflict(rules: AvailabilityRule[]) {
@@ -116,13 +161,14 @@ export function generateSlots(
     string,
     { start: string; end: string; label: string }
   >();
+  const stepMinutes = duration < 30 ? 15 : 30;
   for (const range of ranges) {
     const first = range.start < day ? day : range.start;
     for (
       let start = first;
       start.plus({ minutes: duration }) <= range.end &&
       start < day.plus({ days: 1 });
-      start = start.plus({ minutes: 15 })
+      start = start.plus({ minutes: stepMinutes })
     ) {
       const end = start.plus({ minutes: duration });
       if (

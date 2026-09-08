@@ -96,8 +96,6 @@ function ApplicationReviewSummary({ item }: { item: Item }) {
       str(trainer, "headline") &&
       str(trainer, "biography").length >= 100 &&
       str(trainer, "profileImage") &&
-      str(trainer, "phone") &&
-      str(trainer, "cnic") &&
       str(trainer, "cnicUploadId"),
   );
   const packageReady = packages.some((pkg) => pkg.active !== false);
@@ -439,20 +437,8 @@ export function AdminPanel({
                     <strong>{str(trainer, "displayName") || "—"}</strong>
                   </div>
                   <div>
-                    <span>Legal name</span>
-                    <strong>{str(trainer, "legalName") || "—"}</strong>
-                  </div>
-                  <div>
                     <span>Email</span>
                     <strong>{str(account, "normalizedEmail") || "—"}</strong>
-                  </div>
-                  <div>
-                    <span>Phone</span>
-                    <strong>{str(trainer, "phone") || str(account, "phone") || "—"}</strong>
-                  </div>
-                  <div>
-                    <span>CNIC</span>
-                    <strong>{str(trainer, "cnic") || "—"}</strong>
                   </div>
                   <div>
                     <span>Category</span>

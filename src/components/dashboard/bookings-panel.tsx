@@ -170,6 +170,7 @@ function SchedulePanel({
 }) {
   const [day, setDay] = useState("");
   const [start, setStart] = useState("");
+  const [showAllSlots, setShowAllSlots] = useState(false);
   const { data, error, loading } = useApi<{
     slots: { start: string; label: string }[];
   }>(
@@ -177,6 +178,11 @@ function SchedulePanel({
       ? `bookings/${str(order, "_id")}/availability?${new URLSearchParams({ date: day, ...(sessionId ? { sessionId } : {}) })}`
       : null,
   );
+  const allSlots = data?.slots || [];
+  const visibleSlots = showAllSlots
+    ? allSlots
+    : allSlots.filter((s, i) => i < 6 || s.start === start);
+
   return (
     <>
       <h2>{sessionId ? "Reschedule session" : "Schedule a package session"}</h2>
@@ -188,13 +194,14 @@ function SchedulePanel({
           onChange={(e) => {
             setDay(e.target.value);
             setStart("");
+            setShowAllSlots(false);
           }}
         />
       </label>
       {error && <p role="alert">{error}</p>}
       {loading && <p role="status">Loading available times…</p>}
       <div className="choice-chips">
-        {data?.slots.map((s) => (
+        {visibleSlots.map((s) => (
           <button
             key={s.start}
             className={start === s.start ? "selected" : ""}
@@ -204,7 +211,27 @@ function SchedulePanel({
           </button>
         ))}
       </div>
-      {day && !loading && data?.slots.length === 0 && (
+      {!showAllSlots && allSlots.length > visibleSlots.length && (
+        <button
+          type="button"
+          className="btn outline small"
+          style={{ marginTop: "0.75rem" }}
+          onClick={() => setShowAllSlots(true)}
+        >
+          Show more times ({allSlots.length - visibleSlots.length} more)
+        </button>
+      )}
+      {showAllSlots && allSlots.length > 6 && (
+        <button
+          type="button"
+          className="text-link small"
+          style={{ marginTop: "0.75rem", display: "inline-block" }}
+          onClick={() => setShowAllSlots(false)}
+        >
+          Show fewer times
+        </button>
+      )}
+      {day && !loading && allSlots.length === 0 && (
         <p>No available times on this date.</p>
       )}
       {start && (

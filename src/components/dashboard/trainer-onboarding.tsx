@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, useApi } from "@/lib/client-api";
 import {
@@ -10,7 +10,7 @@ import {
 } from "./action-form";
 import { AvailabilityPanel, PackagesPanel, record, rows, str, num, type Item } from "./panels";
 
-const steps = [
+const stepTitles = [
   "Professional profile",
   "Identity verification",
   "Certification",
@@ -34,11 +34,12 @@ export function TrainerOnboarding() {
   const router = useRouter();
   const { data, loading, error, reload } = useApi<Item>("trainer/application");
   const [step, setStep] = useState(0);
-  const [identityUpload, setIdentityUpload] = useState<UploadedFileInfo | null>(
-    null,
-  );
-  const [certificateUpload, setCertificateUpload] =
-    useState<UploadedFileInfo | null>(null);
+  const [identityUpload, setIdentityUpload] = useState<UploadedFileInfo | null>(null);
+  const [savingIdentity, setSavingIdentity] = useState(false);
+  const [identityError, setIdentityError] = useState("");
+  const [certificateUpload, setCertificateUpload] = useState<UploadedFileInfo | null>(null);
+  const [updatingTz, setUpdatingTz] = useState(false);
+
   const application = record(data?.application);
   const trainer = record(data?.trainer);
   const account = record(data?.account);
@@ -48,10 +49,10 @@ export function TrainerOnboarding() {
   const rules = rows(data?.rules);
   const categories = (catalog.categories as string[]) || [];
   const specialties = (catalog.specialties as string[]) || [];
-  const languages = (catalog.languages as string[]) || [];
-  const identity = credentials.find((item) => str(item, "type") === "IDENTITY");
+  const identity = credentials.find((item) => str(item, "type") === "IDENTITY") || (str(trainer, "cnicUploadId") ? { uploadId: str(trainer, "cnicUploadId"), verificationStatus: str(trainer, "identityVerificationStatus") || "PENDING" } : null);
   const certificates = credentials.filter((item) => str(item, "type") === "CERTIFICATION");
-  const zones = useMemo(() => timezoneOptions(str(trainer, "timezone") || "Asia/Karachi"), [trainer]);
+  const tzName = str(trainer, "timezone") || "Asia/Karachi";
+  const zones = timezoneOptions(tzName);
 
   if (loading && !data) return <div className="container section"><div className="panel">Loading trainer onboarding…</div></div>;
   if (error && !data) return <div className="container section"><div className="panel"><h1>We could not load onboarding.</h1><p>{error}</p><button className="btn" onClick={reload}>Try again</button></div></div>;
@@ -93,15 +94,14 @@ export function TrainerOnboarding() {
     str(trainer, "biography").length < 100 && "an About section of at least 100 characters",
     !str(trainer, "category") && "training category",
     (!(Array.isArray(trainer.specialties) && trainer.specialties.length > 0)) && "at least one specialty",
-    (!(Array.isArray(trainer.languages) && trainer.languages.length > 0)) && "at least one coaching language",
     !str(trainer, "profileImage") && "profile photo",
   ].filter(Boolean) as string[];
+
+  const hasCnic = Boolean(identityUpload || identity || str(trainer, "cnicUploadId"));
   const identityMissing = [
-    !str(trainer, "legalName") && "legal name",
-    !str(trainer, "phone") && "phone number",
-    !str(trainer, "cnic") && "CNIC number",
-    !identity && "saved CNIC document",
+    !hasCnic && "CNIC document upload",
   ].filter(Boolean) as string[];
+
   const checklist = [
     {
       label: "Professional profile + photo",
@@ -110,8 +110,8 @@ export function TrainerOnboarding() {
       step: 0,
     },
     {
-      label: "Identity details + CNIC",
-      done: identityMissing.length === 0,
+      label: "Identity document (CNIC)",
+      done: hasCnic,
       missing: identityMissing,
       step: 1,
     },
@@ -122,7 +122,7 @@ export function TrainerOnboarding() {
       step: 2,
     },
     {
-      label: "At least one active service",
+      label: "Services & pricing package",
       done: packages.some((item) => item.active !== false),
       missing: packages.some((item) => item.active !== false) ? [] : ["an active coaching package"],
       step: 3,
@@ -137,6 +137,26 @@ export function TrainerOnboarding() {
   const ready = checklist.every((item) => item.done);
   const completedCount = checklist.filter((item) => item.done).length;
 
+  const handleSaveIdentity = async () => {
+    const uploadId = identityUpload?.id || str(identity || {}, "uploadId") || str(trainer, "cnicUploadId");
+    if (!uploadId) {
+      setIdentityError("Please upload a picture of your CNIC document first.");
+      return;
+    }
+    setSavingIdentity(true);
+    setIdentityError("");
+    try {
+      await api("trainer/verification", { uploadId });
+      await reload();
+      setIdentityUpload(null);
+      setStep(2);
+    } catch (e) {
+      setIdentityError((e as Error).message);
+    } finally {
+      setSavingIdentity(false);
+    }
+  };
+
   return (
     <div className="container section onboarding-shell">
       <header className="page-heading onboarding-heading">
@@ -146,20 +166,38 @@ export function TrainerOnboarding() {
         {status === "ACTION_REQUIRED" && <div className="form-error">Action required: {str(application, "adminNotes") || "Please update the requested details and resubmit."}</div>}
       </header>
 
-      <div className="onboarding-progress" aria-label="Trainer onboarding steps">
-        {steps.map((label, index) => (
-          <button key={label} className={step === index ? "active" : ""} onClick={() => setStep(index)}>
-            <span>{index + 1}</span>{label}
+      {/* DESKTOP STEP NAVIGATION */}
+      <div className="onboarding-progress desktop-onboarding-progress" aria-label="Trainer onboarding steps">
+        {stepTitles.map((title, index) => (
+          <button key={title} className={step === index ? "active" : step > index ? "completed" : ""} onClick={() => setStep(index)}>
+            <span className="step-num">{String(index + 1).padStart(2, "0")}</span>
+            <span className="step-label">{title}</span>
           </button>
         ))}
       </div>
 
+      {/* MOBILE STEP PROGRESS HEADER */}
+      <div className="mobile-onboarding-header" aria-label="Mobile onboarding progress">
+        <div className="mobile-step-info">
+          <span className="mobile-step-counter">STEP {step + 1} OF 6</span>
+          <h2 className="mobile-step-title">{stepTitles[step]}</h2>
+        </div>
+        <div className="mobile-progress-track">
+          <div className="mobile-progress-fill" style={{ width: `${((step + 1) / 6) * 100}%` }} />
+        </div>
+      </div>
+
+      {/* STEP 1: PROFILE */}
       {step === 0 && (
         <section className="panel onboarding-card">
           <p className="eyebrow">STEP 1 OF 6</p>
           <h2>Professional profile</h2>
           <p>This is what customers use to understand who you coach and how you can help. Your photo and profile details are saved separately, and both remain editable.</p>
-          <div className="onboarding-upload onboarding-upload-first"><h3>Profile photo <span aria-hidden="true">*</span></h3><p className="muted">Upload a clear professional headshot. Once saved, it appears here whenever you return.</p><UploadForm purpose="PUBLIC" field="profileImage" currentUrl={str(trainer, "profileImage")} onUploaded={() => reload()} /></div>
+          <div className="onboarding-upload onboarding-upload-first">
+            <h3>Profile photo <span aria-hidden="true">*</span></h3>
+            <p className="muted">Upload a clear professional headshot. Once saved, it appears here whenever you return.</p>
+            <UploadForm purpose="PUBLIC" field="profileImage" currentUrl={str(trainer, "profileImage")} onUploaded={() => reload()} />
+          </div>
           <ActionForm
             endpoint="trainer/profile"
             onDone={reload}
@@ -170,10 +208,13 @@ export function TrainerOnboarding() {
               { name: "yearsExperience", label: "Years of professional experience", type: "select", options: Array.from({ length: 31 }, (_, i) => i === 30 ? "30" : String(i)), value: String(num(trainer, "yearsExperience")) },
               { name: "category", label: "Main training category", type: "select", options: categories, value: str(trainer, "category") || categories[0], required: true },
               { name: "specialties", label: "Specialties", type: "checkbox-group", options: specialties, value: (trainer.specialties as string[]) || [], required: true },
-              { name: "languages", label: "Languages you coach in", type: "checkbox-group", options: languages, value: (trainer.languages as string[]) || [], required: true },
-              { name: "timezone", label: "Your timezone", type: "select", options: zones, value: str(trainer, "timezone") || "Asia/Karachi", required: true },
             ]}
-            transform={(value) => ({ ...value, yearsExperience: Number(value.yearsExperience), trainingGoals: [String(value.category)] })}
+            transform={(value) => ({
+              ...value,
+              yearsExperience: Number(value.yearsExperience),
+              trainingGoals: [String(value.category)],
+              timezone: str(trainer, "timezone") || "Asia/Karachi",
+            })}
             label="Save profile details"
           />
           <div className="onboarding-next">
@@ -189,29 +230,84 @@ export function TrainerOnboarding() {
         </section>
       )}
 
+      {/* STEP 2: IDENTITY VERIFICATION */}
       {step === 1 && (
-        <section className="panel onboarding-card">
+        <section className="panel onboarding-card cnic-verification-card">
           <p className="eyebrow">STEP 2 OF 6</p>
           <h2>Identity verification</h2>
-          <p>Your CNIC and identity details are private. They are visible only to authorized administrators for verification and are never shown publicly.</p>
-          {identity && <div className="status-card"><strong>Current identity document</strong><span className="status">{str(identity, "verificationStatus")}</span><a className="text-link" href={`/api/media/${str(identity, "uploadId")}`}>View submitted CNIC →</a></div>}
-          <UploadForm purpose="PRIVATE" pendingUpload={identityUpload} onUploaded={setIdentityUpload} />
-          <ActionForm
-            endpoint="trainer/verification"
-            onDone={() => { setIdentityUpload(null); reload(); setStep(2); }}
-            fields={[
-              { name: "name", label: "Legal full name", value: str(trainer, "legalName") || str(account, "name"), required: true },
-              { name: "phone", label: "Phone number", value: str(trainer, "phone") || str(account, "phone"), required: true },
-              { name: "cnic", label: "CNIC number", value: str(trainer, "cnic"), required: true, hint: "Format: 12345-1234567-1" },
-            ]}
-            transform={(value) => ({ ...value, uploadId: identityUpload?.id || str(identity || {}, "uploadId") })}
-            label="Save identity & continue"
-            disabled={!identityUpload && !identity}
-          />
-          {!identityUpload && !identity && <p className="onboarding-guidance">Upload your CNIC document before saving identity details.</p>}
+          <p className="onboarding-lead-text">
+            Upload a clear picture of your CNIC so the SPOTTER team can verify your identity. Your document is private and never shown publicly.
+          </p>
+
+          <div className="cnic-upload-zone">
+            <div className="cnic-upload-header">
+              <h3>UPLOAD CNIC</h3>
+              <small className="muted">Supported formats: JPG, PNG, WebP, PDF (Up to 4 MB)</small>
+            </div>
+
+            {hasCnic ? (
+              <div className="cnic-success-badge" role="status">
+                <span className="cnic-check-icon">✓</span>
+                <div>
+                  <strong>CNIC uploaded</strong>
+                  <p className="muted">
+                    {identityUpload?.name || "Your identity document is stored securely for verification."}
+                  </p>
+                  {(identityUpload?.url || str(identity || {}, "uploadId") || str(trainer, "cnicUploadId")) && (
+                    <a
+                      className="text-link"
+                      href={identityUpload?.url || `/api/media/${str(identity || {}, "uploadId") || str(trainer, "cnicUploadId")}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      View uploaded document →
+                    </a>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            <UploadForm
+              purpose="PRIVATE"
+              pendingUpload={identityUpload}
+              onUploaded={async (uploaded) => {
+                setIdentityUpload(uploaded);
+                setIdentityError("");
+                // Auto-save CNIC link to backend upon upload completion
+                try {
+                  await api("trainer/verification", { uploadId: uploaded.id });
+                  await reload();
+                } catch {
+                  // If auto-save fails, explicit Save & Continue button handles it
+                }
+              }}
+            />
+          </div>
+
+          {identityError && (
+            <p className="form-error" role="alert">
+              {identityError}
+            </p>
+          )}
+
+          <div className="onboarding-next">
+            {!hasCnic && (
+              <p className="onboarding-guidance">
+                Please upload a clear picture of your CNIC to proceed.
+              </p>
+            )}
+            <button
+              className="btn"
+              disabled={!hasCnic || savingIdentity}
+              onClick={handleSaveIdentity}
+            >
+              {savingIdentity ? "Saving…" : "SAVE & CONTINUE"}
+            </button>
+          </div>
         </section>
       )}
 
+      {/* STEP 3: CREDENTIALS */}
       {step === 2 && (
         <section className="panel onboarding-card">
           <p className="eyebrow">STEP 3 OF 6</p>
@@ -246,22 +342,79 @@ export function TrainerOnboarding() {
         </section>
       )}
 
+      {/* STEP 4: SERVICES & PRICING */}
       {step === 3 && (
         <div className="onboarding-card-stack">
-          <div className="panel"><p className="eyebrow">STEP 4 OF 6</p><h2>Services & pricing</h2><p>Create at least one online coaching package. Prices are entered in PKR and existing bookings keep their original price snapshot.</p></div>
+          <div className="panel">
+            <p className="eyebrow">STEP 4 OF 6</p>
+            <h2>Services & pricing</h2>
+            <p>Define your session duration, single session price, and packages. Prices are entered in PKR and existing bookings keep their original price snapshot.</p>
+          </div>
           <PackagesPanel items={packages} reload={reload} />
-          <button className="btn" onClick={() => setStep(4)} disabled={!packages.some((item) => item.active !== false)}>Continue to availability</button>
+          <div className="onboarding-next">
+            <button className="btn" onClick={() => setStep(4)} disabled={!packages.some((item) => item.active !== false)}>
+              Continue to availability
+            </button>
+          </div>
         </div>
       )}
 
+      {/* STEP 5: AVAILABILITY & TIMEZONE */}
       {step === 4 && (
         <div className="onboarding-card-stack">
-          <div className="panel"><p className="eyebrow">STEP 5 OF 6</p><h2>Availability</h2><p>Set the weekly times you can deliver online sessions. Customers automatically receive available times generated from this schedule.</p></div>
+          <div className="panel">
+            <p className="eyebrow">STEP 5 OF 6</p>
+            <h2>Availability & Timezone</h2>
+            <p>Set your primary operating timezone and the weekly times you can deliver online sessions. Customers automatically see booking slots converted to their local time.</p>
+
+            <div className="timezone-setting-box" style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
+              <label className="field">
+                Primary coaching timezone
+                <select
+                  value={str(trainer, "timezone") || "Asia/Karachi"}
+                  disabled={updatingTz}
+                  onChange={async (e) => {
+                    const newTz = e.target.value;
+                    setUpdatingTz(true);
+                    try {
+                      await api("trainer/profile", {
+                        displayName: str(trainer, "displayName") || str(account, "name"),
+                        headline: str(trainer, "headline") || "Trainer",
+                        biography: str(trainer, "biography") || "Biography",
+                        yearsExperience: num(trainer, "yearsExperience"),
+                        category: str(trainer, "category") || categories[0],
+                        specialties: (trainer.specialties as string[]) || [],
+                        trainingGoals: [str(trainer, "category") || categories[0]],
+                        timezone: newTz,
+                      });
+                      await reload();
+                    } catch (err) {
+                      window.alert((err as Error).message);
+                    } finally {
+                      setUpdatingTz(false);
+                    }
+                  }}
+                >
+                  {zones.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tz}
+                    </option>
+                  ))}
+                </select>
+                <small className="muted">Your weekly availability hours below will be interpreted using this timezone.</small>
+              </label>
+            </div>
+          </div>
           <AvailabilityPanel data={{ ...data, timezone: str(trainer, "timezone"), rules }} reload={reload} />
-          <button className="btn" onClick={() => setStep(5)} disabled={!rules.length}>Review application</button>
+          <div className="onboarding-next">
+            <button className="btn" onClick={() => setStep(5)} disabled={!rules.length}>
+              Review application
+            </button>
+          </div>
         </div>
       )}
 
+      {/* STEP 6: REVIEW & SUBMIT */}
       {step === 5 && (
         <section className="panel onboarding-card review-submit-card">
           <p className="eyebrow">STEP 6 OF 6</p>
@@ -269,7 +422,20 @@ export function TrainerOnboarding() {
           <p>Submitting locks the application for review. You will receive status updates in your Spotter notifications.</p>
           <p className="onboarding-summary"><strong>{completedCount} of {checklist.length} sections complete.</strong> Each incomplete row tells you exactly what remains.</p>
           <div className="application-checklist">
-            {checklist.map((item) => <div key={item.label} className={item.done ? "done" : "missing"}><span>{item.done ? "✓" : "!"}</span><div><strong>{item.label}</strong>{!item.done && <small>Still needed: {item.missing.join(", ")}.</small>}</div>{!item.done && <button className="text-link" onClick={() => setStep(item.step)}>Fix this section →</button>}</div>)}
+            {checklist.map((item) => (
+              <div key={item.label} className={item.done ? "done" : "missing"}>
+                <span>{item.done ? "✓" : "!"}</span>
+                <div>
+                  <strong>{item.label}</strong>
+                  {!item.done && <small>Still needed: {item.missing.join(", ")}.</small>}
+                </div>
+                {!item.done && (
+                  <button className="text-link" onClick={() => setStep(item.step)}>
+                    Fix this section →
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
           <button
             className="btn"

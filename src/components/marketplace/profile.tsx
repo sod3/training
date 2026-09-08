@@ -225,10 +225,7 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
               <Video size={17} />
               Live 1-on-1 online video sessions
             </p>
-            {!!t.languages?.length && <>
-              <h3>Languages</h3>
-              <p>{t.languages.join(" · ")}</p>
-            </>}
+
           </section>
           <section className="profile-section" id="packages">
             <p className="eyebrow">START SMALL. BUILD FROM THERE.</p>
@@ -322,7 +319,9 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
                 <span>/ {t.packages[0].sessions === 1 ? "session" : "package"}</span>
               </p>
               <p className="muted text-sm">
-                {t.packages[0].duration} minutes · A plan built around you
+                {t.packages[0].sessions > 1
+                  ? `${money(Math.round(t.packages[0].price / t.packages[0].sessions))} / session · ${t.packages[0].sessions} sessions`
+                  : `${t.packages[0].duration} minutes · A plan built around you`}
               </p>
             </>
           ) : (
@@ -333,21 +332,12 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
             <p className="fine-print">Next 7 days</p>
             <div className="availability-week">
               {availableDays.map((day) => (
-                <section key={day.date} className="availability-day">
-                  <h3>{day.label}</h3>
-                  <div className="choice-chips">
-                    {day.slots.map((slot) => (
-                      <button
-                        key={slot.start}
-                        aria-pressed={time === slot.start}
-                        className={time === slot.start ? "selected" : ""}
-                        onClick={() => setTime(slot.start)}
-                      >
-                        {new Date(slot.start).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
-                      </button>
-                    ))}
-                  </div>
-                </section>
+                <DaySlots
+                  key={day.date}
+                  day={day}
+                  selectedTime={time}
+                  onSelectTime={setTime}
+                />
               ))}
             </div>
             {slotsLoading && <p role="status">Checking availability…</p>}
@@ -414,4 +404,60 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
 }
 function ArrowRightIcon() {
   return <ArrowRight size={17} />;
+}
+
+function DaySlots({
+  day,
+  selectedTime,
+  onSelectTime,
+}: {
+  day: { date: string; label: string; slots: { start: string; label: string }[] };
+  selectedTime: string;
+  onSelectTime: (t: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const slots = day.slots;
+  const visible = expanded
+    ? slots
+    : slots.filter((s, i) => i < 6 || s.start === selectedTime);
+  return (
+    <section className="availability-day">
+      <h3>{day.label}</h3>
+      <div className="choice-chips">
+        {visible.map((slot) => (
+          <button
+            key={slot.start}
+            aria-pressed={selectedTime === slot.start}
+            className={selectedTime === slot.start ? "selected" : ""}
+            onClick={() => onSelectTime(slot.start)}
+          >
+            {new Date(slot.start).toLocaleTimeString(undefined, {
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+          </button>
+        ))}
+      </div>
+      {!expanded && slots.length > visible.length && (
+        <button
+          type="button"
+          className="text-link small"
+          style={{ marginTop: "0.25rem", display: "inline-block", fontSize: "0.8rem" }}
+          onClick={() => setExpanded(true)}
+        >
+          + {slots.length - visible.length} more times
+        </button>
+      )}
+      {expanded && slots.length > 6 && (
+        <button
+          type="button"
+          className="text-link small"
+          style={{ marginTop: "0.25rem", display: "inline-block", fontSize: "0.8rem" }}
+          onClick={() => setExpanded(false)}
+        >
+          Show fewer
+        </button>
+      )}
+    </section>
+  );
 }

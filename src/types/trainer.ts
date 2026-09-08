@@ -43,6 +43,8 @@ export interface Trainer {
   packages: TrainerPackage[];
   reviews: Review[];
   basePrice: number;
+  priceUnit?: "session" | "package";
+  perSessionPrice?: number;
   nextAvailable: string;
   nextAvailableAt?: string;
   nextAvailableDate?: string;
