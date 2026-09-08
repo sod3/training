@@ -123,7 +123,7 @@ export function AuthForm({
                   result.redirect === "/dashboard"
                 )
                   await api("favorites", { trainerId: save, saved: true });
-                const next = params.get("next");
+                const next = params.get("redirect") || params.get("next");
                 const safe =
                   next &&
                   next.startsWith("/") &&
@@ -265,7 +265,11 @@ export function AuthForm({
         )}
         {!admin && (
           <p className="auth-switch">
-            <Link href={signup || mode ? "/login" : "/signup"}>
+            <Link
+              href={`${signup || mode ? "/login" : "/signup"}${
+                typeof window !== "undefined" ? window.location.search : ""
+              }`}
+            >
               {signup || mode ? "Back to log in" : "Create a customer account"}
             </Link>
           </p>

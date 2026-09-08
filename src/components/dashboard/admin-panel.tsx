@@ -76,7 +76,7 @@ function ApplicationReviewSummary({ item }: { item: Item }) {
   const credentials = rows(item.credentials);
   const packages = rows(item.packages);
   const availability = rows(item.availability);
-  const now = Date.now();
+  const [now] = useState(() => Date.now());
 
   const identityReady = credentials.some(
     (credential) =>

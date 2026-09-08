@@ -4,17 +4,34 @@ export { DEFAULT_CATEGORIES as goals } from "@/lib/catalog";
 export const money = (n: number) => `PKR ${n.toLocaleString("en-PK")}`;
 
 export const goalTerms: Record<string, string[]> = {
-  "strength & muscle": ["strength", "muscle", "bodybuilding"],
+  "strength & muscle": ["strength", "muscle", "bodybuilding", "hypertrophy", "powerlifting"],
+  "fat loss": ["fat loss", "weight loss", "weight management", "slimming", "shred"],
+  "general fitness": ["general fitness", "fitness", "wellness", "health", "active"],
+  "body recomposition": ["recomposition", "recomp", "fat loss", "muscle", "toning", "body transformation"],
+  "mobility & flexibility": ["mobility", "flexibility", "stretching", "joint health", "range of motion"],
+  "functional fitness": ["functional", "functional training", "crossfit", "movement", "athletic"],
+  "beginner fitness": ["beginner", "novice", "starter", "foundation", "basics", "introduction"],
+  "hiit & conditioning": ["hiit", "conditioning", "stamina", "cardio", "endurance", "circuit"],
+  "core & posture": ["core", "posture", "abs", "stability", "pilates", "back health"],
+
+  // Legacy category compatibility
   "fat loss & general fitness": ["fat loss", "weight loss", "general fitness", "hiit", "conditioning"],
   "mobility & functional fitness": ["mobility", "flexibility", "functional", "core"],
 };
 
-export const matchesGoal = (t: Trainer, goal: string) =>
-  !goal ||
-  t.category?.toLowerCase() === goal.toLowerCase() ||
-  (goalTerms[goal.toLowerCase()] || [goal.toLowerCase()]).some((term) =>
+export const matchesGoal = (t: Trainer, goal: string) => {
+  if (!goal) return true;
+  const target = goal.toLowerCase();
+  const cat = (t.category || "").toLowerCase();
+  if (cat === target) return true;
+
+  const terms = goalTerms[target] || [target];
+  if (cat && terms.some((term) => cat.includes(term))) return true;
+
+  return terms.some((term) =>
     t.specialties.some((s) => s.toLowerCase().includes(term)),
   );
+};
 
 export function dateKey(offset = 0) {
   const date = new Date();

@@ -14,6 +14,7 @@ import {
 import { connectDB } from "@/lib/server/db";
 import { getAvailableWeek } from "@/services/bookings";
 import type { Trainer } from "@/types/trainer";
+import { goalTerms, matchesGoal } from "@/lib/marketplace";
 
 const querySchema = z.object({
   q: z.string().max(100).optional(),
@@ -213,12 +214,18 @@ export async function listTrainers(raw: Record<string, unknown> = {}) {
     };
   if (q.category) match.category = q.category;
   if (q.specialty) match.specialties = q.specialty;
-  if (q.goal)
+  if (q.goal) {
+    const targetTerms = goalTerms[q.goal.toLowerCase()] || [q.goal.toLowerCase()];
     match.$or = [
       { category: regex(q.goal) },
       { trainingGoals: regex(q.goal) },
       { specialties: regex(q.goal) },
+      ...targetTerms.flatMap((term) => [
+        { category: regex(term) },
+        { specialties: regex(term) },
+      ]),
     ];
+  }
   if (q.q || q.search) {
     const search = regex((q.q || q.search)!);
     match.$and = [
@@ -356,19 +363,7 @@ export async function matchTrainers(raw: Record<string, unknown>) {
     pool.map(async (trainer) => {
       let score = 0;
       const reasons: string[] = [];
-      const terms = [trainer.category, ...trainer.specialties]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      const goalWords = input.goal
-        .toLowerCase()
-        .split(/\s+|&/)
-        .filter((w) => w.length > 3);
-      if (
-        !input.goal ||
-        trainer.category === input.goal ||
-        goalWords.some((w) => terms.includes(w))
-      ) {
+      if (!input.goal || matchesGoal(trainer, input.goal)) {
         score += 45;
         if (input.goal) reasons.push(`Matches ${input.goal}`);
       }

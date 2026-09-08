@@ -1,21 +1,37 @@
 export const DEFAULT_CATEGORIES = [
   "Strength & Muscle",
-  "Fat Loss & General Fitness",
-  "Mobility & Functional Fitness",
+  "Fat Loss",
+  "General Fitness",
+  "Body Recomposition",
+  "Mobility & Flexibility",
+  "Functional Fitness",
+  "Beginner Fitness",
+  "HIIT & Conditioning",
+  "Core & Posture",
 ] as const;
 
 export const DEFAULT_SPECIALTIES = [
   "Strength Training",
   "Muscle Building",
   "Bodybuilding",
+  "Hypertrophy",
+  "Powerlifting",
   "Fat Loss",
+  "Weight Management",
   "General Fitness",
-  "HIIT",
-  "Beginner Fitness",
-  "Functional Training",
+  "Body Recomposition",
   "Mobility",
   "Flexibility",
+  "Joint Health",
+  "Functional Training",
+  "Athletic Performance",
+  "Beginner Fitness",
+  "HIIT",
+  "Conditioning",
+  "Cardio & Endurance",
   "Core Training",
+  "Posture & Stability",
+  "Back Health",
 ] as const;
 
 export const DEFAULT_LANGUAGES = [

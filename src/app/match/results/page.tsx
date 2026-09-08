@@ -4,6 +4,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 import Link from "next/link";
+import { ArrowRight, Sparkles } from "lucide-react";
+import { currentUser } from "@/lib/server/security";
 import { matchTrainers } from "@/services/trainers";
 import { MatchResultsGrid } from "@/components/marketplace/match-results-grid";
 
@@ -18,6 +20,44 @@ export default async function Page({
   const params = Object.fromEntries(
     Object.entries(raw).map(([key, value]) => [key, Array.isArray(value) ? value[0] : value || ""]),
   );
+  const user = await currentUser();
+
+  if (!user) {
+    const query = new URLSearchParams(params).toString();
+    const resultsPath = `/match/results${query ? `?${query}` : ""}`;
+    const signupUrl = `/signup?redirect=${encodeURIComponent(resultsPath)}`;
+    const loginUrl = `/login?redirect=${encodeURIComponent(resultsPath)}`;
+
+    return (
+      <div className="container section narrow-page">
+        <Link className="text-link" href={`/match?${new URLSearchParams({ ...params, edit: "1" }).toString()}`}>
+          ← Edit your preferences
+        </Link>
+
+        <div className="panel match-gate-panel mt-8">
+          <div className="match-gate-kicker">
+            <Sparkles size={16} /> MATCHMAKING COMPLETE
+          </div>
+          <h1>Your matches are ready.</h1>
+          <p className="section-copy">
+            We’ve calculated your strongest trainer fits based on your goals, experience level, preferred schedule and budget. Create your free account or log in to view your personalized coach matches.
+          </p>
+          <div className="match-gate-actions">
+            <Link href={signupUrl} className="btn lime large">
+              CREATE FREE ACCOUNT TO SEE MATCHES <ArrowRight size={18} />
+            </Link>
+            <p className="auth-switch">
+              Already have an account?{" "}
+              <Link href={loginUrl} className="text-link">
+                Log in
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const result = await matchTrainers(params);
   const total = result.best.length + result.recommended.length;
 

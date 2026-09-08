@@ -10,31 +10,26 @@ import { matchesGoal, money } from "@/lib/marketplace";
 import { SplitHeading } from "@/components/motion/reveal";
 import { Reveal } from "@/components/motion/reveal";
 import { useMatchState } from "@/hooks/use-match-state";
+import { DEFAULT_CATEGORIES } from "@/lib/catalog";
 import {
   buildMatchQuestions,
   findFirstIncompleteMatchStep,
   matchParams,
 } from "@/lib/match-state";
 
-const fallbackGoals = [
-  "Strength & Muscle",
-  "Fat Loss & General Fitness",
-  "Mobility & Functional Fitness",
-];
-
 export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
-  const trainerGoals = useMemo(
+  const goals = useMemo(
     () =>
       Array.from(
-        new Set(
-          trainers
+        new Set([
+          ...DEFAULT_CATEGORIES,
+          ...trainers
             .map((trainer) => trainer.category)
             .filter((value): value is string => Boolean(value)),
-        ),
-      ).slice(0, 3),
+        ]),
+      ),
     [trainers],
   );
-  const goals = trainerGoals.length ? trainerGoals : fallbackGoals;
   const [step, setStep] = useState(0);
   const { answers, answer, hydrated } = useMatchState();
   const questions = useMemo(() => buildMatchQuestions(goals), [goals]);
@@ -99,7 +94,7 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
               {question.title}
             </p>
             <div
-              className="match-goal-grid"
+              className={`match-goal-grid ${question.id === "goal" || question.options.length > 4 ? "match-goal-grid-3" : ""}`}
               role="group"
               aria-label={question.title}
             >

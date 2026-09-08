@@ -35,7 +35,7 @@ export function MatchWizard({
 }) {
   const { data } = useApi<FacetResponse>("trainers?limit=1");
   const categories = data?.facets?.categories?.map((item) => item.name).filter(Boolean) || [];
-  const availableCategories = categories.length ? categories : [...DEFAULT_CATEGORIES];
+  const availableCategories = Array.from(new Set([...DEFAULT_CATEGORIES, ...categories]));
   const questions: Question[] = buildMatchQuestions(availableCategories).map(
     (question) => ({
       ...question,
@@ -59,13 +59,9 @@ export function MatchWizard({
   useEffect(() => {
     if (!hydrated || restoredStep.current) return;
     restoredStep.current = true;
-    if (!edit && isMatchComplete(answers)) {
-      router.replace(`/match/results?${matchParams(answers, true).toString()}`);
-      return;
-    }
-    const nextStep = edit ? 0 : findFirstIncompleteMatchStep(answers);
+    const nextStep = edit ? 0 : Math.min(findFirstIncompleteMatchStep(answers), questions.length - 1);
     queueMicrotask(() => setStep(nextStep));
-  }, [answers, edit, hydrated, router]);
+  }, [answers, edit, hydrated, questions.length]);
 
   const next = () => {
     if (!answers[q.id]) return;
@@ -136,7 +132,7 @@ export function MatchWizard({
               <p className="eyebrow">A BETTER START IN FOUR QUESTIONS</p>
               <h1>{q.title}</h1>
               <p>{q.copy}</p>
-              <div className="quiz-options">
+              <div className={`quiz-options ${q.id === "goal" || q.options.length > 4 ? "quiz-options-grid-3" : ""}`}>
                 {q.options.map((option) => (
                   <button
                     key={option.value}
@@ -153,7 +149,6 @@ export function MatchWizard({
                 {step === questions.length - 1 ? "Show my matches" : "Continue"}
                 <ArrowRight size={18} />
               </button>
-              <small>No account needed. Matching uses current approved trainer data.</small>
             </motion.div>
           </AnimatePresence>
         )}

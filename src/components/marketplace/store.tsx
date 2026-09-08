@@ -9,6 +9,7 @@ type State = {
   compare: string[];
   role: string;
   name: string;
+  email: string;
   unread: number;
   unreadMessages: number;
   emailVerified: boolean;
@@ -18,6 +19,7 @@ const initial: State = {
   compare: [],
   role: "visitor",
   name: "",
+  email: "",
   unread: 0,
   unreadMessages: 0,
   emailVerified: false,
@@ -40,7 +42,7 @@ const Context = createContext<{
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { data, reload, loading } = useApi<{
-    user: { name: string; role: string; emailVerified: boolean } | null;
+    user: { name: string; email?: string; role: string; emailVerified: boolean } | null;
     saved: string[];
     unread: number;
     unreadMessages: number;
@@ -71,6 +73,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     compare,
     saved: data?.saved || [],
     name: data?.user?.name || "",
+    email: data?.user?.email || "",
     role: data?.user?.role.toLowerCase() || "visitor",
     unread: data?.unread || 0,
     unreadMessages: data?.unreadMessages || 0,
