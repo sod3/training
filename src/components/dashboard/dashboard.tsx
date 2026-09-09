@@ -365,9 +365,11 @@ export function Dashboard({
           <StartConversation trainerId={trainerId} />
         )}
         <div className="workspace-toolbar">
-          <button className="text-link" onClick={reload}>
-            Refresh
-          </button>
+          {loading && data && (
+            <span className="status-badge status-badge-processing" style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", fontSize: "0.8rem", padding: "0.25rem 0.6rem" }}>
+              <RefreshCw size={12} style={{ animation: "spin 1s linear infinite" }} /> Updating data…
+            </span>
+          )}
           {selectedRole === "admin" &&
             ["users", "trainers", "bookings", "payouts"].includes(tab) && (
               <a className="text-link" href={`/api/admin/export/${tab}`}>

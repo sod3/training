@@ -49,10 +49,11 @@ export function HowItWorks() {
         ref.current!.classList.add("story-pinned");
         const panels = gsap.utils.toArray<HTMLElement>(".story-panel");
         gsap.set(panels.slice(1), { autoAlpha: 0, y: 25 });
+        const panelsContainer = ref.current!.querySelector<HTMLElement>(".story-panels")!;
         const timeline = gsap.timeline({
           scrollTrigger: {
-            trigger: ref.current,
-            start: "top 80px",
+            trigger: panelsContainer,
+            start: "top 180px",
             end: "+=1900",
             pin: ".story-shell",
             scrub: 0.6,

@@ -792,9 +792,10 @@ export function MessagesPanel({
         {error && <p role="alert">{error}</p>}
         {selected ? (
           <>
-            <button className="text-link" onClick={reloadMessages}>
-              Refresh messages
-            </button>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+              <span className="status-badge status-badge-paid" style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem" }}>Live Chat Active</span>
+              <small className="muted">Updates automatically</small>
+            </div>
             <div className="message-history">
               {messages?.items.map((m) => (
                 <article className="message-bubble" key={str(m, "_id")}>

@@ -390,6 +390,7 @@ function Checkout({
                 <button
                   type="button"
                   className="btn"
+                  aria-busy={busy}
                   disabled={
                     busy ||
                     !selectedPaymentNumber ||
@@ -400,6 +401,7 @@ function Checkout({
                     !packageId
                   }
                   onClick={async () => {
+                    if (busy) return;
                     setBusy(true);
                     setError("");
                     try {

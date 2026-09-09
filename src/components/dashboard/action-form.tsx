@@ -160,8 +160,8 @@ export function ActionForm({
           {error}
         </p>
       )}
-      {success && <p role="status">{success}</p>}
-      <button className="btn small" disabled={pending || disabled}>
+      {success && <p role="status" className="form-success">{success}</p>}
+      <button className="btn small" disabled={pending || disabled} aria-busy={pending}>
         {pending ? "Saving…" : label}
       </button>
     </form>

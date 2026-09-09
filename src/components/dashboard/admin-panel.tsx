@@ -169,6 +169,7 @@ function QuickApproveTrainer({
         type="button"
         className="btn lime admin-approve-button"
         disabled={busy}
+        aria-busy={busy}
         onClick={async () => {
           if (
             !window.confirm(
@@ -574,12 +575,15 @@ function PasswordResetControl({ userId }: { userId: string }) {
   const [busy, setBusy] = useState(false);
   const [resetUrl, setResetUrl] = useState("");
   const [message, setMessage] = useState("");
+  const [copied, setCopied] = useState(false);
   return (
     <div className="admin-reset-control">
       <button
         className="btn outline small"
         disabled={busy}
+        aria-busy={busy}
         onClick={async () => {
+          if (busy) return;
           setBusy(true);
           setMessage("");
           try {
@@ -595,11 +599,22 @@ function PasswordResetControl({ userId }: { userId: string }) {
       >
         {busy ? "Creating…" : "Create password reset link"}
       </button>
-      {message && <small>{message}</small>}
+      {message && <small className="muted" style={{ display: "block", marginTop: "0.25rem" }}>{message}</small>}
       {resetUrl && (
         <div className="reset-link-box">
           <input readOnly value={resetUrl} aria-label="One-time password reset link" />
-          <button className="text-link" onClick={() => navigator.clipboard.writeText(resetUrl)}>Copy</button>
+          <button
+            className="text-link"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(resetUrl);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              } catch {}
+            }}
+          >
+            {copied ? "Copied!" : "Copy"}
+          </button>
         </div>
       )}
     </div>

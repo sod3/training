@@ -7,7 +7,13 @@ export function MatchingReveal({ children }: { children: ReactNode }) {
     () => {
       const mm = gsap.matchMedia();
       mm.add(motionQuery, () => {
-        const timeline = gsap.timeline();
+        const timeline = gsap.timeline({
+          scrollTrigger: {
+            trigger: ref.current,
+            start: "top 80%",
+            once: true,
+          },
+        });
         timeline
           .from(".matching-node", {
             scale: 0.4,

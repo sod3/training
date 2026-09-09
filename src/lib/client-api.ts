@@ -22,6 +22,21 @@ export async function apiResult<T>(response: Response): Promise<T> {
     }
   }
   if (!response.ok) {
+    let errorMessage = typeof result.error === "string" && result.error ? result.error : "";
+    if (errorMessage) {
+      console.error(`[SPOTTER API Error] Path response code ${response.status}:`, errorMessage);
+      // Sanitize raw stack traces or database errors for UI
+      if (
+        errorMessage.includes("at ") ||
+        errorMessage.includes("MongoError") ||
+        errorMessage.includes("E11000") ||
+        errorMessage.includes("CastError") ||
+        errorMessage.includes("TypeError") ||
+        errorMessage.includes("ReferenceError")
+      ) {
+        errorMessage = "A server error occurred. Please try again or contact support.";
+      }
+    }
     const fallback =
       response.status === 401
         ? "Your session has expired. Sign in and try again."
@@ -39,9 +54,7 @@ export async function apiResult<T>(response: Response): Promise<T> {
                     ? "This service is temporarily unavailable. Please try again shortly."
                     : "Something went wrong. Please try again.";
     throw new ApiError(
-      typeof result.error === "string" && result.error
-        ? result.error
-        : fallback,
+      errorMessage || fallback,
       response.status,
       response.headers.get("x-request-id") || undefined,
     );

@@ -228,6 +228,7 @@ export function AuthForm({
           <button
             className="btn w-full"
             disabled={busy}
+            aria-busy={busy}
             aria-label={
               mode === "forgot-password"
                 ? "Request password reset"
@@ -243,7 +244,13 @@ export function AuthForm({
             }
           >
             {busy
-              ? "Please wait…"
+              ? mode === "forgot-password"
+                ? "Requesting reset…"
+                : mode === "reset-password"
+                  ? "Updating password…"
+                  : signup
+                    ? "Creating account…"
+                    : "Signing in…"
               : mode === "forgot-password"
                 ? "Request password reset"
                 : mode === "reset-password"

@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
 import { useApi } from "@/lib/client-api";
 import {
@@ -15,6 +16,18 @@ export function BookingSuccess({ id }: { id?: string }) {
   );
   const order = record(data?.order);
   const snapshot = record(order.packageSnapshot);
+  const isPending =
+    order.bookingStatus === "PENDING_PAYMENT" ||
+    order.paymentStatus === "SUBMITTED";
+
+  useEffect(() => {
+    if (!id || !isPending) return;
+    const timer = setInterval(() => {
+      reload();
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [id, isPending, reload]);
+
   return (
     <div className="container section success-page">
       <p className="eyebrow">YOUR NEXT CHAPTER</p>
@@ -27,7 +40,7 @@ export function BookingSuccess({ id }: { id?: string }) {
         <p>No booking was selected.</p>
       ) : error ? (
         <p role="alert">{error}</p>
-      ) : loading ? (
+      ) : loading && !data ? (
         <p role="status">Checking your booking…</p>
       ) : (
         <section className="panel">
@@ -65,9 +78,12 @@ export function BookingSuccess({ id }: { id?: string }) {
               <p>Reservation expires: {date(order.holdExpiresAt)}</p>
             </>
           )}
-          <button className="btn outline mt-5" onClick={reload}>
-            Refresh status
-          </button>
+          {isPending && (
+            <p className="fine-print muted mt-4" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span className="status-badge status-badge-processing" style={{ padding: "0.2rem 0.5rem" }}>Live Updates Active</span>
+              Status checks automatically every 6 seconds.
+            </p>
+          )}
         </section>
       )}
       <Link href="/dashboard/customer/bookings" className="btn mt-6">

@@ -39,6 +39,9 @@ export function TrainerOnboarding() {
   const [identityError, setIdentityError] = useState("");
   const [certificateUpload, setCertificateUpload] = useState<UploadedFileInfo | null>(null);
   const [updatingTz, setUpdatingTz] = useState(false);
+  const [tzError, setTzError] = useState("");
+  const [submittingApp, setSubmittingApp] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const application = record(data?.application);
   const trainer = record(data?.trainer);
@@ -376,6 +379,7 @@ export function TrainerOnboarding() {
                   onChange={async (e) => {
                     const newTz = e.target.value;
                     setUpdatingTz(true);
+                    setTzError("");
                     try {
                       await api("trainer/profile", {
                         displayName: str(trainer, "displayName") || str(account, "name"),
@@ -389,7 +393,7 @@ export function TrainerOnboarding() {
                       });
                       await reload();
                     } catch (err) {
-                      window.alert((err as Error).message);
+                      setTzError((err as Error).message);
                     } finally {
                       setUpdatingTz(false);
                     }
@@ -403,6 +407,11 @@ export function TrainerOnboarding() {
                 </select>
                 <small className="muted">Your weekly availability hours below will be interpreted using this timezone.</small>
               </label>
+              {tzError && (
+                <p className="form-error" role="alert" style={{ marginTop: "0.5rem" }}>
+                  {tzError}
+                </p>
+              )}
             </div>
           </div>
           <AvailabilityPanel data={{ ...data, timezone: str(trainer, "timezone"), rules }} reload={reload} />
@@ -437,20 +446,31 @@ export function TrainerOnboarding() {
               </div>
             ))}
           </div>
+          {submitError && (
+            <p className="form-error" role="alert" style={{ marginBottom: "1rem" }}>
+              {submitError}
+            </p>
+          )}
           <button
             className="btn"
-            disabled={!ready}
+            disabled={!ready || submittingApp}
+            aria-busy={submittingApp}
             onClick={async () => {
+              if (submittingApp || !ready) return;
+              setSubmittingApp(true);
+              setSubmitError("");
               try {
                 await api("trainer/application", { step: 6, submit: true });
                 await reload();
                 router.push("/trainer/application");
               } catch (e) {
-                window.alert((e as Error).message);
+                setSubmitError((e as Error).message);
+              } finally {
+                setSubmittingApp(false);
               }
             }}
           >
-            Submit application for review
+            {submittingApp ? "Submitting application…" : "Submit application for review"}
           </button>
           {!ready && <p className="onboarding-guidance">Finish the highlighted sections above before submitting. Your completed sections and uploaded files are already saved.</p>}
         </section>
