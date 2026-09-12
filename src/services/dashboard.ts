@@ -401,6 +401,57 @@ export async function dashboardData(
       ...trainerEarningsData,
     };
   }
+  if (section === "training" && actor.role === "CUSTOMER") {
+    const orders = await Order.find({ customerId: actor.id })
+      .sort({ createdAt: -1 })
+      .lean();
+    const trainerIds = Array.from(new Set(orders.map((o) => String(o.trainerId))));
+    const trainers = await TrainerProfile.find({ _id: { $in: trainerIds } })
+      .select("displayName profileImage category specialties slug timezone userId")
+      .lean();
+    const trainerMap = new Map(trainers.map((t) => [String(t._id), t]));
+    const orderIds = orders.map((o) => o._id);
+    const sessions = await Session.find({ orderId: { $in: orderIds } })
+      .sort({ start: 1 })
+      .lean();
+    const conversations = await Conversation.find({ customerId: actor.id })
+      .sort({ lastMessageAt: -1 })
+      .lean();
+    const completedOrders = orders.filter((o) => o.bookingStatus === "COMPLETED");
+    const reviewed = await Review.find({
+      customerId: actor.id,
+      orderId: { $in: completedOrders.map((o) => o._id) },
+    })
+      .select("orderId")
+      .lean();
+    const reviewedIds = new Set(reviewed.map((r) => String(r.orderId)));
+    const eligible = completedOrders
+      .filter((o) => !reviewedIds.has(String(o._id)))
+      .map((o) => ({
+        orderId: String(o._id),
+        bookingNumber: o.bookingNumber,
+        trainerName: trainerMap.get(String(o.trainerId))?.displayName || "Your trainer",
+        packageName: o.packageSnapshot?.name || "Online coaching",
+        completedAt: o.updatedAt,
+      }));
+    const reviews = await Review.find({ customerId: actor.id })
+      .sort({ createdAt: -1 })
+      .lean();
+    const populatedOrders = orders.map((o) => ({
+      ...o,
+      trainer: trainerMap.get(String(o.trainerId)),
+      sessions: sessions.filter((s) => String(s.orderId) === String(o._id)),
+    }));
+    return {
+      orders: populatedOrders,
+      sessions,
+      conversations,
+      trainers,
+      eligible,
+      reviews,
+      items: populatedOrders,
+    };
+  }
   if (
     section === "profile" ||
     section === "settings" ||
@@ -409,15 +460,32 @@ export async function dashboardData(
   ) {
     if (section === "settings" && actor.role === "ADMIN")
       return { settings: await settings() };
+    const profile = await User.findById(actor.id)
+      .select(
+        "firstName lastName name phone avatar normalizedEmail emailVerified",
+      )
+      .lean();
+    const preferences = await CustomerProfile.findOne({ userId: actor.id }).lean();
+    if (actor.role === "TRAINER" && trainer) {
+      const [application, credentials, reviews] = await Promise.all([
+        TrainerApplication.findOne({ trainerId: trainer._id }).lean(),
+        TrainerCredential.find({ trainerId: trainer._id }).limit(40).lean(),
+        Review.find({ trainerId: trainer._id }).sort({ createdAt: -1 }).limit(30).lean(),
+      ]);
+      return {
+        profile,
+        preferences,
+        trainer: trainer.toObject(),
+        application,
+        credentials,
+        reviews,
+        catalog: await catalogOptions(),
+      };
+    }
     return {
-      profile: await User.findById(actor.id)
-        .select(
-          "firstName lastName name phone avatar normalizedEmail emailVerified",
-        )
-        .lean(),
-      preferences: await CustomerProfile.findOne({ userId: actor.id }).lean(),
+      profile,
+      preferences,
       trainer: trainer?.toObject(),
-      ...(actor.role === "TRAINER" ? { catalog: await catalogOptions() } : {}),
     };
   }
   if (section === "notifications")
@@ -696,15 +764,17 @@ export async function dashboardData(
     };
   }
   if (trainer) {
-    if (section === "packages")
+    if (
+      section === "schedule" ||
+      section === "packages" ||
+      section === "availability" ||
+      section === "calendar"
+    )
       return {
-        items: await TrainerPackage.find({ trainerId: trainer._id })
+        packages: await TrainerPackage.find({ trainerId: trainer._id })
           .sort({ sortOrder: 1 })
           .limit(30)
           .lean(),
-      };
-    if (section === "availability" || section === "calendar")
-      return {
         rules: await databaseOperation("TrainerAvailability.find(reload)", () =>
           TrainerAvailability.find({
             trainerId: trainer._id,
@@ -757,24 +827,57 @@ export async function dashboardData(
         paymentStatus: "PAID",
       });
       const customers = await User.find({ _id: { $in: ids } })
-        .select("name avatar")
+        .select("name avatar normalizedEmail phone createdAt")
         .skip(skip)
-        .limit(20)
+        .limit(50)
         .lean();
+      const items = await Promise.all(
+        customers.map(async (c) => {
+          const conversation = await Conversation.findOne({
+            customerId: c._id,
+            trainerUserId: actor.id,
+          }).lean();
+          const unreadMessages = conversation
+            ? await Message.countDocuments({
+                conversationId: conversation._id,
+                senderId: c._id,
+                readAt: null,
+              })
+            : 0;
+          const orders = await Order.find({
+            customerId: c._id,
+            trainerId: trainer._id,
+            paymentStatus: "PAID",
+          })
+            .sort({ createdAt: -1 })
+            .lean();
+          const sessions = await Session.find({
+            customerId: c._id,
+            trainerId: trainer._id,
+          })
+            .sort({ start: 1 })
+            .lean();
+          const upcomingSessions = sessions.filter(
+            (s) => s.status === "CONFIRMED" && new Date(s.start) >= new Date(),
+          );
+          const nextSession = upcomingSessions[0] || null;
+          return {
+            _id: String(c._id),
+            name: c.name,
+            avatar: c.avatar,
+            email: c.normalizedEmail,
+            phone: c.phone,
+            conversationId: conversation ? String(conversation._id) : null,
+            unreadMessages,
+            orders,
+            sessions,
+            nextSession,
+            bookings: orders,
+          };
+        }),
+      );
       return {
-        items: await Promise.all(
-          customers.map(async (c) => ({
-            ...c,
-            bookings: await Order.find({
-              customerId: c._id,
-              trainerId: trainer._id,
-              paymentStatus: "PAID",
-            })
-              .select("bookingNumber packageSnapshot.name remainingSessions")
-              .limit(20)
-              .lean(),
-          })),
-        ),
+        items,
         total: ids.length,
         page: q.page,
       };

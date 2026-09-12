@@ -53,7 +53,13 @@ function Checkout({
 }) {
   const router = useRouter();
   const { state } = useStore();
-  const [step, setStep] = useState(0);
+  const initialStep = useMemo(() => {
+    if (params.package && params.date && params.time) return 2;
+    if (params.package) return 1;
+    return 0;
+  }, [params.package, params.date, params.time]);
+
+  const [step, setStep] = useState(initialStep);
   const [packageId, setPackage] = useState(
     params.package || t.packages[0]?.id || "",
   );

@@ -1,6 +1,10 @@
 import { getTrainerBySlug, listTrainers } from "@/lib/services/trainers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Profile } from "@/components/marketplace/profile";
+import { currentUser } from "@/lib/server/security";
+import { TrainerProfile } from "@/models";
+import { connectDB } from "@/lib/server/db";
+
 export const dynamic = "force-dynamic";
 export default async function Page({
   params,
@@ -10,6 +14,16 @@ export default async function Page({
   const { slug } = await params;
   const trainer = await getTrainerBySlug(slug);
   if (!trainer) notFound();
+
+  const user = await currentUser();
+  if (user?.role === "TRAINER") {
+    await connectDB();
+    const ownProfile = await TrainerProfile.findOne({ userId: user.id }).select("_id").lean();
+    if (!ownProfile || String(ownProfile._id) !== trainer.id) {
+      redirect("/trainer");
+    }
+  }
+
   const related = await listTrainers({ ...(trainer.category ? { category: trainer.category } : {}), limit: 4 });
   const recommended = related.trainers.filter((item) => item.id !== trainer.id).slice(0, 3);
   const baseUrl = (process.env.APP_URL || "https://training-seven-taupe.vercel.app").replace(/\/$/, "");

@@ -7,6 +7,30 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   poweredByHeader: false,
+  async redirects() {
+    return [
+      { source: "/trainer/bookings", destination: "/trainer/clients", permanent: true },
+      { source: "/trainer/messages", destination: "/trainer/clients", permanent: true },
+      { source: "/trainer/availability", destination: "/trainer/schedule", permanent: true },
+      { source: "/trainer/services", destination: "/trainer/schedule", permanent: true },
+      { source: "/trainer/pricing", destination: "/trainer/schedule", permanent: true },
+      { source: "/trainer/packages", destination: "/trainer/schedule", permanent: true },
+      { source: "/trainer/services-pricing", destination: "/trainer/schedule", permanent: true },
+      { source: "/trainer/verification", destination: "/trainer/profile", permanent: true },
+      { source: "/trainer/application", destination: "/trainer/profile", permanent: true },
+      { source: "/trainer/security", destination: "/trainer/profile", permanent: true },
+      { source: "/trainer/reviews", destination: "/trainer/profile", permanent: true },
+      { source: "/trainer/calendar", destination: "/trainer/schedule", permanent: true },
+      { source: "/trainer/payouts", destination: "/trainer/earnings", permanent: true },
+      { source: "/trainer/analytics", destination: "/trainer", permanent: true },
+      { source: "/dashboard/customer/bookings", destination: "/dashboard/customer/training", permanent: true },
+      { source: "/dashboard/customer/messages", destination: "/dashboard/customer/training", permanent: true },
+      { source: "/dashboard/customer/reviews", destination: "/dashboard/customer/training", permanent: true },
+      { source: "/dashboard/customer/payments", destination: "/dashboard/customer/training", permanent: true },
+      { source: "/dashboard/customer/security", destination: "/dashboard/customer/profile", permanent: true },
+      { source: "/dashboard/customer/settings", destination: "/dashboard/customer/profile", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

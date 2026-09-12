@@ -22,10 +22,15 @@ import { TrainerCard } from "./trainer-card";
 
 export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; recommended?: Trainer[] }) {
   const { state, notify, toggleSaved } = useStore();
+  const [selectedPackageId, setSelectedPackageId] = useState(t.packages[0]?.id || "");
+  const [selectedDate, setSelectedDate] = useState("");
   const [time, setTime] = useState("");
   const [showMobileBooking, setShowMobileBooking] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const saved = state.saved.includes(t.id);
+
+  const selectedPkg = t.packages.find((p) => p.id === selectedPackageId) || t.packages[0];
+
   const {
     data: availability,
     error: slotError,
@@ -37,19 +42,20 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
       slots: { start: string; label: string }[];
     }[];
   }>(
-    t.packages.length
+    selectedPkg
       ? `trainers/${t.id}/availability?${new URLSearchParams({
           date: t.availabilityWeekStart,
           days: "7",
-          packageId: t.packages[0].id,
+          packageId: selectedPkg.id,
         })}`
       : null,
   );
-  const availableDays =
-    availability?.days.filter((day) => day.slots.length) || [];
-  const selectedDate = availableDays.find((day) =>
-    day.slots.some((slot) => slot.start === time),
-  )?.date;
+
+  const availableDays = availability?.days.filter((day) => day.slots.length) || [];
+  const currentDayObj = availableDays.find((day) => day.date === selectedDate) || availableDays[0];
+  const activeDate = currentDayObj?.date || "";
+  const activeSlots = currentDayObj?.slots || [];
+
   useEffect(() => {
     const node = heroRef.current;
     if (!node || typeof IntersectionObserver === "undefined") return;
@@ -60,16 +66,19 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
     return () => observer.disconnect();
   }, []);
 
-  const book = `/booking?${new URLSearchParams({
+  const bookUrl = `/booking?${new URLSearchParams({
     trainer: t.slug,
-    date: selectedDate || t.nextAvailableDate || t.availabilityWeekStart,
-    time,
+    package: selectedPackageId,
+    date: activeDate || t.nextAvailableDate || t.availabilityWeekStart,
+    time: time,
   })}`;
+
   return (
     <div className="container profile-page">
       <Link href="/trainers" className="text-link">
         ← All trainers
       </Link>
+
       <div className="profile-heading" ref={heroRef}>
         <div>
           <p className="eyebrow">A GOOD CONNECTION STARTS HERE</p>
@@ -106,12 +115,14 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
           </button>
         </div>
       </div>
+
       <div className="mobile-profile-summary" aria-label="Trainer booking summary">
-        {t.packages.length > 0 && <span><small>From</small><strong>{money(t.basePrice)}</strong></span>}
+        {selectedPkg && <span><small>From</small><strong>{money(selectedPkg.price)}</strong></span>}
         <span><small>Next</small><strong>{localAvailabilityLabel(t)}</strong></span>
         {t.reviewCount > 0 && <span><small>Rating</small><strong>{t.rating.toFixed(1)} / 5</strong></span>}
         {t.verifiedIdentity && <span><small>Status</small><strong>Identity reviewed</strong></span>}
       </div>
+
       <div className="profile-gallery">
         <div>
           <Image
@@ -143,6 +154,7 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
           <BadgeCheck size={38} />
         </div>
       </div>
+
       <div className="profile-grid">
         <div>
           <div className="profile-facts">
@@ -156,13 +168,15 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
               Replies {t.responseTime}
             </span>}
           </div>
+
           <nav className="profile-anchors" aria-label="Profile sections">
-            {["Overview", "Packages", "Availability", "Reviews"].map((n) => (
+            {["Overview", "Booking", "Reviews"].map((n) => (
               <a href={`#${n.toLowerCase()}`} key={n}>
                 {n}
               </a>
             ))}
           </nav>
+
           <section className="profile-section" id="overview">
             <p className="eyebrow">MEET YOUR COACH</p>
             <h2>A little about {t.firstName}.</h2>
@@ -173,6 +187,7 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
                 <p>{t.bio.slice(220)}</p>
               </details>
             )}
+
             <div className="trust-pills">
               {t.verifiedIdentity && (
                 <VerifiedBadge credentials={t.verifiedCredentials} />
@@ -190,22 +205,26 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
                 </span>
               )}
             </div>
+
             {t.category && <>
               <h3>Primary category</h3>
               <div className="choice-chips"><span>{t.category}</span></div>
             </>}
+
             <h3>What we can work on</h3>
             <div className="choice-chips">
               {t.specialties.map((s) => (
                 <span key={s}>{s}</span>
               ))}
             </div>
+
             <h3>How I train</h3>
             <p>
               We begin with a conversation about your goals and experience. Your
               sessions combine guided movement, technique feedback, and a plan
               you can build on at your own pace.
             </p>
+
             <h3>Certifications</h3>
             <ul className="credential-list">
               {t.certifications.map((c) => (
@@ -220,53 +239,14 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
                 Credentials are trainer-provided and have not been verified.
               </p>
             )}
+
             <h3>How sessions happen</h3>
             <p className="flex gap-2 items-center">
               <Video size={17} />
               Live 1-on-1 online video sessions
             </p>
+          </section>
 
-          </section>
-          <section className="profile-section" id="packages">
-            <p className="eyebrow">START SMALL. BUILD FROM THERE.</p>
-            <h2>Find your rhythm.</h2>
-            <div className="package-grid">
-              {t.packages.map((p) => (
-                <article
-                  className={`package-card ${p.isPopular ? "popular" : ""}`}
-                  key={p.id}
-                >
-                  {p.isPopular && (
-                    <span className="package-badge">MOST POPULAR</span>
-                  )}
-                  <h3>{p.title}</h3>
-                  <strong>{money(p.price)}</strong>
-                  <small>
-                    {p.sessions} {p.sessions === 1 ? "session" : "sessions"} ·{" "}
-                    {p.duration} minutes each
-                  </small>
-                  <p>{p.description}</p>
-                  <Link
-                    href={`/booking?trainer=${t.slug}&package=${p.id}`}
-                    className={`btn ${p.isPopular ? "" : "outline"}`}
-                  >
-                    {p.sessions === 1 ? "Book session" : "Choose package"}
-                    <ArrowRight size={16} />
-                  </Link>
-                </article>
-              ))}
-            </div>
-          </section>
-          <section className="profile-section" id="availability">
-            <p className="eyebrow">MAKE ROOM FOR YOU</p>
-            <h2>A time that fits.</h2>
-            <p>
-              See real available sessions for the next seven days. Booking shows times in your device timezone, with {t.timezone} shown as the trainer timezone.
-            </p>
-            <Link href={book} className="btn outline mt-5">
-              Explore available sessions <ArrowRight size={17} />
-            </Link>
-          </section>
           <section className="profile-section" id="reviews">
             <p className="eyebrow">FROM THE PEOPLE WHO SHOWED UP</p>
             <h2>Training, in their words.</h2>
@@ -292,12 +272,13 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
                   This coach has no published reviews yet. Reviews appear after
                   completed bookings.
                 </p>
-                <Link href={book} className="text-link">
+                <Link href={bookUrl} className="text-link">
                   Start with one session →
                 </Link>
               </div>
             )}
           </section>
+
           <section className="profile-section">
             <h3>Before your first session</h3>
             <p>
@@ -310,58 +291,99 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
             </Link>
           </section>
         </div>
-        <aside className="booking-sidebar">
-          <p className="eyebrow">START WITH THE RIGHT SESSION</p>
-          {t.packages[0] ? (
-            <>
-              <p className="booking-price">
-                {money(t.packages[0].price)}{" "}
-                <span>/ {t.packages[0].sessions === 1 ? "session" : "package"}</span>
-              </p>
-              <p className="muted text-sm">
-                {t.packages[0].sessions > 1
-                  ? `${money(Math.round(t.packages[0].price / t.packages[0].sessions))} / session · ${t.packages[0].sessions} sessions`
-                  : `${t.packages[0].duration} minutes · A plan built around you`}
-              </p>
-            </>
+
+        {/* UNIFIED SINGLE BOOKING CARD */}
+        <aside className="booking-sidebar" id="booking">
+          <p className="eyebrow">STEP 1: CHOOSE SERVICE</p>
+          {t.packages.length > 0 ? (
+            <div className="choice-chips flex-col gap-2 mb-4">
+              {t.packages.map((pkg) => (
+                <button
+                  key={pkg.id}
+                  type="button"
+                  className={`text-left p-3 border rounded-lg transition-all ${
+                    selectedPackageId === pkg.id ? "selected border-primary bg-primary/5" : ""
+                  }`}
+                  onClick={() => {
+                    setSelectedPackageId(pkg.id);
+                    setTime("");
+                  }}
+                >
+                  <div className="flex justify-between items-center w-full">
+                    <strong className="text-base">{pkg.title}</strong>
+                    <strong className="text-primary">{money(pkg.price)}</strong>
+                  </div>
+                  <p className="text-xs text-muted mt-1">
+                    {pkg.sessions} {pkg.sessions === 1 ? "session" : "sessions"} · {pkg.duration} mins each
+                  </p>
+                </button>
+              ))}
+            </div>
           ) : (
             <p className="muted">This trainer has not published a bookable package yet.</p>
           )}
-          <fieldset className="filter-group weekly-availability">
-            <legend>Available times · your device timezone</legend>
-            <p className="fine-print">Next 7 days</p>
-            <div className="availability-week">
-              {availableDays.map((day) => (
-                <DaySlots
-                  key={day.date}
-                  day={day}
-                  selectedTime={time}
-                  onSelectTime={setTime}
-                />
-              ))}
-            </div>
-            {slotsLoading && <p role="status">Checking availability…</p>}
-            {!t.packages.length && (
-              <p className="fine-print">
-                Availability will appear after this trainer adds a package.
-              </p>
-            )}
 
-            {slotError && <p role="alert">{slotError}</p>}
-            {!slotsLoading &&
-              availability &&
-              !availableDays.length &&
-              !slotError && (
-                <p className="fine-print">
-                  No open times in the next seven days.
-                </p>
+          {selectedPkg && (
+            <>
+              <p className="eyebrow mt-4">STEP 2: CHOOSE DAY</p>
+              {slotsLoading ? (
+                <p className="fine-print" role="status">Checking available slots…</p>
+              ) : availableDays.length > 0 ? (
+                <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+                  {availableDays.map((day) => (
+                    <button
+                      key={day.date}
+                      type="button"
+                      className={`px-3 py-2 border rounded-lg text-center min-w-[70px] ${
+                        activeDate === day.date ? "selected border-primary bg-primary/10 font-bold" : ""
+                      }`}
+                      onClick={() => {
+                        setSelectedDate(day.date);
+                        setTime("");
+                      }}
+                    >
+                      <div className="text-xs">{day.label.split(",")[0]}</div>
+                      <div className="text-sm font-semibold">{day.label.split(",")[1] || day.date.slice(5)}</div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="fine-print text-muted mb-4">No open days available in the next 7 days.</p>
               )}
-          </fieldset>
-          {t.packages[0] && (
-            <Link href={book} className="btn w-full">
-              Book online session <ArrowRightIcon />
-            </Link>
+
+              <p className="eyebrow mt-2">STEP 3: CHOOSE TIME</p>
+              {activeSlots.length > 0 ? (
+                <div className="choice-chips flex-wrap gap-2 mb-6">
+                  {activeSlots.map((slot) => (
+                    <button
+                      key={slot.start}
+                      type="button"
+                      className={time === slot.start ? "selected" : ""}
+                      onClick={() => setTime(slot.start)}
+                    >
+                      {new Date(slot.start).toLocaleTimeString(undefined, {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="fine-print text-muted mb-6">Select a date to view available start times.</p>
+              )}
+
+              <div className="border-t pt-4">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-sm text-muted">Selected Plan Total</span>
+                  <strong className="text-xl font-bold">{money(selectedPkg.price)}</strong>
+                </div>
+                <Link href={bookUrl} className="btn w-full">
+                  Continue to Booking <ArrowRight size={17} />
+                </Link>
+              </div>
+            </>
           )}
+
           <Link
             href={`/dashboard/customer/messages?trainer=${t.id}`}
             className="btn outline w-full mt-3"
@@ -369,16 +391,18 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
             <MessageCircle size={16} />
             Message {t.firstName}
           </Link>
-          <p className="fine-print text-center">
-            Choose the service and time that fits your goals.
+          <p className="fine-print text-center mt-3">
+            Times shown in your device timezone.
           </p>
           <Link href="/cancellation" className="cancellation-note">
             <BadgeCheck size={16} />
-            See the cancellation terms before booking.
+            See cancellation policy before booking.
           </Link>
         </aside>
       </div>
-      {recommended.length > 0 && (
+
+      {/* ALSO RECOMMENDED: Hidden for logged-in trainers */}
+      {recommended.length > 0 && state.role !== "trainer" && (
         <section className="profile-section mt-10" aria-labelledby="recommended-trainers">
           <p className="eyebrow">MORE COACHES TO CONSIDER</p>
           <h2 id="recommended-trainers">Also Recommended</h2>
@@ -388,76 +412,18 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
           </div>
         </section>
       )}
-      {t.packages[0] && (
+
+      {selectedPkg && (
         <div className={`mobile-booking-bar ${showMobileBooking ? "visible" : ""}`}>
           <div>
-            <small>Online coaching</small>
-            <strong>{money(t.packages[0].price)}</strong>
+            <small>{selectedPkg.title}</small>
+            <strong>{money(selectedPkg.price)}</strong>
           </div>
-          <Link href={book} className="btn">
+          <Link href={bookUrl} className="btn">
             Book session <ArrowRight size={17} />
           </Link>
         </div>
       )}
     </div>
-  );
-}
-function ArrowRightIcon() {
-  return <ArrowRight size={17} />;
-}
-
-function DaySlots({
-  day,
-  selectedTime,
-  onSelectTime,
-}: {
-  day: { date: string; label: string; slots: { start: string; label: string }[] };
-  selectedTime: string;
-  onSelectTime: (t: string) => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const slots = day.slots;
-  const visible = expanded
-    ? slots
-    : slots.filter((s, i) => i < 6 || s.start === selectedTime);
-  return (
-    <section className="availability-day">
-      <h3>{day.label}</h3>
-      <div className="choice-chips">
-        {visible.map((slot) => (
-          <button
-            key={slot.start}
-            aria-pressed={selectedTime === slot.start}
-            className={selectedTime === slot.start ? "selected" : ""}
-            onClick={() => onSelectTime(slot.start)}
-          >
-            {new Date(slot.start).toLocaleTimeString(undefined, {
-              hour: "numeric",
-              minute: "2-digit",
-            })}
-          </button>
-        ))}
-      </div>
-      {!expanded && slots.length > visible.length && (
-        <button
-          type="button"
-          className="text-link small"
-          style={{ marginTop: "0.25rem", display: "inline-block", fontSize: "0.8rem" }}
-          onClick={() => setExpanded(true)}
-        >
-          + {slots.length - visible.length} more times
-        </button>
-      )}
-      {expanded && slots.length > 6 && (
-        <button
-          type="button"
-          className="text-link small"
-          style={{ marginTop: "0.25rem", display: "inline-block", fontSize: "0.8rem" }}
-          onClick={() => setExpanded(false)}
-        >
-          Show fewer
-        </button>
-      )}
-    </section>
   );
 }

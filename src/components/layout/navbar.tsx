@@ -44,7 +44,6 @@ function getNavConfig(role: string) {
     case "customer":
       return {
         mainNav: [
-          { title: "Overview", href: "/dashboard/customer" },
           { title: "Trainers", href: "/trainers" },
           { title: "How It Works", href: "/how-it-works" },
         ],
@@ -53,11 +52,7 @@ function getNavConfig(role: string) {
       };
     case "trainer":
       return {
-        mainNav: [
-          { title: "Overview", href: "/trainer" },
-          { title: "Trainers", href: "/trainers" },
-          { title: "How It Works", href: "/how-it-works" },
-        ],
+        mainNav: [],
         showGetMatched: false,
         showLogIn: false,
       };
@@ -268,7 +263,7 @@ export function Navbar() {
                         )}
 
                         <Link
-                          href={`${dashboard}/settings`}
+                          href={state.role === "admin" ? "/admin/settings" : state.role === "trainer" ? "/trainer/profile" : "/dashboard/customer/profile"}
                           onClick={() => setAccountOpen(false)}
                           role="menuitem"
                           className="account-menu-link"
@@ -417,7 +412,7 @@ export function Navbar() {
                           )}
 
                           <Link
-                            href={`${dashboard}/settings`}
+                            href={state.role === "admin" ? "/admin/settings" : state.role === "trainer" ? "/trainer/profile" : "/dashboard/customer/profile"}
                             className="mobile-account-link"
                             onClick={() => setOpen(false)}
                           >

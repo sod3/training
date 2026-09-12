@@ -37,10 +37,14 @@ import { ActionForm } from "./action-form";
 import { AdminPanel, AdminSettings, RecordDetails } from "./admin-panel";
 import {
   AvailabilityPanel,
+  ClientsPanel,
+  CustomerTrainingPanel,
   EarningsPanel,
   MessagesPanel,
   PackagesPanel,
   ProfilePanel,
+  SchedulePanel,
+  TrainerProfilePanel,
   VerificationPanel,
   amount,
   date,
@@ -56,21 +60,13 @@ import { ReviewComposer } from "./review-composer";
 const primaryTabsByRole: Record<string, string[]> = {
   customer: [
     "overview",
-    "bookings",
-    "trainers",
+    "training",
     "saved",
-    "messages",
-    "reviews",
-    "payments",
   ],
   trainer: [
     "overview",
-    "bookings",
     "clients",
-    "availability",
-    "packages",
-    "messages",
-    "reviews",
+    "schedule",
     "earnings",
   ],
   admin: [
@@ -96,8 +92,8 @@ const primaryTabsByRole: Record<string, string[]> = {
 };
 
 const accountTabsByRole: Record<string, string[]> = {
-  customer: ["notifications", "profile", "security"],
-  trainer: ["profile", "verification", "application", "notifications", "security"],
+  customer: ["profile"],
+  trainer: ["profile"],
   admin: ["notifications", "settings", "security"],
 };
 
@@ -162,6 +158,13 @@ function getNavIcon(tabKey: string) {
 }
 
 function getTabLabel(t: string) {
+  if (t === "overview") return "Overview";
+  if (t === "training") return "My Training";
+  if (t === "schedule") return "Schedule & Pricing";
+  if (t === "earnings") return "Earnings";
+  if (t === "clients") return "Clients";
+  if (t === "profile") return "Profile";
+  if (t === "saved") return "Saved Trainers";
   if (t === "packages") return "Services & Pricing";
   if (t === "application") return "Application status";
   if (t === "audit-logs") return "Audit logs";
@@ -559,186 +562,29 @@ export function Dashboard({
                   </section>
                 </>
               )}
+              {tab === "schedule" && selectedRole === "trainer" && (
+                <SchedulePanel data={data} reload={reload} />
+              )}
+              {tab === "clients" && selectedRole === "trainer" && (
+                <ClientsPanel data={data} reload={reload} />
+              )}
               {tab === "earnings" && selectedRole === "trainer" && (
                 <EarningsPanel data={data} reload={reload} />
               )}
-              {["profile", "progress"].includes(tab) && (
-                <ProfilePanel data={data} role={selectedRole} reload={update} />
+              {tab === "profile" && selectedRole === "trainer" && (
+                <TrainerProfilePanel data={data} reload={update} />
               )}
-              {tab === "security" && (
-                <section className="panel">
-                  <h2>Password and account security</h2>
-                  <ActionForm
-                    endpoint="account/security"
-                    fields={[
-                      {
-                        name: "currentPassword",
-                        label: "Current password",
-                        type: "password",
-                        required: true,
-                      },
-                      {
-                        name: "newEmail",
-                        label: "New email address (optional)",
-                        type: "email",
-                        value: str(record(data.profile), "normalizedEmail"),
-                        hint: "Email verification is not required. This becomes your sign-in email immediately.",
-                      },
-                      {
-                        name: "newPassword",
-                        label: "New password (optional)",
-                        type: "password",
-                      },
-                      {
-                        name: "confirmPassword",
-                        label: "Confirm new password",
-                        type: "password",
-                      },
-                      {
-                        name: "deleteAccount",
-                        label: "Request account deletion and deactivate now",
-                        type: "checkbox",
-                      },
-                    ]}
-                    transform={(v) => ({
-                      ...v,
-                      newEmail: v.newEmail || undefined,
-                      newPassword: v.newPassword || undefined,
-                      confirmPassword: v.newPassword
-                        ? v.confirmPassword
-                        : undefined,
-                      revokeSessions: true,
-                    })}
-                    confirmation="This change will sign out all sessions. Account deletion requests deactivate your account immediately."
-                    label="Update security"
-                    onDone={() => router.push("/login")}
-                  />
-                </section>
+              {tab === "training" && selectedRole === "customer" && (
+                <CustomerTrainingPanel data={data} reload={update} />
+              )}
+              {tab === "profile" && selectedRole === "customer" && (
+                <ProfilePanel data={data} role="customer" reload={update} />
               )}
               {tab === "settings" && selectedRole === "admin" && (
                 <AdminSettings
                   settings={record(data.settings)}
                   reload={reload}
                 />
-              )}
-              {tab === "packages" && (
-                <PackagesPanel items={items} reload={reload} />
-              )}
-              {tab === "availability" && selectedRole === "trainer" && (
-                <>
-                  <AvailabilityPanel
-                    key={JSON.stringify(data.rules)}
-                    data={data}
-                    reload={reload}
-                  />
-                  <section className="panel mt-5">
-                    <h2>Session calendar</h2>
-                    {items.length ? (
-                      items.map((s) => (
-                        <p key={str(s, "_id")}>
-                          {date(s.start)} — {date(s.end)} · {str(s, "status")}
-                        </p>
-                      ))
-                    ) : (
-                      <p>No sessions on your calendar.</p>
-                    )}
-                  </section>
-                </>
-              )}
-              {tab === "verification" && selectedRole === "trainer" && (
-                <VerificationPanel data={data} reload={reload} />
-              )}
-              {tab === "application" &&
-                selectedRole === "trainer" &&
-                (() => {
-                  const application = record(data.application);
-                  const trainer = record(data.trainer);
-                  const applicationStatus =
-                    str(application, "status") ||
-                    str(trainer, "applicationStatus") ||
-                    "DRAFT";
-                  const editable = [
-                    "DRAFT",
-                    "ACTION_REQUIRED",
-                    "REJECTED",
-                  ].includes(applicationStatus);
-                  return (
-                    <section className="panel application-status-panel">
-                      <p className="eyebrow">TRAINER APPLICATION</p>
-                      <div className="panel-title">
-                        <h2>{applicationStatus.replaceAll("_", " ")}</h2>
-                        <span className="status">{applicationStatus}</span>
-                      </div>
-                      <p>
-                        {applicationStatus === "APPROVED"
-                          ? "Your trainer application is approved. Continue managing your public profile, services and availability from the dashboard."
-                          : ["SUBMITTED", "UNDER_REVIEW"].includes(
-                                applicationStatus,
-                              )
-                            ? "Your complete application has been submitted. You can review your verification status while the Spotter admin team checks your profile, identity and certification."
-                            : "Complete every onboarding step before submitting your application for admin review."}
-                      </p>
-                      {str(application, "adminNotes") && (
-                        <div className="payment-notice">
-                          <strong>Admin feedback</strong>
-                          <p>{str(application, "adminNotes")}</p>
-                        </div>
-                      )}
-                      {editable && (
-                        <Link className="btn mt-5" href="/trainer/onboarding">
-                          Continue onboarding →
-                        </Link>
-                      )}
-                      {["SUBMITTED", "UNDER_REVIEW"].includes(
-                        applicationStatus,
-                      ) && (
-                        <Link
-                          className="btn outline mt-5"
-                          href="/trainer/verification"
-                        >
-                          View verification status →
-                        </Link>
-                      )}
-                    </section>
-                  );
-                })()}
-              {tab === "messages" && (
-                <MessagesPanel data={data} reload={update} />
-              )}
-              {["bookings", "payments"].includes(tab) &&
-                selectedRole !== "admin" && (
-                  <BookingList
-                    items={items}
-                    role={selectedRole}
-                    reload={reload}
-                  />
-                )}
-              {tab === "reviews" && selectedRole !== "admin" && (
-                <>
-                  {items.map((r) => (
-                    <article className="panel review-card" key={str(r, "_id")}>
-                      <div className="review-card-head">
-                        <div
-                          className="review-stars"
-                          aria-label={`${num(r, "rating")} out of 5 stars`}
-                        >
-                          {"★".repeat(num(r, "rating"))}
-                          <span>
-                            {"★".repeat(Math.max(0, 5 - num(r, "rating")))}
-                          </span>
-                        </div>
-                        <span className="status">Verified booking</span>
-                      </div>
-                      <blockquote>{str(r, "review")}</blockquote>
-                      <small>
-                        {str(r, "status")} · {date(r.createdAt)}
-                      </small>
-                    </article>
-                  ))}
-                  {selectedRole === "customer" && (
-                    <ReviewComposer eligible={data.eligible} onDone={reload} />
-                  )}
-                </>
               )}
               {["saved", "favorites", "trainers"].includes(tab) &&
                 selectedRole === "customer" &&
@@ -785,15 +631,6 @@ export function Dashboard({
                   ))}
                 </>
               )}
-              {tab === "clients" &&
-                items.map((c) => (
-                  <section className="panel" key={str(c, "_id")}>
-                    <h2>{str(c, "name")}</h2>
-                    {rows(c.bookings).map((b, i) => (
-                      <RecordDetails key={i} item={b} />
-                    ))}
-                  </section>
-                ))}
               {selectedRole === "admin" &&
                 ![
                   "overview",
