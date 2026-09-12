@@ -1,17 +1,11 @@
 export const DEFAULT_CATEGORIES = [
-  "Strength & Muscle",
+  "Strength & Muscle Building",
   "Fat Loss",
-  "General Fitness",
-  "Body Recomposition",
-  "Mobility & Flexibility",
-  "Functional Fitness",
-  "Beginner Fitness",
-  "HIIT & Conditioning",
-  "Core & Posture",
+  "Mobility",
 ] as const;
 
 export const DEFAULT_SPECIALTIES = [
-  "Strength and Muscle Building",
+  "Strength & Muscle Building",
   "Fat Loss",
   "Mobility",
 ] as const;

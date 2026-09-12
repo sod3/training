@@ -21,12 +21,14 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
   const goals = useMemo(
     () =>
       Array.from(
-        new Set([
-          ...DEFAULT_CATEGORIES,
-          ...trainers
-            .map((trainer) => trainer.category)
-            .filter((value): value is string => Boolean(value)),
-        ]),
+        new Set(
+          [
+            ...DEFAULT_CATEGORIES,
+            ...trainers
+              .map((trainer) => trainer.category)
+              .filter((value): value is string => Boolean(value)),
+          ].filter((cat) => (DEFAULT_CATEGORIES as readonly string[]).includes(cat)),
+        ),
       ),
     [trainers],
   );
@@ -94,7 +96,7 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
               {question.title}
             </p>
             <div
-              className={`match-goal-grid ${question.id === "goal" || question.options.length > 4 ? "match-goal-grid-3" : ""}`}
+              className={`match-goal-grid ${question.options.length <= 3 ? "match-goal-grid-1" : question.options.length > 4 ? "match-goal-grid-3" : ""}`}
               role="group"
               aria-label={question.title}
             >
@@ -148,7 +150,7 @@ export function HomeMatchExperience({ trainers }: { trainers: Trainer[] }) {
               )}
             </div>
             <p className="home-match-note">
-              No account needed to see your matches.
+              Free account required to view your matches.
             </p>
           </div>
 

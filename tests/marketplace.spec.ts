@@ -114,7 +114,7 @@ test("registration, cookie login, role enforcement, logout and server persistenc
       firstName: "Amina",
       lastName: "Updated",
       phone: "",
-      fitnessGoals: ["Mobility & Functional Fitness"],
+      fitnessGoals: ["Mobility"],
       preferredSchedule: "Evening",
       timezone: "Asia/Karachi",
     },

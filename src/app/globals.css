@@ -2210,15 +2210,15 @@ a {
 .home-match-product {
   display: grid;
   grid-template-columns: minmax(0, 0.94fr) minmax(380px, 0.72fr);
-  min-height: 590px;
+  min-height: 520px;
   border-top: 1px solid rgb(255 255 255 / 15%);
   border-bottom: 1px solid rgb(255 255 255 / 15%);
   min-width: 0;
 }
 
 .match-question-card {
-  padding: clamp(32px, 4.5vw, 64px) clamp(26px, 5vw, 72px)
-    clamp(32px, 4.5vw, 58px) 0;
+  padding: clamp(28px, 4vw, 56px) clamp(24px, 4.5vw, 64px)
+    clamp(28px, 4vw, 48px) 0;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -2253,7 +2253,7 @@ a {
 }
 
 .match-question-label {
-  margin: 42px 0 28px;
+  margin: 32px 0 24px;
   font-size: clamp(24px, 2.5vw, 36px);
   line-height: 1.12;
   letter-spacing: -0.04em;
@@ -2262,8 +2262,21 @@ a {
 
 .match-goal-grid {
   display: grid;
-  gap: 9px;
+  gap: 10px;
   min-width: 0;
+}
+
+.match-goal-grid-1 {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.match-goal-grid-1 button {
+  min-height: 62px;
+  padding: 16px 20px;
+  font-size: 15px;
+  font-weight: 550;
+  border-radius: 10px;
 }
 
 .match-goal-grid-3 {
@@ -4617,6 +4630,19 @@ a {
   gap: 10px;
   margin: 28px 0 24px;
   min-width: 0;
+}
+
+.quiz-options-grid-1 {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.quiz-options-grid-1 button {
+  min-height: 62px;
+  padding: 16px 20px;
+  font-size: 15px;
+  font-weight: 550;
+  border-radius: 10px;
 }
 
 .quiz-options-grid-3 {

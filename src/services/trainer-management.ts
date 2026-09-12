@@ -44,7 +44,7 @@ async function assertMenuValues(category: string, specialties: string[], session
   ]);
   const activeCategories = allCategories.filter((value) => value.active).map((value) => value.name);
   const activeSpecialties = allSpecialties.filter((value) => value.active).map((value) => value.name);
-  const categories = new Set([...DEFAULT_CATEGORIES, "Fat Loss & General Fitness", "Mobility & Functional Fitness", ...activeCategories]);
+  const categories = new Set([...DEFAULT_CATEGORIES, ...activeCategories]);
   const specialtyMenu = new Set([...DEFAULT_SPECIALTIES, ...activeSpecialties]);
   assert(categories.has(category), "Choose a valid active training category");
   assert(specialties.length > 0 && specialties.every((value) => specialtyMenu.has(value)), "Choose specialties from the available menu");

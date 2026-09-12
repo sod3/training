@@ -35,7 +35,7 @@ export function MatchWizard({
 }) {
   const { data } = useApi<FacetResponse>("trainers?limit=1");
   const categories = data?.facets?.categories?.map((item) => item.name).filter(Boolean) || [];
-  const availableCategories = Array.from(new Set([...DEFAULT_CATEGORIES, ...categories]));
+  const availableCategories = Array.from(new Set([...DEFAULT_CATEGORIES, ...categories])).filter((cat) => (DEFAULT_CATEGORIES as readonly string[]).includes(cat));
   const questions: Question[] = buildMatchQuestions(availableCategories).map(
     (question) => ({
       ...question,
@@ -132,7 +132,7 @@ export function MatchWizard({
               <p className="eyebrow">A BETTER START IN FOUR QUESTIONS</p>
               <h1>{q.title}</h1>
               <p>{q.copy}</p>
-              <div className={`quiz-options ${q.id === "goal" || q.options.length > 4 ? "quiz-options-grid-3" : ""}`}>
+              <div className={`quiz-options ${q.options.length <= 3 ? "quiz-options-grid-1" : q.options.length > 4 ? "quiz-options-grid-3" : ""}`}>
                 {q.options.map((option) => (
                   <button
                     key={option.value}

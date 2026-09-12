@@ -17,7 +17,7 @@ function mapSpecialty(s: string): string {
   if (lower.includes("mobility") || lower.includes("flexibility") || lower.includes("joint") || lower.includes("posture")) {
     return "Mobility";
   }
-  return "Strength and Muscle Building";
+  return "Strength & Muscle Building";
 }
 
 async function main() {
@@ -49,7 +49,7 @@ async function main() {
       new Set(
         currentSpecialties.length > 0
           ? currentSpecialties.map(mapSpecialty)
-          : ["Strength and Muscle Building"]
+          : ["Strength & Muscle Building"]
       )
     );
 
