@@ -8,6 +8,36 @@ import { useStore } from "./store";
 import { money } from "@/lib/marketplace";
 import type { Trainer } from "@/types/trainer";
 
+function CopyButton({ text, label }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      className="btn outline small copy-btn"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "0.25rem",
+        padding: "0.2rem 0.5rem",
+        fontSize: "0.78rem",
+        marginLeft: "0.5rem",
+        cursor: "pointer",
+        borderRadius: "6px",
+      }}
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        } catch {}
+      }}
+      title={`Copy ${label || text}`}
+    >
+      {copied ? "✓ Copied!" : "📋 Copy"}
+    </button>
+  );
+}
+
 export function BookingFlow({
   params,
 }: {
@@ -65,9 +95,9 @@ function Checkout({
   );
   const [date, setDate] = useState(params.date || "");
   const [start, setStart] = useState(params.time || "");
-  const [paymentMethod, setPaymentMethod] = useState<"JAZZCASH" | "EASYPAISA">(
-    "JAZZCASH",
-  );
+  const [paymentMethod, setPaymentMethod] = useState<
+    "EASYPAISA" | "BANK_TRANSFER" | "JAZZCASH"
+  >("EASYPAISA");
   const [showAllSlots, setShowAllSlots] = useState(false);
   const [payerName, setPayerName] = useState("");
   const [transactionId, setTransactionId] = useState("");
@@ -115,28 +145,29 @@ function Checkout({
     accountName: string;
     jazzcash: string;
     easypaisa: string;
+    bankTransfer: {
+      accountName: string;
+      accountNumber: string;
+      iban: string;
+      branch: string;
+    };
     configured: boolean;
   }>("payment-methods");
-  const availablePaymentMethods = (
-    [
-      ["JAZZCASH", paymentAccounts?.jazzcash],
-      ["EASYPAISA", paymentAccounts?.easypaisa],
-    ] as const
-  ).filter(([, number]) => Boolean(number));
-  const selectedPaymentMethod =
-    paymentMethod === "JAZZCASH" &&
-    !paymentAccounts?.jazzcash &&
-    paymentAccounts?.easypaisa
-      ? "EASYPAISA"
-      : paymentMethod === "EASYPAISA" &&
-          !paymentAccounts?.easypaisa &&
-          paymentAccounts?.jazzcash
-        ? "JAZZCASH"
-        : paymentMethod;
+
+  const easypaisaNumber = paymentAccounts?.easypaisa || "03362226174";
+  const bankDetails = paymentAccounts?.bankTransfer || {
+    accountName: "ZAID UMER",
+    accountNumber: "10530113545140",
+    iban: "PK21MEZN0010530113545140",
+    branch: "ANCHOLI BRANCH KHI",
+  };
+  const selectedPaymentMethod = paymentMethod;
   const selectedPaymentNumber =
-    selectedPaymentMethod === "JAZZCASH"
-      ? paymentAccounts?.jazzcash
-      : paymentAccounts?.easypaisa;
+    paymentMethod === "EASYPAISA"
+      ? easypaisaNumber
+      : paymentMethod === "BANK_TRANSFER"
+        ? bankDetails.accountNumber
+        : paymentAccounts?.jazzcash || "";
   const resume = `/checkout?${new URLSearchParams({ trainer: t.slug, package: packageId, date, time: start })}`;
   const localSlot = start
     ? new Date(start).toLocaleString(undefined, {
@@ -297,11 +328,11 @@ function Checkout({
 
           {step === 2 && (
             <>
-              <h2>Pay with JazzCash or EasyPaisa.</h2>
+              <h2>Select Payment Method</h2>
               <p>
-                Transfer the total to the account below, then submit your
-                transaction ID and screenshot. An admin verifies the transfer
-                before confirming the booking.
+                Transfer the exact amount to your chosen account below, then submit your
+                payer name, transaction ID, and payment screenshot. An admin will verify the transfer
+                to confirm your booking.
               </p>
               {paymentMethodsLoading ? (
                 <p role="status">Loading payment account details…</p>
@@ -310,35 +341,132 @@ function Checkout({
                   <h3>We could not load payment details.</h3>
                   <p>{paymentMethodsError}</p>
                 </div>
-              ) : !paymentAccounts?.configured ? (
-                <div className="empty-state compact" role="alert">
-                  <h3>Manual payments are temporarily unavailable.</h3>
-                  <p>
-                    The Spotter payment account numbers have not been
-                    configured. No booking will be created until a payment
-                    method is available.
-                  </p>
-                </div>
               ) : (
-                <div className="payment-method-cards">
-                  {availablePaymentMethods.map(([method, number]) => (
+                <div>
+                  <div className="payment-method-cards">
                     <button
                       type="button"
-                      key={method}
-                      className={`package-card ${selectedPaymentMethod === method ? "popular" : ""}`}
-                      aria-pressed={selectedPaymentMethod === method}
-                      onClick={() => setPaymentMethod(method)}
+                      className={`package-card ${selectedPaymentMethod === "EASYPAISA" ? "popular" : ""}`}
+                      aria-pressed={selectedPaymentMethod === "EASYPAISA"}
+                      onClick={() => setPaymentMethod("EASYPAISA")}
                     >
-                      <strong>
-                        {method === "JAZZCASH" ? "JazzCash" : "EasyPaisa"}
-                      </strong>
-                      <span>{number}</span>
-                      <small>
-                        Account:{" "}
-                        {paymentAccounts?.accountName || "Spotter Training"}
-                      </small>
+                      <strong>Easypaisa</strong>
+                      <span>{easypaisaNumber}</span>
+                      <small>Mobile Transfer</small>
                     </button>
-                  ))}
+
+                    <button
+                      type="button"
+                      className={`package-card ${selectedPaymentMethod === "BANK_TRANSFER" ? "popular" : ""}`}
+                      aria-pressed={selectedPaymentMethod === "BANK_TRANSFER"}
+                      onClick={() => setPaymentMethod("BANK_TRANSFER")}
+                    >
+                      <strong>Bank Transfer</strong>
+                      <span>{bankDetails.accountNumber}</span>
+                      <small>{bankDetails.accountName}</small>
+                    </button>
+
+                    {Boolean(paymentAccounts?.jazzcash) && (
+                      <button
+                        type="button"
+                        className={`package-card ${selectedPaymentMethod === "JAZZCASH" ? "popular" : ""}`}
+                        aria-pressed={selectedPaymentMethod === "JAZZCASH"}
+                        onClick={() => setPaymentMethod("JAZZCASH")}
+                      >
+                        <strong>JazzCash</strong>
+                        <span>{paymentAccounts?.jazzcash}</span>
+                        <small>Mobile Wallet</small>
+                      </button>
+                    )}
+                  </div>
+
+                  <div
+                    className="panel payment-details-card mt-4"
+                    style={{
+                      background: "rgba(15, 23, 42, 0.6)",
+                      borderRadius: "12px",
+                      padding: "1.25rem",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
+                      marginTop: "1rem",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    {selectedPaymentMethod === "EASYPAISA" && (
+                      <div>
+                        <h3 style={{ margin: "0 0 1rem 0", color: "#38bdf8", fontSize: "1.1rem" }}>
+                          Easypaisa Account Details
+                        </h3>
+                        <div style={{ display: "grid", gap: "0.75rem" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "0.5rem" }}>
+                            <span style={{ color: "#94a3b8" }}>Account Title</span>
+                            <strong style={{ color: "#f8fafc" }}>{paymentAccounts?.accountName || "Spotter Training"}</strong>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ color: "#94a3b8" }}>Easypaisa Number</span>
+                            <div style={{ display: "flex", alignItems: "center" }}>
+                              <strong style={{ color: "#f8fafc", fontFamily: "monospace", fontSize: "1.1rem" }}>
+                                {easypaisaNumber}
+                              </strong>
+                              <CopyButton text={easypaisaNumber} label="Easypaisa Number" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedPaymentMethod === "BANK_TRANSFER" && (
+                      <div>
+                        <h3 style={{ margin: "0 0 1rem 0", color: "#38bdf8", fontSize: "1.1rem" }}>
+                          Bank Transfer Details
+                        </h3>
+                        <div style={{ display: "grid", gap: "0.75rem" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "0.5rem" }}>
+                            <span style={{ color: "#94a3b8" }}>Account Name</span>
+                            <strong style={{ color: "#f8fafc" }}>{bankDetails.accountName}</strong>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "0.5rem" }}>
+                            <span style={{ color: "#94a3b8" }}>Account Number</span>
+                            <div style={{ display: "flex", alignItems: "center" }}>
+                              <strong style={{ color: "#f8fafc", fontFamily: "monospace", fontSize: "1.05rem" }}>
+                                {bankDetails.accountNumber}
+                              </strong>
+                              <CopyButton text={bankDetails.accountNumber} label="Account Number" />
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "0.5rem" }}>
+                            <span style={{ color: "#94a3b8" }}>IBAN</span>
+                            <div style={{ display: "flex", alignItems: "center" }}>
+                              <strong style={{ color: "#f8fafc", fontFamily: "monospace", fontSize: "0.92rem" }}>
+                                {bankDetails.iban}
+                              </strong>
+                              <CopyButton text={bankDetails.iban} label="IBAN" />
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ color: "#94a3b8" }}>Branch</span>
+                            <strong style={{ color: "#f8fafc" }}>{bankDetails.branch}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedPaymentMethod === "JAZZCASH" && (
+                      <div>
+                        <h3 style={{ margin: "0 0 1rem 0", color: "#38bdf8", fontSize: "1.1rem" }}>
+                          JazzCash Account Details
+                        </h3>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ color: "#94a3b8" }}>JazzCash Number</span>
+                          <div style={{ display: "flex", alignItems: "center" }}>
+                            <strong style={{ color: "#f8fafc", fontFamily: "monospace", fontSize: "1.1rem" }}>
+                              {paymentAccounts?.jazzcash}
+                            </strong>
+                            <CopyButton text={paymentAccounts?.jazzcash || ""} label="JazzCash Number" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               <div className="payment-notice">

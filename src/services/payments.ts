@@ -17,7 +17,7 @@ import { lockTrainer, ownedOrder } from "./bookings";
 
 const manualPaymentSchema = z
   .object({
-    method: z.enum(["JAZZCASH", "EASYPAISA"]),
+    method: z.enum(["JAZZCASH", "EASYPAISA", "BANK_TRANSFER"]),
     payerName: z.string().trim().min(2).max(120),
     transactionId: z.string().trim().min(4).max(120),
     proofUploadId: z.string().regex(/^[a-f\d]{24}$/i),

@@ -126,13 +126,20 @@ async function handle(request: Request, context: Context) {
     }
     if (root === "payment-methods" && !id && method === "GET") {
       const jazzcash = process.env.JAZZCASH_ACCOUNT_NUMBER?.trim() || "";
-      const easypaisa = process.env.EASYPAISA_ACCOUNT_NUMBER?.trim() || "";
+      const easypaisa = process.env.EASYPAISA_ACCOUNT_NUMBER?.trim() || "03362226174";
+      const bankTransfer = {
+        accountName: process.env.BANK_ACCOUNT_NAME?.trim() || "ZAID UMER",
+        accountNumber: process.env.BANK_ACCOUNT_NUMBER?.trim() || "10530113545140",
+        iban: process.env.BANK_IBAN?.trim() || "PK21MEZN0010530113545140",
+        branch: process.env.BANK_BRANCH?.trim() || "ANCHOLI BRANCH KHI",
+      };
       return json({
         accountName:
           process.env.PAYMENT_ACCOUNT_NAME?.trim() || "Spotter Training",
         jazzcash,
         easypaisa,
-        configured: Boolean(jazzcash || easypaisa),
+        bankTransfer,
+        configured: Boolean(easypaisa || bankTransfer.accountNumber || jazzcash),
       });
     }
     operation = "MongoDB.connect";

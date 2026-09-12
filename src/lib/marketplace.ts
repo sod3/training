@@ -5,7 +5,9 @@ export const money = (n: number) => `PKR ${n.toLocaleString("en-PK")}`;
 
 export const goalTerms: Record<string, string[]> = {
   "strength & muscle": ["strength", "muscle", "bodybuilding", "hypertrophy", "powerlifting"],
+  "strength and muscle building": ["strength", "muscle", "bodybuilding", "hypertrophy", "powerlifting", "building"],
   "fat loss": ["fat loss", "weight loss", "weight management", "slimming", "shred"],
+  "mobility": ["mobility", "flexibility", "stretching", "joint health", "range of motion"],
   "general fitness": ["general fitness", "fitness", "wellness", "health", "active"],
   "body recomposition": ["recomposition", "recomp", "fat loss", "muscle", "toning", "body transformation"],
   "mobility & flexibility": ["mobility", "flexibility", "stretching", "joint health", "range of motion"],

@@ -381,7 +381,7 @@ export const Payment = model(
       provider: { type: String, default: "MANUAL" },
       method: {
         type: String,
-        enum: ["JAZZCASH", "EASYPAISA"],
+        enum: ["JAZZCASH", "EASYPAISA", "BANK_TRANSFER"],
       },
       providerId: { type: String, unique: true, sparse: true },
       checkoutUrl: { type: String, select: false },

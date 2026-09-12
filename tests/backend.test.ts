@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { DateTime } from "luxon";
 import { connectDB } from "../src/lib/server/db";
+import { sendWelcomeEmail } from "../src/lib/server/email";
 import {
   allowedRole,
   calculateBookingPrice,
@@ -503,3 +504,40 @@ test("expired tokens are explicitly query-ineligible before TTL cleanup", async 
     null,
   );
 });
+
+test("sendWelcomeEmail handles unconfigured credentials safely", async () => {
+  const result = await sendWelcomeEmail({
+    to: "testuser@example.com",
+    name: "Test User",
+    role: "CUSTOMER",
+  });
+  assert.equal(result, false);
+});
+
+test("manual payment proof accepts BANK_TRANSFER method", async () => {
+  const order = await createBooking(customer, {
+    packageId,
+    start: DateTime.fromISO(start).plus({ weeks: 1 }).toUTC().toISO()!,
+    idempotencyKey: randomUUID(),
+  });
+  const proof = await Upload.create({
+    userId: customer.id,
+    key: `payment_proof/${customer.id}/${randomUUID()}.webp`,
+    mime: "image/webp",
+    size: 4,
+    data: Buffer.from([1, 2, 3, 4]),
+    purpose: "PAYMENT_PROOF",
+  });
+  const submitted = await submitManualPayment(customer, String(order._id), {
+    method: "BANK_TRANSFER",
+    payerName: "ZAID UMER TEST",
+    transactionId: `PK-${randomUUID()}`,
+    proofUploadId: String(proof._id),
+  });
+  assert.equal(submitted.status, "SUBMITTED");
+  const payment = await Payment.findOne({ orderId: order._id });
+  assert(payment);
+  assert.equal(payment.method, "BANK_TRANSFER");
+  assert.equal(payment.status, "SUBMITTED");
+});
+

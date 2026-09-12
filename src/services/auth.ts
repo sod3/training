@@ -27,6 +27,7 @@ import {
   password,
   signupSchema,
 } from "@/lib/server/validation";
+import { sendWelcomeEmail } from "@/lib/server/email";
 
 async function provisionConfiguredAdmin(
   emailAddress: string,
@@ -110,6 +111,13 @@ export async function authAction(
       return user;
     });
     await createSession(user);
+    sendWelcomeEmail({
+      to: user.normalizedEmail,
+      name: user.name || `${input.firstName} ${input.lastName}`,
+      role: user.role,
+    }).catch((err) => {
+      console.error("[Auth] Welcome email send error:", err);
+    });
     return { redirect: user.role === "TRAINER" ? "/trainer/onboarding" : homeFor(user.role) };
   }
   if (action === "login") {

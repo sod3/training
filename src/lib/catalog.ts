@@ -11,27 +11,9 @@ export const DEFAULT_CATEGORIES = [
 ] as const;
 
 export const DEFAULT_SPECIALTIES = [
-  "Strength Training",
-  "Muscle Building",
-  "Bodybuilding",
-  "Hypertrophy",
-  "Powerlifting",
+  "Strength and Muscle Building",
   "Fat Loss",
-  "Weight Management",
-  "General Fitness",
-  "Body Recomposition",
   "Mobility",
-  "Flexibility",
-  "Joint Health",
-  "Functional Training",
-  "Athletic Performance",
-  "Beginner Fitness",
-  "HIIT",
-  "Conditioning",
-  "Cardio & Endurance",
-  "Core Training",
-  "Posture & Stability",
-  "Back Health",
 ] as const;
 
 export const DEFAULT_LANGUAGES = [
