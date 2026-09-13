@@ -72,29 +72,16 @@ const primaryTabsByRole: Record<string, string[]> = {
   admin: [
     "overview",
     "users",
-    "customers",
-    "trainers",
-    "applications",
-    "verification",
     "bookings",
-    "sessions",
-    "payments",
-    "refunds",
-    "payouts",
-    "reviews",
-    "categories",
-    "specialties",
-    "content",
-    "support",
-    "reports",
-    "audit-logs",
+    "operations",
+    "settings",
   ],
 };
 
 const accountTabsByRole: Record<string, string[]> = {
   customer: ["profile"],
   trainer: ["profile"],
-  admin: ["notifications", "settings", "security"],
+  admin: ["notifications", "security"],
 };
 
 function getNavIcon(tabKey: string) {
@@ -141,7 +128,8 @@ function getNavIcon(tabKey: string) {
     case "settings":
       return <Settings size={18} className="sidebar-nav-icon" />;
     case "categories":
-      return <Folder size={18} className="sidebar-nav-icon" />;
+    case "operations":
+      return <Layers size={18} className="sidebar-nav-icon" />;
     case "specialties":
       return <Tag size={18} className="sidebar-nav-icon" />;
     case "content":
@@ -159,6 +147,10 @@ function getNavIcon(tabKey: string) {
 
 function getTabLabel(t: string) {
   if (t === "overview") return "Overview";
+  if (t === "users") return "Users";
+  if (t === "bookings") return "Bookings & Payments";
+  if (t === "operations") return "Operations";
+  if (t === "settings") return "Settings";
   if (t === "training") return "My Training";
   if (t === "schedule") return "Schedule & Pricing";
   if (t === "earnings") return "Earnings";
@@ -206,6 +198,78 @@ function useDebouncedValue(value: string, delay = 300) {
   return debounced;
 }
 
+function AdminOverviewAlerts({ metrics }: { metrics: Record<string, unknown> }) {
+  const pendingPayments = Number(metrics["Pending payments"] || 0);
+  const pendingApplications = Number(metrics["Pending applications"] || 0);
+  const refundRequests = Number(metrics["Refund requests"] || 0);
+  const totalPending = pendingPayments + pendingApplications + refundRequests;
+
+  return (
+    <section className="panel admin-alerts-section mb-6">
+      <div className="admin-alerts-header flex items-center justify-between pb-3 border-b mb-4">
+        <div>
+          <h2 className="text-lg font-bold">Operational Action Items</h2>
+          <p className="muted text-sm">Immediate review items requiring administrative decision</p>
+        </div>
+        {totalPending > 0 ? (
+          <span className="admin-badge badge-pending font-semibold px-3 py-1 text-xs rounded-full">
+            {totalPending} Action{totalPending === 1 ? "" : "s"} Pending
+          </span>
+        ) : (
+          <span className="admin-badge badge-approved font-semibold px-3 py-1 text-xs rounded-full">
+            ✓ All Clear
+          </span>
+        )}
+      </div>
+
+      {totalPending === 0 ? (
+        <div className="admin-alert-clean p-3 bg-emerald-50/60 text-emerald-800 rounded-md border border-emerald-200 text-sm">
+          <p>🎉 All pending payment verifications, trainer applications, and refund requests are up to date.</p>
+        </div>
+      ) : (
+        <div className="admin-alerts-grid grid grid-cols-1 md:grid-cols-3 gap-4">
+          {pendingPayments > 0 && (
+            <div className="admin-alert-card urgent-payment p-4 bg-amber-50/70 border border-amber-200 rounded-lg flex flex-col justify-between">
+              <div className="admin-alert-info mb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-amber-800 block mb-1">Payment Verification</span>
+                <strong className="text-base text-amber-950 block">{pendingPayments} Payment proof{pendingPayments === 1 ? "" : "s"} pending</strong>
+                <p className="text-xs text-amber-800 mt-1">Verify bank & JazzCash screenshots to confirm bookings.</p>
+              </div>
+              <Link href="/admin/payments" className="btn lime small w-full text-center">
+                Review Payments →
+              </Link>
+            </div>
+          )}
+          {pendingApplications > 0 && (
+            <div className="admin-alert-card urgent-application p-4 bg-blue-50/70 border border-blue-200 rounded-lg flex flex-col justify-between">
+              <div className="admin-alert-info mb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-800 block mb-1">Trainer Onboarding</span>
+                <strong className="text-base text-blue-950 block">{pendingApplications} Application{pendingApplications === 1 ? "" : "s"} pending</strong>
+                <p className="text-xs text-blue-800 mt-1">Inspect identity documents and approve trainer profiles.</p>
+              </div>
+              <Link href="/admin/applications" className="btn outline small w-full text-center">
+                Review Applications →
+              </Link>
+            </div>
+          )}
+          {refundRequests > 0 && (
+            <div className="admin-alert-card urgent-refund p-4 bg-purple-50/70 border border-purple-200 rounded-lg flex flex-col justify-between">
+              <div className="admin-alert-info mb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-purple-800 block mb-1">Refund Requests</span>
+                <strong className="text-base text-purple-950 block">{refundRequests} Request{refundRequests === 1 ? "" : "s"} pending</strong>
+                <p className="text-xs text-purple-800 mt-1">Review refund requests and record manual transfer reference.</p>
+              </div>
+              <Link href="/admin/refunds" className="btn outline small w-full text-center">
+                Review Refunds →
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function Dashboard({
   role = "customer",
   tab = "overview",
@@ -231,7 +295,38 @@ export function Dashboard({
   const [days, setDays] = useState("30");
   const debouncedQuery = useDebouncedValue(q);
   const debouncedStatus = useDebouncedValue(status);
-  const endpoint = `${selectedRole === "admin" ? "admin" : selectedRole === "trainer" ? "trainer" : "dashboard"}/${tab}?${new URLSearchParams({ q: debouncedQuery, status: debouncedStatus, page: String(page), days })}`;
+
+  const adminMainTabMap: Record<string, string> = {
+    overview: "overview",
+    users: "users",
+    customers: "users",
+    trainers: "users",
+    applications: "users",
+    verification: "users",
+    bookings: "bookings",
+    payments: "bookings",
+    refunds: "bookings",
+    payouts: "bookings",
+    operations: "operations",
+    categories: "operations",
+    specialties: "operations",
+    content: "operations",
+    sessions: "operations",
+    reviews: "operations",
+    support: "operations",
+    reports: "operations",
+    "audit-logs": "operations",
+    settings: "settings",
+    security: "security",
+    notifications: "notifications",
+  };
+
+  const adminDefaultApiTab: Record<string, string> = {
+    operations: "categories",
+  };
+
+  const targetTab = selectedRole === "admin" && adminDefaultApiTab[tab] ? adminDefaultApiTab[tab] : tab;
+  const endpoint = `${selectedRole === "admin" ? "admin" : selectedRole === "trainer" ? "trainer" : "dashboard"}/${targetTab}?${new URLSearchParams({ q: debouncedQuery, status: debouncedStatus, page: String(page), days })}`;
   const { data, error, loading, reload } = useApi<Item>(endpoint);
   const items = rows(data?.items);
   const update = useCallback(() => {
@@ -244,6 +339,7 @@ export function Dashboard({
 
   const primaryNavItems = primaryTabsByRole[selectedRole] || [];
   const accountNavItems = accountTabsByRole[selectedRole] || [];
+  const activeAdminMainTab = selectedRole === "admin" ? (adminMainTabMap[tab] || "overview") : tab;
 
   return (
     <div className={`workspace ${collapsed ? "collapsed" : ""}`}>
@@ -273,7 +369,7 @@ export function Dashboard({
             {!collapsed && <p className="eyebrow sidebar-section-title">WORKSPACE</p>}
             <nav aria-label="Dashboard primary navigation">
               {primaryNavItems.map((t) => {
-                const isActive = tab === t;
+                const isActive = selectedRole === "admin" ? activeAdminMainTab === t : tab === t;
                 const label = getTabLabel(t);
                 const href = t === "overview" ? base : `${base}/${t}`;
                 const unreadCount =
@@ -434,6 +530,9 @@ export function Dashboard({
             <>
               {overview && (
                 <>
+                  {selectedRole === "admin" && (
+                    <AdminOverviewAlerts metrics={record(data.metrics)} />
+                  )}
                   {selectedRole !== "admin" && (
                     <section className="panel dashboard-primary">
                       <div>

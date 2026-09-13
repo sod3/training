@@ -2,8 +2,172 @@
 import { useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/client-api";
+import { useStore } from "@/components/marketplace/store";
 import { ActionForm, type Field } from "./action-form";
 import { amount, date, num, rows, str, type Item } from "./panels";
+import { formatFieldLabel, isIdKey, isLongIdValue, truncateId } from "@/lib/admin-formatters";
+import { IdCopyChip } from "@/components/ui/id-copy-chip";
+
+export function AdminSubNav({ section }: { section: string }) {
+  const usersSections = ["users", "customers", "trainers", "applications", "verification"];
+  const bookingsSections = ["bookings", "payments", "refunds", "payouts"];
+  const operationsSections = ["categories", "specialties", "content", "sessions", "reviews", "support", "audit-logs"];
+
+  if (usersSections.includes(section)) {
+    const tabs = [
+      { key: "users", label: "All Users", href: "/admin/users" },
+      { key: "customers", label: "Customers", href: "/admin/customers" },
+      { key: "trainers", label: "Trainers", href: "/admin/trainers" },
+      { key: "applications", label: "Applications", href: "/admin/applications" },
+      { key: "verification", label: "Verifications", href: "/admin/verification" },
+    ];
+    return (
+      <div className="admin-subnav-bar mb-6">
+        <span className="admin-subnav-title">Users & Verification</span>
+        <div className="admin-subnav-pills">
+          {tabs.map((tab) => (
+            <Link
+              key={tab.key}
+              href={tab.href}
+              className={`admin-subnav-pill ${section === tab.key ? "active" : ""}`}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (bookingsSections.includes(section)) {
+    const tabs = [
+      { key: "bookings", label: "All Bookings", href: "/admin/bookings" },
+      { key: "payments", label: "Pending Payments & Proof", href: "/admin/payments" },
+      { key: "refunds", label: "Refund Requests", href: "/admin/refunds" },
+      { key: "payouts", label: "Trainer Payouts", href: "/admin/payouts" },
+    ];
+    return (
+      <div className="admin-subnav-bar mb-6">
+        <span className="admin-subnav-title">Bookings & Payments</span>
+        <div className="admin-subnav-pills">
+          {tabs.map((tab) => (
+            <Link
+              key={tab.key}
+              href={tab.href}
+              className={`admin-subnav-pill ${section === tab.key ? "active" : ""}`}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (operationsSections.includes(section)) {
+    const tabs = [
+      { key: "categories", label: "Catalog (Categories)", href: "/admin/categories" },
+      { key: "specialties", label: "Specialties", href: "/admin/specialties" },
+      { key: "content", label: "FAQ & Content", href: "/admin/content" },
+      { key: "sessions", label: "Sessions", href: "/admin/sessions" },
+      { key: "reviews", label: "Reviews Moderation", href: "/admin/reviews" },
+      { key: "support", label: "Support Tickets", href: "/admin/support" },
+      { key: "audit-logs", label: "Audit Logs", href: "/admin/audit-logs" },
+    ];
+    return (
+      <div className="admin-subnav-bar mb-6">
+        <span className="admin-subnav-title">Operations & Catalog</span>
+        <div className="admin-subnav-pills">
+          {tabs.map((tab) => (
+            <Link
+              key={tab.key}
+              href={tab.href}
+              className={`admin-subnav-pill ${section === tab.key ? "active" : ""}`}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+export function StatusBadge({ status }: { status: string }) {
+  if (!status) return null;
+  const s = status.toUpperCase();
+  const formatted = status.replace(/_/g, " ");
+
+  if (
+    [
+      "SUBMITTED",
+      "PENDING",
+      "PENDING_PAYMENT",
+      "REQUESTED",
+      "UNDER_REVIEW",
+      "ACTION_REQUIRED",
+      "PROCESSING",
+      "IN_PROGRESS",
+      "OPEN",
+    ].includes(s)
+  ) {
+    return (
+      <span className="admin-badge badge-pending">
+        <span className="badge-dot dot-pending" aria-hidden="true" />
+        {formatted}
+      </span>
+    );
+  }
+
+  if (
+    [
+      "APPROVED",
+      "PAID",
+      "ACTIVE",
+      "CONFIRMED",
+      "COMPLETED",
+      "VISIBLE",
+      "PUBLIC",
+      "REFUNDED",
+    ].includes(s)
+  ) {
+    return (
+      <span className="admin-badge badge-approved">
+        <span className="badge-dot dot-approved" aria-hidden="true" />
+        {formatted}
+      </span>
+    );
+  }
+
+  if (
+    [
+      "REJECTED",
+      "DISABLED",
+      "SUSPENDED",
+      "CANCELLED",
+      "HIDDEN",
+      "FLAGGED",
+      "NO_SHOW",
+    ].includes(s)
+  ) {
+    return (
+      <span className="admin-badge badge-rejected">
+        <span className="badge-dot dot-rejected" aria-hidden="true" />
+        {formatted}
+      </span>
+    );
+  }
+
+  return (
+    <span className="admin-badge badge-neutral">
+      <span className="badge-dot dot-neutral" aria-hidden="true" />
+      {formatted}
+    </span>
+  );
+}
+
 export function AdminSettings({
   settings,
   reload,
@@ -43,7 +207,7 @@ export function AdminSettings({
             "holdMinutes",
           ].map((name) => ({
             name,
-            label: name.replace(/([A-Z])/g, " $1"),
+            label: formatFieldLabel(name),
             type: "number" as const,
             value: num(settings, name),
             hint:
@@ -70,6 +234,7 @@ export function AdminSettings({
     </section>
   );
 }
+
 function ApplicationReviewSummary({ item }: { item: Item }) {
   const trainer = (item.trainer as Item) || {};
   const account = (item.account as Item) || {};
@@ -115,15 +280,15 @@ function ApplicationReviewSummary({ item }: { item: Item }) {
     <div className="admin-application-review">
       <div className="admin-applicant-summary">
         <div>
-          <span>Trainer</span>
+          <span>Trainer Name</span>
           <strong>{str(trainer, "displayName") || "Unnamed trainer"}</strong>
         </div>
         <div>
-          <span>Email</span>
+          <span>Email Address</span>
           <strong>{str(account, "normalizedEmail") || "—"}</strong>
         </div>
         <div>
-          <span>Phone</span>
+          <span>Phone Number</span>
           <strong>{str(trainer, "phone") || str(account, "phone") || "—"}</strong>
         </div>
         <div>
@@ -155,6 +320,7 @@ function QuickApproveTrainer({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const { confirmModal, notify } = useStore();
 
   return (
     <div className="admin-quick-approve">
@@ -171,12 +337,16 @@ function QuickApproveTrainer({
         disabled={busy}
         aria-busy={busy}
         onClick={async () => {
-          if (
-            !window.confirm(
-              `Approve ${trainerName || "this trainer"} and publish the profile?`,
-            )
-          )
-            return;
+          if (busy) return;
+          const confirmed = await confirmModal({
+            title: "Approve & Publish Trainer",
+            description: `Approve ${trainerName || "this trainer"} and publish their profile live on the marketplace?`,
+            confirmText: "Approve Trainer",
+            cancelText: "Cancel",
+            variant: "lime",
+            icon: "shield",
+          });
+          if (!confirmed) return;
           setBusy(true);
           setMessage("");
           setError("");
@@ -185,10 +355,14 @@ function QuickApproveTrainer({
               `admin/approve-trainer/${applicationId}`,
               {},
             );
-            setMessage(result.message || "Trainer approved and published.");
+            const msg = result.message || "Trainer approved and published.";
+            setMessage(msg);
+            notify(msg, "success");
             onDone();
           } catch (err) {
-            setError((err as Error).message);
+            const errMsg = (err as Error).message;
+            setError(errMsg);
+            notify(errMsg, "error");
           } finally {
             setBusy(false);
           }
@@ -202,6 +376,121 @@ function QuickApproveTrainer({
           {error}
         </p>
       )}
+    </div>
+  );
+}
+
+function QuickPaymentReview({
+  paymentId,
+  onDone,
+}: {
+  paymentId: string;
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [error, setError] = useState("");
+  const { confirmModal, notify } = useStore();
+
+  const handleDecision = async (decision: "APPROVE" | "REJECT") => {
+    if (busy) return;
+    if (decision === "APPROVE") {
+      const confirmed = await confirmModal({
+        title: "Approve Payment Verification",
+        description: "Confirm bank transfer verification and approve this payment? This will confirm the booking.",
+        confirmText: "Approve Payment",
+        cancelText: "Cancel",
+        variant: "lime",
+        icon: "check",
+      });
+      if (!confirmed) return;
+    }
+    if (decision === "REJECT" && !notes.trim()) {
+      const errMsg = "Please provide a reason for rejecting the payment.";
+      setError(errMsg);
+      notify(errMsg, "error");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await api(`admin/payments/${paymentId}`, {
+        decision,
+        notes: decision === "REJECT" ? notes : undefined,
+      });
+      notify(
+        decision === "APPROVE"
+          ? "Payment approved and booking confirmed."
+          : "Payment rejected.",
+        decision === "APPROVE" ? "success" : "info",
+      );
+      onDone();
+    } catch (err) {
+      const errMsg = (err as Error).message;
+      setError(errMsg);
+      notify(errMsg, "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="admin-quick-payment-actions mt-4 pt-3 border-t">
+      {!showRejectForm ? (
+        <div className="admin-payment-btn-group flex gap-3">
+          <button
+            type="button"
+            className="btn lime small admin-approve-payment-btn"
+            disabled={busy}
+            onClick={() => handleDecision("APPROVE")}
+          >
+            {busy ? "Approving…" : "✓ Approve Payment"}
+          </button>
+          <button
+            type="button"
+            className="btn outline small btn-danger-text"
+            disabled={busy}
+            onClick={() => setShowRejectForm(true)}
+          >
+            ✕ Reject Payment
+          </button>
+        </div>
+      ) : (
+        <div className="admin-reject-box p-3 bg-red-50/50 rounded-md border border-red-200">
+          <label className="field">
+            <span className="font-semibold text-red-900">Rejection Reason / Feedback</span>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g., Transfer screenshot is unreadable or transaction reference ID does not match our bank account statement."
+              rows={2}
+              className="mt-1"
+            />
+          </label>
+          <div className="admin-reject-actions flex gap-2 mt-2">
+            <button
+              type="button"
+              className="btn danger small"
+              disabled={busy}
+              onClick={() => handleDecision("REJECT")}
+            >
+              {busy ? "Rejecting…" : "Confirm Rejection"}
+            </button>
+            <button
+              type="button"
+              className="btn outline small"
+              onClick={() => {
+                setShowRejectForm(false);
+                setError("");
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+      {error && <p className="form-error mt-2">{error}</p>}
     </div>
   );
 }
@@ -238,13 +527,16 @@ export function AdminPanel({
       value: num(item, "sortOrder"),
     },
   ];
+
   return (
     <>
+      <AdminSubNav section={section} />
       {taxonomy && (
-        <section className="panel">
+        <section className="panel mb-6">
           <h2>
             Add{" "}
-            {section === "content" ? "FAQ" : section === "categories" ? "category" : "specialty"}</h2>
+            {section === "content" ? "FAQ" : section === "categories" ? "category" : "specialty"}
+          </h2>
           <ActionForm
             endpoint={`admin/${section}`}
             fields={taxonomyFields({})}
@@ -406,27 +698,38 @@ export function AdminPanel({
           ];
         }
         if (taxonomy) fields = taxonomyFields(item);
+
+        const currentStatus =
+          str(item, "status") ||
+          str(item, "applicationStatus") ||
+          str(item, "verificationStatus") ||
+          str(item, "bookingStatus");
+
+        const rawId = str(item, "bookingNumber") || id;
+        const mainTitleText =
+          section === "verification" && str((item.trainer as Item) || {}, "displayName")
+            ? `${str((item.trainer as Item) || {}, "displayName")} · ${str(item, "type") || "credential"}`
+            : str(item, "name") ||
+              str(item, "displayName") ||
+              str(item, "title") ||
+              str(item, "subject") ||
+              str(item, "action") ||
+              (str(item, "bookingNumber")
+                ? `Booking ${truncateId(str(item, "bookingNumber"))}`
+                : `${formatFieldLabel(section)} Record`);
+
         return (
-          <article className="panel" key={id}>
-            <div className="panel-title">
-              <h3>
-                {(section === "verification" && str((item.trainer as Item) || {}, "displayName")
-                  ? `${str((item.trainer as Item) || {}, "displayName")} · ${str(item, "type") || "credential"}`
-                  : str(item, "name") ||
-                    str(item, "displayName") ||
-                    str(item, "bookingNumber") ||
-                    str(item, "title") ||
-                    str(item, "subject") ||
-                    str(item, "action") ||
-                    `${section} · ${id.slice(-8)}`)}
-              </h3>
-              <span className="status">
-                {str(item, "status") ||
-                  str(item, "applicationStatus") ||
-                  str(item, "verificationStatus") ||
-                  str(item, "bookingStatus")}
-              </span>
+          <article className="panel admin-record-card" key={id}>
+            <div className="panel-title flex flex-wrap justify-between items-center pb-3 mb-4 border-b border-slate-200 dark:border-zinc-700/60 gap-2">
+              <div className="flex flex-wrap items-center gap-2.5 min-w-0 flex-1">
+                <h3 className="text-base font-bold text-slate-900 dark:text-zinc-100 tracking-tight">
+                  {mainTitleText}
+                </h3>
+                {rawId && <IdCopyChip value={rawId} />}
+              </div>
+              <StatusBadge status={currentStatus} />
             </div>
+
             {section === "applications" && <ApplicationReviewSummary item={item} />}
             {section === "verification" && (() => {
               const trainer = (item.trainer as Item) || {};
@@ -434,11 +737,11 @@ export function AdminPanel({
               return (
                 <div className="admin-verification-summary">
                   <div>
-                    <span>Public name</span>
+                    <span>Public Display Name</span>
                     <strong>{str(trainer, "displayName") || "—"}</strong>
                   </div>
                   <div>
-                    <span>Email</span>
+                    <span>Email Address</span>
                     <strong>{str(account, "normalizedEmail") || "—"}</strong>
                   </div>
                   <div>
@@ -446,12 +749,13 @@ export function AdminPanel({
                     <strong>{str(trainer, "category") || "—"}</strong>
                   </div>
                   <div>
-                    <span>Application</span>
-                    <strong>{str(trainer, "applicationStatus") || "—"}</strong>
+                    <span>Application Status</span>
+                    <StatusBadge status={str(trainer, "applicationStatus")} />
                   </div>
                 </div>
               );
             })()}
+
             {section !== "applications" && <RecordDetails item={item} />}
             {section === "applications" && (
               <details className="admin-application-details">
@@ -459,6 +763,7 @@ export function AdminPanel({
                 <RecordDetails item={item} />
               </details>
             )}
+
             {section === "verification" && (
               <div className="admin-evidence-links">
                 <a
@@ -467,7 +772,7 @@ export function AdminPanel({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Open submitted evidence
+                  Open submitted evidence ↗
                 </a>
                 {str((item.trainer as Item) || {}, "cnicUploadId") &&
                   str((item.trainer as Item) || {}, "cnicUploadId") !== str(item, "uploadId") && (
@@ -477,7 +782,7 @@ export function AdminPanel({
                       target="_blank"
                       rel="noreferrer"
                     >
-                      Open CNIC document
+                      Open CNIC document ↗
                     </a>
                   )}
               </div>
@@ -486,33 +791,59 @@ export function AdminPanel({
               <a
                 className="btn outline small"
                 href={`/api/media/${str(item, "cnicUploadId")}`}
-              >
-                View CNIC picture
-              </a>
-            )}
-            {section === "payments" && str(item, "proofUploadId") && (
-              <a
-                className="btn outline small"
-                href={`/api/media/${str(item, "proofUploadId")}`}
                 target="_blank"
                 rel="noreferrer"
               >
-                View payment screenshot
+                View CNIC picture ↗
               </a>
             )}
+
+            {section === "payments" && str(item, "proofUploadId") && (
+              <div className="admin-proof-preview-container my-4 p-3 bg-gray-50 dark:bg-zinc-800/50 rounded-lg border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    📷 Transfer Screenshot / Proof
+                  </span>
+                  <a
+                    className="text-link text-xs"
+                    href={`/api/media/${str(item, "proofUploadId")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View Full Resolution ↗
+                  </a>
+                </div>
+                <div className="admin-proof-thumbnail-wrapper">
+                  <a
+                    href={`/api/media/${str(item, "proofUploadId")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="Click to expand full resolution screenshot"
+                  >
+                    <img
+                      src={`/api/media/${str(item, "proofUploadId")}`}
+                      alt="Payment transfer proof screenshot"
+                      className="admin-proof-img"
+                    />
+                  </a>
+                </div>
+              </div>
+            )}
+
             {section === "applications" && (
               <div className="admin-evidence-links">
                 {str((item.trainer as Item) || {}, "cnicUploadId") && (
-                  <a className="btn outline small" href={`/api/media/${str((item.trainer as Item) || {}, "cnicUploadId")}`} target="_blank" rel="noreferrer">View CNIC document</a>
+                  <a className="btn outline small" href={`/api/media/${str((item.trainer as Item) || {}, "cnicUploadId")}`} target="_blank" rel="noreferrer">View CNIC document ↗</a>
                 )}
                 {rows(item.credentials).map((credential) => (
                   <a key={str(credential, "_id")} className="btn outline small" href={`/api/media/${str(credential, "uploadId")}`} target="_blank" rel="noreferrer">
-                    {str(credential, "type") === "IDENTITY" ? "Identity evidence" : str(credential, "title") || "Certification"}
+                    {str(credential, "type") === "IDENTITY" ? "Identity evidence ↗" : `${str(credential, "title") || "Certification"} ↗`}
                   </a>
                 ))}
                 <Link className="text-link" href="/admin/verification">Review all credential evidence →</Link>
               </div>
             )}
+
             {section === "applications" && str(item, "status") !== "APPROVED" && (
               <QuickApproveTrainer
                 applicationId={id}
@@ -520,21 +851,22 @@ export function AdminPanel({
                 onDone={reload}
               />
             )}
-            {section === "payments" && item.status === "SUBMITTED" && (
-              <p>
-                Confirm the transfer against your JazzCash or EasyPaisa account
-                before approving. Approval confirms the booking.
-              </p>
+
+            {section === "payments" && str(item, "status") === "SUBMITTED" && (
+              <QuickPaymentReview paymentId={id} onDone={reload} />
             )}
+
             {section === "refunds" && item.status === "APPROVED" && (
-              <p>
-                This marketplace uses manual payments. Send the approved refund through the appropriate payment channel and record the transfer reference for your audit trail.
+              <p className="admin-notice-box mt-3 text-sm text-amber-700 bg-amber-50 p-3 rounded border border-amber-200">
+                This marketplace uses manual payments. Send the approved refund through JazzCash / EasyPaisa and record the transfer reference string below for your audit trail.
               </p>
             )}
+
             {["users", "customers"].includes(section) && str(item, "role") !== "ADMIN" && (
               <PasswordResetControl userId={id} />
             )}
-            {fields.length > 0 && (
+
+            {fields.length > 0 && section !== "payments" && (
               <div className="mt-5">
                 {section === "trainers" && (
                   <p className="muted">
@@ -571,14 +903,16 @@ export function AdminPanel({
     </>
   );
 }
+
 function PasswordResetControl({ userId }: { userId: string }) {
   const [busy, setBusy] = useState(false);
   const [resetUrl, setResetUrl] = useState("");
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
   return (
-    <div className="admin-reset-control">
+    <div className="admin-reset-control mt-3 pt-3 border-t">
       <button
+        type="button"
         className="btn outline small"
         disabled={busy}
         aria-busy={busy}
@@ -597,14 +931,15 @@ function PasswordResetControl({ userId }: { userId: string }) {
           }
         }}
       >
-        {busy ? "Creating…" : "Create password reset link"}
+        {busy ? "Creating…" : "🔑 Create password reset link"}
       </button>
       {message && <small className="muted" style={{ display: "block", marginTop: "0.25rem" }}>{message}</small>}
       {resetUrl && (
-        <div className="reset-link-box">
-          <input readOnly value={resetUrl} aria-label="One-time password reset link" />
+        <div className="reset-link-box mt-2 flex gap-2 items-center">
+          <input readOnly value={resetUrl} aria-label="One-time password reset link" className="flex-1 text-xs" />
           <button
-            className="text-link"
+            type="button"
+            className="btn outline small"
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(resetUrl);
@@ -613,7 +948,7 @@ function PasswordResetControl({ userId }: { userId: string }) {
               } catch {}
             }}
           >
-            {copied ? "Copied!" : "Copy"}
+            {copied ? "Copied! ✓" : "Copy"}
           </button>
         </div>
       )}
@@ -633,58 +968,122 @@ export function RecordDetails({ item }: { item: Item }) {
     "requestHash",
     "idempotencyKey",
   ];
+
+  const entries = Object.entries(item).filter(
+    ([key, value]) =>
+      !hidden.includes(key) &&
+      value !== null &&
+      value !== undefined &&
+      value !== "",
+  );
+
+  if (!entries.length) return null;
+
   return (
-    <dl className="record-details">
-      {Object.entries(item)
-        .filter(
-          ([key, value]) =>
-            !hidden.includes(key) &&
-            value !== null &&
-            value !== undefined &&
-            value !== "",
-        )
-        .map(([key, value]) => (
-          <div key={key}>
-            <dt>{key.replace(/([A-Z])/g, " $1")}</dt>
-            <dd>
-              {[
-                "amount",
-                "total",
-                "price",
-                "platformFee",
-                "trainerAmount",
-              ].includes(key) ? (
-                amount(value)
-              ) : key.endsWith("At") || ["start", "end"].includes(key) ? (
-                date(value)
-              ) : typeof value === "object" ? (
-                Array.isArray(value) &&
-                value.every((v) => typeof v !== "object") ? (
-                  value.join(", ")
-                ) : (
-                  <details>
-                    <summary>View details</summary>
-                    {Array.isArray(value) ? (
-                      rows(value).map((r, i) => (
-                        <RecordDetails key={i} item={r} />
-                      ))
-                    ) : (
-                      <RecordDetails item={value as Item} />
-                    )}
-                  </details>
-                )
-              ) : typeof value === "boolean" ? (
-                value ? (
-                  "Yes"
-                ) : (
-                  "No"
-                )
-              ) : (
-                String(value)
-              )}
-            </dd>
+    <div className="admin-record-details-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 my-4">
+      {entries.map(([key, value]) => {
+        const label = formatFieldLabel(key);
+        const strVal = String(value ?? "");
+
+        const isStatusField =
+          key.toLowerCase().endsWith("status") ||
+          key === "status" ||
+          key === "profileVisibility";
+
+        let content: React.ReactNode;
+
+        if (isStatusField && typeof value === "string") {
+          content = <StatusBadge status={strVal} />;
+        } else if (
+          isIdKey(key) ||
+          isLongIdValue(value) ||
+          ["_id", "id", "customerId", "trainerId", "packageId", "bookingNumber", "cnicUploadId", "proofUploadId", "uploadId"].includes(key)
+        ) {
+          content = <IdCopyChip value={strVal} />;
+        } else if (
+          ["amount", "total", "price", "platformFee", "trainerAmount"].includes(key)
+        ) {
+          content = (
+            <span className="font-semibold text-slate-900 dark:text-zinc-100 text-sm">
+              {amount(value)}
+            </span>
+          );
+        } else if (key.endsWith("At") || key.endsWith("Date") || ["start", "end"].includes(key)) {
+          content = (
+            <span className="text-slate-700 dark:text-zinc-300 font-medium">
+              {date(value)}
+            </span>
+          );
+        } else if (typeof value === "boolean") {
+          content = (
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                value
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                  : "bg-slate-100 text-slate-600 border border-slate-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700"
+              }`}
+            >
+              {value ? "Yes" : "No"}
+            </span>
+          );
+        } else if (typeof value === "object") {
+          if (Array.isArray(value) && value.every((v) => typeof v !== "object")) {
+            content = (
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {value.map((v, i) => (
+                  <span key={i} className="px-2 py-0.5 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 rounded text-[11px] font-medium border border-slate-200 dark:border-zinc-700">
+                    {String(v)}
+                  </span>
+                ))}
+              </div>
+            );
+          } else {
+            content = (
+              <details className="admin-nested-details w-full mt-1">
+                <summary className="cursor-pointer text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-1">
+                  View {label} Details
+                </summary>
+                <div className="mt-2 p-3 bg-white dark:bg-zinc-900/80 rounded-lg border border-slate-200 dark:border-zinc-700/60 shadow-sm">
+                  {Array.isArray(value) ? (
+                    rows(value).map((r, i) => (
+                      <RecordDetails key={i} item={r} />
+                    ))
+                  ) : (
+                    <RecordDetails item={value as Item} />
+                  )}
+                </div>
+              </details>
+            );
+          }
+        } else if (key === "meetingUrl" || key.endsWith("Url")) {
+          content = (
+            <a
+              href={strVal}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-1"
+            >
+              Open Link ↗
+            </a>
+          );
+        } else {
+          content = <span className="text-slate-800 dark:text-zinc-200">{strVal}</span>;
+        }
+
+        return (
+          <div
+            key={key}
+            className="admin-detail-card p-3 rounded-lg bg-slate-50/70 dark:bg-zinc-800/40 border border-slate-200/70 dark:border-zinc-700/50 flex flex-col gap-1 min-w-0"
+          >
+            <span className="admin-detail-label text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+              {label}
+            </span>
+            <div className="admin-detail-value text-xs text-slate-900 dark:text-zinc-100 font-medium break-words">
+              {content}
+            </div>
           </div>
-        ))}
-    </dl>
+        );
+      })}
+    </div>
   );
 }

@@ -7,35 +7,10 @@ import { api, apiResult, useApi } from "@/lib/client-api";
 import { useStore } from "./store";
 import { money } from "@/lib/marketplace";
 import type { Trainer } from "@/types/trainer";
+import { IdCopyChip } from "@/components/ui/id-copy-chip";
 
 function CopyButton({ text, label }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      type="button"
-      className="btn outline small copy-btn"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "0.25rem",
-        padding: "0.2rem 0.5rem",
-        fontSize: "0.78rem",
-        marginLeft: "0.5rem",
-        cursor: "pointer",
-        borderRadius: "6px",
-      }}
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
-        } catch {}
-      }}
-      title={`Copy ${label || text}`}
-    >
-      {copied ? "✓ Copied!" : "📋 Copy"}
-    </button>
-  );
+  return <IdCopyChip value={text} truncate={false} className="ml-2" />;
 }
 
 export function BookingFlow({

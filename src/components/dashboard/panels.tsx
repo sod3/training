@@ -5,6 +5,7 @@ import { api, apiResult, useApi } from "@/lib/client-api";
 import { ActionForm, UploadForm, type Field } from "./action-form";
 import { DEFAULT_CATEGORIES, PREFERRED_TIMES } from "@/lib/catalog";
 import { ReviewComposer } from "./review-composer";
+import { IdCopyChip } from "@/components/ui/id-copy-chip";
 export type Item = Record<string, unknown>;
 export const str = (item: Item, key: string) => String(item[key] ?? "");
 export const num = (item: Item, key: string) => Number(item[key] || 0);
@@ -1033,8 +1034,8 @@ export function EarningsPanel({
                     <td>
                       <strong>{str(item, "clientName")}</strong>
                       {str(item, "bookingNumber") !== "—" && (
-                        <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>
-                          {str(item, "bookingNumber")}
+                        <div className="mt-1">
+                          <IdCopyChip value={str(item, "bookingNumber")} />
                         </div>
                       )}
                     </td>

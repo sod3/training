@@ -93,7 +93,7 @@ export function TrainerCard({
           )}
           {t.reviewCount > 0 && (
             <span>
-              {t.reviewCount} verified-session{" "}
+              {t.reviewCount} verified session{" "}
               {t.reviewCount === 1 ? "review" : "reviews"}
             </span>
           )}

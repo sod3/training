@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { api, useApi } from "@/lib/client-api";
 import { ActionForm } from "./action-form";
 import { amount, date, num, record, rows, str, type Item } from "./panels";
+import { StatusBadge } from "./admin-panel";
+import { IdCopyChip } from "@/components/ui/id-copy-chip";
+
 export function BookingList({
   items,
   role,
@@ -23,33 +26,42 @@ export function BookingList({
         const snapshot = record(order.packageSnapshot);
         return (
           <article className="panel" key={str(order, "_id")}>
-            <div className="panel-title">
+            <div className="panel-title flex flex-wrap justify-between items-start gap-3">
               <div>
-                <p className="eyebrow">{str(order, "bookingNumber")}</p>
-                <h2>{str(snapshot, "trainerName")}</h2>
-                <p>
-                  {str(snapshot, "name")} · {amount(order.total)}
+                <div className="mb-1">
+                  <IdCopyChip value={str(order, "bookingNumber")} />
+                </div>
+                <h2 className="text-lg font-bold">{str(snapshot, "trainerName")}</h2>
+                <p className="text-sm font-medium text-slate-600 dark:text-zinc-400">
+                  {str(snapshot, "name")} · <strong className="text-slate-900 dark:text-zinc-100">{amount(order.total)}</strong>
                 </p>
               </div>
-              <span className="status">{str(order, "bookingStatus")}</span>
+              <StatusBadge status={str(order, "bookingStatus")} />
             </div>
-            <p>
-              Payment: {str(order, "paymentStatus")} ·{" "}
-              {num(order, "remainingSessions")} sessions left to schedule
-            </p>
-            <p>
+            <div className="flex flex-wrap items-center gap-3 my-3 text-xs text-slate-600 dark:text-zinc-400 p-2.5 bg-slate-50 dark:bg-zinc-800/50 rounded-lg border border-slate-200/60 dark:border-zinc-700/50">
+              <span className="flex items-center gap-1.5">
+                <strong>Payment:</strong> <StatusBadge status={str(order, "paymentStatus")} />
+              </span>
+              <span>•</span>
+              <span>
+                <strong>Remaining Sessions:</strong> {num(order, "remainingSessions")} sessions left
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mb-3">
               Free cancellation or rescheduling until{" "}
               {num(snapshot, "cancellationWindowHours")} hours before a session.
               Late cancellations forfeit that session’s share of the package.
             </p>
             {rows(order.sessions).map((s) => (
-              <div className="booking-row" key={str(s, "_id")}>
+              <div className="booking-row p-3 bg-white dark:bg-zinc-900 border rounded-lg mb-2" key={str(s, "_id")}>
                 <div>
-                  <h3>Session {num(s, "sessionNumber")}</h3>
-                  <p>
+                  <h3 className="font-semibold text-sm">Session {num(s, "sessionNumber")}</h3>
+                  <p className="text-xs text-slate-500">
                     {date(s.start)} — {date(s.end)}
                   </p>
-                  <span className="status">{str(s, "status")}</span>
+                  <div className="mt-1">
+                    <StatusBadge status={str(s, "status")} />
+                  </div>
                 </div>
                 {role === "customer" && s.status === "CONFIRMED" && str(s, "meetingUrl") && (
                   <a className="btn small" href={str(s, "meetingUrl")} target="_blank" rel="noreferrer">Join online session</a>

@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { api, apiResult } from "@/lib/client-api";
+import { useStore } from "@/components/marketplace/store";
 export type Field = {
   name: string;
   label: string;
@@ -47,18 +48,24 @@ export function ActionForm({
   const submitting = useRef(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const { confirmModal, notify } = useStore();
   return (
     <form
       className="workspace-form"
       onSubmit={async (e) => {
         e.preventDefault();
-        if (
-          submitting.current ||
-          pending ||
-          disabled ||
-          (confirmation && !window.confirm(confirmation))
-        )
-          return;
+        if (submitting.current || pending || disabled) return;
+        if (confirmation) {
+          const confirmed = await confirmModal({
+            title: "Confirm Action",
+            description: confirmation,
+            confirmText: "Confirm Action",
+            cancelText: "Cancel",
+            variant: "lime",
+            icon: "help",
+          });
+          if (!confirmed) return;
+        }
         const form = e.currentTarget;
         const values = new FormData(form);
         const input: Record<string, unknown> = {};

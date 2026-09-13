@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { HeroSection } from "@/components/marketplace/hero-section";
 import { TrainerCard } from "@/components/marketplace/trainer-card";
-import { Atmosphere } from "@/components/three/atmosphere";
 import { HowItWorks } from "@/components/marketplace/how-it-works";
 import { HorizontalShowcase } from "@/components/motion/horizontal-showcase";
 import { SplitHeading } from "@/components/motion/reveal";
@@ -108,28 +107,6 @@ export default async function Home() {
       <HomeMatchExperience trainers={trainers} />
       <CoachingStory />
       <TrustSection />
-      <section className="spotter-final" id="final-cta">
-        <Atmosphere className="final-atmosphere" />
-        <div className="container">
-          <Reveal start="top 85%">
-            <p className="eyebrow">YOUR NEXT CHAPTER STARTS HERE</p>
-            <div>
-              <SplitHeading
-                lines={["The right trainer", "changes everything."]}
-              />
-              <div className="spotter-final-actions">
-                <Link href="/match" className="btn lime">
-                  Get Matched <ArrowRight size={20} />
-                </Link>
-                <Link href="/trainers" className="spotter-final-secondary">
-                  Explore Trainers <ArrowRight size={16} />
-                </Link>
-              </div>
-            </div>
-            <p>One good match. A better way to train.</p>
-          </Reveal>
-        </div>
-      </section>
     </>
   );
 }

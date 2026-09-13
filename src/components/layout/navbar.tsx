@@ -59,10 +59,11 @@ function getNavConfig(role: string) {
     case "admin":
       return {
         mainNav: [
-          { title: "Applications", href: "/admin/applications" },
-          { title: "Bookings", href: "/admin/bookings" },
+          { title: "Overview", href: "/admin" },
           { title: "Users", href: "/admin/users" },
-          { title: "Payouts", href: "/admin/payouts" },
+          { title: "Bookings & Payments", href: "/admin/bookings" },
+          { title: "Operations", href: "/admin/operations" },
+          { title: "Settings", href: "/admin/settings" },
         ],
         showGetMatched: false,
         showLogIn: false,

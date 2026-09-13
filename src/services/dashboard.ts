@@ -249,6 +249,7 @@ export async function dashboardData(
       metrics["Pending applications"] = await TrainerApplication.countDocuments(
         { status: { $in: ["SUBMITTED", "UNDER_REVIEW"] } },
       );
+      metrics["Pending payments"] = await Payment.countDocuments({ status: "SUBMITTED" });
       metrics["Approved trainers"] = await TrainerProfile.countDocuments({
         applicationStatus: "APPROVED",
       });
