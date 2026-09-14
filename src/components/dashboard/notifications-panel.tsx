@@ -78,16 +78,16 @@ export function NotificationsPanel({
       {/* Header bar with counter & mark all read action */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-zinc-800/80">
         <div className="flex items-center gap-2.5">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
             {items.length} {items.length === 1 ? "Notification" : "Notifications"}
           </span>
           {unreadCount > 0 ? (
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-lime-400/20 text-lime-700 dark:text-lime-400 border border-lime-500/30 flex items-center gap-1.5 shadow-2xs">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-lime-400/20 text-lime-800 dark:text-lime-300 border border-lime-500/30 flex items-center gap-1.5 shadow-2xs">
               <span className="w-1.5 h-1.5 rounded-full bg-lime-500 animate-pulse" />
-              {unreadCount} Unread
+              <span className="text-lime-800 dark:text-lime-300 font-bold">{unreadCount} Unread</span>
             </span>
           ) : (
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-slate-300">
               All caught up
             </span>
           )}
@@ -101,7 +101,7 @@ export function NotificationsPanel({
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer disabled:opacity-50 shrink-0 active:scale-95"
           >
             <CheckCheck size={14} className="text-lime-400 shrink-0" />
-            <span>{markingAll ? "Marking all read…" : "Mark all as read"}</span>
+            <span className="text-white font-bold">{markingAll ? "Marking all read…" : "Mark all as read"}</span>
           </button>
         )}
       </div>
@@ -170,9 +170,9 @@ export function NotificationsPanel({
                         {title}
                       </h4>
                       {isUnread && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-lime-500/15 text-lime-700 dark:text-lime-400 border border-lime-500/30 shrink-0">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-lime-500/15 text-lime-800 dark:text-lime-300 border border-lime-500/30 shrink-0">
                           <span className="w-1.5 h-1.5 rounded-full bg-lime-500 animate-pulse" />
-                          Unread
+                          <span className="text-lime-800 dark:text-lime-300 font-bold">Unread</span>
                         </span>
                       )}
                     </div>
@@ -184,24 +184,24 @@ export function NotificationsPanel({
                     type="button"
                     onClick={() => handleMarkRead(id)}
                     disabled={markingId === id}
-                    className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer shrink-0 active:scale-95"
+                    className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-800 dark:text-slate-200 transition-colors cursor-pointer shrink-0 active:scale-95"
                     title="Mark as read"
                   >
                     <Check size={13} className="text-emerald-500 shrink-0" />
-                    <span className="hidden sm:inline">Mark read</span>
+                    <span className="hidden sm:inline text-slate-800 dark:text-slate-200 font-semibold">Mark read</span>
                   </button>
                 )}
               </div>
 
               {/* Body message */}
-              <div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3.5 pl-0 sm:pl-[52px]">
+              <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-3.5 pl-0 sm:pl-[52px]">
                 {formattedBody}
               </div>
 
               {/* Footer row: date & action link */}
               <div className="flex items-center justify-between gap-3 pt-2.5 border-t border-slate-100 dark:border-zinc-800/60 pl-0 sm:pl-[52px] text-xs">
-                <span className="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-medium">
-                  <Clock size={13} className="text-slate-400 shrink-0" />
+                <span className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-medium">
+                  <Clock size={13} className="text-slate-500 shrink-0" />
                   <span>{date(n.createdAt)}</span>
                 </span>
 
@@ -209,8 +209,8 @@ export function NotificationsPanel({
                   href={href}
                   className="inline-flex items-center gap-1.5 font-bold text-xs text-lime-700 dark:text-lime-400 hover:underline transition-all"
                 >
-                  <span>View details</span>
-                  <ArrowRight size={14} className="shrink-0" />
+                  <span className="text-lime-700 dark:text-lime-400 font-bold">View details</span>
+                  <ArrowRight size={14} className="shrink-0 text-lime-700 dark:text-lime-400" />
                 </Link>
               </div>
             </article>

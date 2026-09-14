@@ -87,32 +87,7 @@ export function JoinSessionButton({
     );
   }
 
-  // Case 3: Before allowed join window
-  const diffMs = windowStartMs - now;
-  const minsLeft = Math.ceil(diffMs / (60 * 1000));
-  const hoursLeft = Math.floor(minsLeft / 60);
-  const remainingMins = minsLeft % 60;
-
-  let timeText = `Available in ${minsLeft}m`;
-  if (hoursLeft > 0) {
-    timeText = `Available in ${hoursLeft}h ${remainingMins}m`;
-  }
-
-  return (
-    <button
-      disabled
-      className={`inline-flex items-center gap-1.5 rounded-xl font-medium bg-slate-100 dark:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-zinc-700/70 cursor-not-allowed transition-all ${
-        size === "sm"
-          ? "px-3 py-1.5 text-xs"
-          : size === "lg"
-            ? "px-5 py-3 text-sm"
-            : "px-3.5 py-2 text-xs"
-      } ${className}`}
-      title={`Join window opens 15 minutes before start (${startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`}
-    >
-      <Clock size={size === "sm" ? 13 : 15} className="text-slate-500 dark:text-zinc-400 flex-shrink-0" />
-      <span className="whitespace-nowrap">{timeText}</span>
-    </button>
-  );
+  // Case 3: Before allowed join window - return null (do not display timer pill)
+  return null;
 }
 

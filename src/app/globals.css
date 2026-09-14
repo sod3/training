@@ -8461,20 +8461,32 @@ input[type="checkbox"]:focus-visible {
 
 .status-badge-processing {
   background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
+  color: #1d4ed8;
   border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .status-badge-pending {
   background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
+  color: #b45309;
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
 .status-badge-failed {
   background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
+  color: #dc2626;
   border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+:is(.dark *) .status-badge-processing {
+  color: #60a5fa;
+}
+
+:is(.dark *) .status-badge-pending {
+  color: #fbbf24;
+}
+
+:is(.dark *) .status-badge-failed {
+  color: #f87171;
 }
 
 .payout-modal-overlay {

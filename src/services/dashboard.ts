@@ -40,6 +40,7 @@ import { objectId, settingsSchema } from "@/lib/server/validation";
 import { lockTrainer, settings } from "./bookings";
 import { ownTrainer, quickApproveApplication, reviewApplication } from "./trainer-management";
 import { reviewManualPayment, reviewManualRefund } from "./payments";
+import { notifyUser, sendTrainerCredentialStatusEmail, sendTrainerStatusEmail } from "@/lib/server/email";
 import {
   DEFAULT_CATEGORIES,
   DEFAULT_LANGUAGES,
@@ -1053,17 +1054,20 @@ export async function adminAction(
         );
       }
       await trainer.save({ session });
-      await Notification.create(
-        [
-          {
-            userId: trainer.userId,
-            title: `${credential.type === "IDENTITY" ? "Identity" : "Certification"} verification ${input.status.toLowerCase()}`,
-            body: input.notes,
-            href: "/trainer/verification",
-          },
-        ],
-        { session },
+      await notifyUser(
+        trainer.userId,
+        `${credential.type === "IDENTITY" ? "Identity document" : "Certification"} ${input.status.toLowerCase()}`,
+        input.notes || `Your verification document was ${input.status.toLowerCase()}.`,
+        "/trainer/verification",
+        session,
       );
+      sendTrainerCredentialStatusEmail({
+        trainerId: trainer._id,
+        credentialType: credential.type,
+        title: credential.title,
+        status: input.status,
+        notes: input.notes,
+      }).catch((err) => console.error("[verification Admin Email Error]", err));
       after = input;
     } else if (resource === "trainers" && id) {
       const input = z
@@ -1099,6 +1103,13 @@ export async function adminAction(
       trainer.availabilityReviewedBy = new mongoose.Types.ObjectId(actor.id);
       trainer.availabilityReviewedAt = new Date();
       await trainer.save({ session });
+      await notifyUser(
+        trainer.userId,
+        `Trainer profile status updated`,
+        `Profile visibility: ${trainer.profileVisibility}, Availability status: ${trainer.availabilityReviewStatus}. ${input.availabilityReviewNotes ? "Notes: " + input.availabilityReviewNotes : ""}`,
+        "/trainer/profile",
+        session,
+      );
       after = input;
     } else if (resource === "reviews" && id) {
       const input = z

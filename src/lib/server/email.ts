@@ -46,7 +46,8 @@ function getTransporter() {
   }
 
   const gmailUser = process.env.GMAIL_USER?.trim();
-  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD?.trim();
+  const rawPass = process.env.GMAIL_APP_PASSWORD?.trim();
+  const gmailAppPassword = rawPass ? rawPass.replace(/\s+/g, "") : "";
 
   if (gmailUser && gmailAppPassword) {
     return nodemailer.createTransport({
@@ -446,8 +447,9 @@ export async function sendBookingCreatedEmail(params: {
 }): Promise<void> {
   await connectDB();
   const customer = await User.findById(params.customerId).select("normalizedEmail name").lean();
-  const trainerProfile = await TrainerProfile.findById(params.trainerId).select("userId displayName").lean();
-  const trainerUser = trainerProfile ? await User.findById(trainerProfile.userId).select("normalizedEmail name").lean() : null;
+  const resolvedTrainer = await resolveTrainerUser(params.trainerId);
+  const trainerUser = resolvedTrainer?.user;
+  const trainerDisplayName = resolvedTrainer?.displayName || "your coach";
 
   const formattedPrice = `${(params.total / 100).toLocaleString("en-PK")} ${params.currency || "PKR"}`;
   const formattedTime = new Date(params.sessionStart).toLocaleString("en-US", {
@@ -599,8 +601,9 @@ export async function sendPaymentApprovedEmail(params: {
 }): Promise<void> {
   await connectDB();
   const customer = await User.findById(params.customerId).select("normalizedEmail name").lean();
-  const trainerProfile = await TrainerProfile.findById(params.trainerId).select("userId displayName").lean();
-  const trainerUser = trainerProfile ? await User.findById(trainerProfile.userId).select("normalizedEmail name").lean() : null;
+  const resolvedTrainer = await resolveTrainerUser(params.trainerId);
+  const trainerUser = resolvedTrainer?.user;
+  const trainerDisplayName = resolvedTrainer?.displayName || "your coach";
 
   // 1. Email Customer
   if (customer?.normalizedEmail) {
@@ -611,7 +614,7 @@ export async function sendPaymentApprovedEmail(params: {
       badgeColor: "#ffffff",
       contentHtml: `
         <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(customer.name)}</strong>, great news! Your payment for booking <strong>${escapeHtml(params.bookingNumber)}</strong> has been verified and approved.</p>
-        <p style="margin: 0 0 16px 0;">Your live coaching sessions with <strong>${escapeHtml(trainerProfile?.displayName || "your coach")}</strong> are now officially confirmed.</p>
+        <p style="margin: 0 0 16px 0;">Your live coaching sessions with <strong>${escapeHtml(trainerDisplayName)}</strong> are now officially confirmed.</p>
         ${params.notes ? `<p style="margin: 0 0 16px 0; color: #94a3b8;"><em>Admin note: ${escapeHtml(params.notes)}</em></p>` : ""}
         <div style="background-color: #0f172a; border-radius: 8px; padding: 16px; border: 1px solid #334155; margin: 20px 0; font-size: 14px;">
           <p style="margin: 0; font-weight: 600; color: #38bdf8;">Your Live Video Call Room is Ready!</p>
@@ -641,7 +644,7 @@ export async function sendPaymentApprovedEmail(params: {
       badgeBg: "#22c55e",
       badgeColor: "#ffffff",
       contentHtml: `
-        <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(trainerProfile?.displayName || trainerUser.name)}</strong>, the payment for booking <strong>${escapeHtml(params.bookingNumber)}</strong> by <strong>${escapeHtml(customer?.name || "Client")}</strong> has been approved.</p>
+        <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(trainerDisplayName)}</strong>, the payment for booking <strong>${escapeHtml(params.bookingNumber)}</strong> by <strong>${escapeHtml(customer?.name || "Client")}</strong> has been approved.</p>
         <p style="margin: 0 0 16px 0;">A private SPOTTER video call room has been automatically created. You can enter as the host directly from your trainer dashboard 15 minutes prior to the session start time.</p>
       `,
       ctaText: "Open Session Page",
@@ -670,8 +673,9 @@ export async function sendSessionReminderEmail(params: {
 }): Promise<void> {
   await connectDB();
   const customer = await User.findById(params.customerId).select("normalizedEmail name").lean();
-  const trainerProfile = await TrainerProfile.findById(params.trainerId).select("userId displayName").lean();
-  const trainerUser = trainerProfile ? await User.findById(trainerProfile.userId).select("normalizedEmail name").lean() : null;
+  const resolvedTrainer = await resolveTrainerUser(params.trainerId);
+  const trainerUser = resolvedTrainer?.user;
+  const trainerDisplayName = resolvedTrainer?.displayName || "your coach";
 
   const formattedTime = new Date(params.sessionStart).toLocaleString("en-US", {
     dateStyle: "full",
@@ -785,8 +789,9 @@ export async function sendBookingCancelledEmail(params: {
 }): Promise<void> {
   await connectDB();
   const customer = await User.findById(params.customerId).select("normalizedEmail name").lean();
-  const trainerProfile = await TrainerProfile.findById(params.trainerId).select("userId displayName").lean();
-  const trainerUser = trainerProfile ? await User.findById(trainerProfile.userId).select("normalizedEmail name").lean() : null;
+  const resolvedTrainer = await resolveTrainerUser(params.trainerId);
+  const trainerUser = resolvedTrainer?.user;
+  const trainerDisplayName = resolvedTrainer?.displayName || "your coach";
 
   const refundNotice = params.refundAmount && params.refundAmount > 0
     ? `An eligible refund of ${(params.refundAmount / 100).toLocaleString("en-PK")} PKR has been recorded for admin review.`
@@ -854,8 +859,9 @@ export async function sendSessionRescheduledEmail(params: {
 }): Promise<void> {
   await connectDB();
   const customer = await User.findById(params.customerId).select("normalizedEmail name").lean();
-  const trainerProfile = await TrainerProfile.findById(params.trainerId).select("userId displayName").lean();
-  const trainerUser = trainerProfile ? await User.findById(trainerProfile.userId).select("normalizedEmail name").lean() : null;
+  const resolvedTrainer = await resolveTrainerUser(params.trainerId);
+  const trainerUser = resolvedTrainer?.user;
+  const trainerDisplayName = resolvedTrainer?.displayName || "your coach";
 
   const formattedTime = new Date(params.newStart).toLocaleString("en-US", {
     dateStyle: "full",
@@ -918,16 +924,42 @@ export async function sendSessionRescheduledEmail(params: {
   }
 }
 
+/**
+ * Helper to resolve a trainer's User document and display name safely,
+ * whether passed a TrainerProfile ID or User ID.
+ */
+export async function resolveTrainerUser(trainerId: string | mongoose.Types.ObjectId) {
+  if (!trainerId) return null;
+  await connectDB();
+  let trainerProfile = await TrainerProfile.findById(trainerId).select("userId displayName").lean();
+  let userId = trainerProfile?.userId;
+
+  if (!userId) {
+    trainerProfile = await TrainerProfile.findOne({ userId: trainerId }).select("userId displayName").lean();
+    userId = trainerProfile?.userId || (trainerId as mongoose.Types.ObjectId);
+  }
+
+  const user = await User.findById(userId).select("normalizedEmail name role").lean();
+  return {
+    user,
+    displayName: trainerProfile?.displayName || user?.name || "Trainer",
+  };
+}
+
 export async function sendTrainerStatusEmail(params: {
   trainerUserId: string | mongoose.Types.ObjectId;
-  displayName: string;
+  displayName?: string;
   status: string;
   adminNotes?: string;
-}): Promise<void> {
+}): Promise<boolean> {
   await connectDB();
-  const user = await User.findById(params.trainerUserId).select("normalizedEmail name").lean();
-  if (!user?.normalizedEmail) return;
+  const resolved = await resolveTrainerUser(params.trainerUserId);
+  if (!resolved?.user?.normalizedEmail) {
+    console.warn(`[sendTrainerStatusEmail] Skipped: No valid email for trainerId=${params.trainerUserId}`);
+    return false;
+  }
 
+  const displayName = params.displayName || resolved.displayName;
   const isApproved = params.status === "APPROVED";
   const badgeBg = isApproved ? "#22c55e" : params.status === "REJECTED" ? "#ef4444" : "#f59e0b";
 
@@ -936,7 +968,7 @@ export async function sendTrainerStatusEmail(params: {
     badgeText: `Application ${params.status.replace(/_/g, " ")}`,
     badgeBg,
     contentHtml: `
-      <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(params.displayName || user.name)}</strong>,</p>
+      <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(displayName)}</strong>,</p>
       ${
         isApproved
           ? `<p style="margin: 0 0 16px 0;">Congratulations! Your trainer application and credentials have been reviewed and approved. Your profile is now <strong>PUBLIC</strong> and visible to all SPOTTER clients!</p>`
@@ -957,12 +989,61 @@ export async function sendTrainerStatusEmail(params: {
     ctaUrl: isApproved ? "/trainer/profile" : "/trainer/verification",
   });
 
-  await sendEmail({
-    to: user.normalizedEmail,
-    userId: user._id,
+  return sendEmail({
+    to: resolved.user.normalizedEmail,
+    userId: resolved.user._id,
     subject: `SPOTTER Trainer Verification: ${params.status.replace(/_/g, " ")}`,
     html,
     event: "TRAINER_APPLICATION_STATUS",
+    idempotencyKey: `trainer_status:${resolved.user._id}:${params.status}:${Date.now()}`,
     metadata: { status: params.status },
+  });
+}
+
+export async function sendTrainerCredentialStatusEmail(params: {
+  trainerId: string | mongoose.Types.ObjectId;
+  credentialType: "IDENTITY" | "CERTIFICATION" | string;
+  title?: string;
+  status: "APPROVED" | "REJECTED" | string;
+  notes?: string;
+}): Promise<boolean> {
+  await connectDB();
+  const resolved = await resolveTrainerUser(params.trainerId);
+  if (!resolved?.user?.normalizedEmail) return false;
+
+  const docLabel = params.credentialType === "IDENTITY" ? "CNIC Identity Document" : params.title || "Certification Credential";
+  const isApproved = params.status === "APPROVED";
+  const badgeBg = isApproved ? "#22c55e" : "#ef4444";
+
+  const html = renderSpotterEmailHtml({
+    headline: isApproved ? `${escapeHtml(docLabel)} Verified! 🎉` : `${escapeHtml(docLabel)} Verification Update`,
+    badgeText: `Verification ${params.status}`,
+    badgeBg,
+    contentHtml: `
+      <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(resolved.displayName)}</strong>,</p>
+      <p style="margin: 0 0 16px 0;">Your submitted <strong>${escapeHtml(docLabel)}</strong> has been reviewed by our administrator and marked as <strong>${escapeHtml(params.status)}</strong>.</p>
+      ${
+        params.notes
+          ? `
+        <div style="background-color: #0f172a; border-radius: 8px; padding: 16px; border: 1px solid #334155; margin: 20px 0;">
+          <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 700; color: #38bdf8;">Admin Notes & Feedback:</p>
+          <p style="margin: 0; font-size: 14px; color: #cbd5e1;">${escapeHtml(params.notes)}</p>
+        </div>
+        `
+          : ""
+      }
+    `,
+    ctaText: "Check Verification Portal",
+    ctaUrl: "/trainer/verification",
+  });
+
+  return sendEmail({
+    to: resolved.user.normalizedEmail,
+    userId: resolved.user._id,
+    subject: `SPOTTER Document Verification: ${docLabel} (${params.status})`,
+    html,
+    event: "TRAINER_CREDENTIAL_STATUS",
+    idempotencyKey: `credential_status:${resolved.user._id}:${params.credentialType}:${params.status}:${Date.now()}`,
+    metadata: { credentialType: params.credentialType, status: params.status },
   });
 }
