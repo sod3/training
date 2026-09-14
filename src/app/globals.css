@@ -5819,6 +5819,62 @@ a {
   transition: background-color var(--duration-fast);
 }
 
+/* PAYMENT DETAILS CARD STYLES */
+.payment-details-card {
+  background: #0f172a !important;
+  color: #ffffff !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 18px !important;
+  padding: 24px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+  position: relative;
+  overflow: hidden;
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.payment-details-card h3 {
+  color: #ffffff !important;
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+  margin: 0 !important;
+}
+
+.payment-details-row {
+  background: #1e293b !important;
+  border: 1px solid #334155 !important;
+  border-radius: 14px !important;
+  padding: 14px 16px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.payment-details-label {
+  color: #cbd5e1 !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+
+.payment-details-value {
+  color: #ffffff !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+}
+
+.payment-details-number {
+  color: #34d399 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+}
+
 .admin-proof-thumbnail-wrapper {
   max-width: 320px;
   max-height: 220px;
@@ -8863,6 +8919,114 @@ input[type="checkbox"]:focus-visible {
     max-width: none;
   }
 }
+
+/* ================================================================
+   PAYMENT DETAILS CARD (Checkout Step 3)
+   Explicit high-contrast dark theme styles for payment accounts
+   ================================================================ */
+.payment-details-card {
+  background: #0f172a !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 1.25rem !important;
+  padding: 1.5rem !important;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.4) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  margin-block: 1.25rem !important;
+}
+
+@media (min-width: 640px) {
+  .payment-details-card {
+    padding: 1.75rem !important;
+  }
+}
+
+.payment-details-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.75rem !important;
+  margin-bottom: 1.25rem !important;
+  padding-bottom: 1rem !important;
+  border-bottom: 1px solid #1e293b !important;
+}
+
+.payment-details-title {
+  color: #ffffff !important;
+  font-size: 1.125rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.015em !important;
+  margin: 0 !important;
+}
+
+.payment-details-subtitle {
+  color: #94a3b8 !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  display: block !important;
+  margin-top: 2px !important;
+}
+
+.payment-details-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.5rem !important;
+  padding: 1rem 1.25rem !important;
+  background: #162032 !important;
+  border: 1px solid #28374d !important;
+  border-radius: 0.875rem !important;
+  margin-bottom: 0.75rem !important;
+  transition: border-color 0.2s ease !important;
+}
+
+.payment-details-row:last-child {
+  margin-bottom: 0 !important;
+}
+
+.payment-details-row:hover {
+  border-color: #3b82f6 !important;
+}
+
+.payment-details-label {
+  color: #cbd5e1 !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.075em !important;
+}
+
+.payment-details-value {
+  color: #ffffff !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+}
+
+.payment-details-number {
+  color: #34d399 !important;
+  font-family: var(--font-mono), monospace !important;
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.05em !important;
+}
+
+.payment-verified-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.25rem !important;
+  padding: 0.35rem 0.75rem !important;
+  border-radius: 9999px !important;
+  font-size: 0.6875rem !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  background: rgba(16, 185, 129, 0.18) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  flex-shrink: 0 !important;
+}
+
 
 
 

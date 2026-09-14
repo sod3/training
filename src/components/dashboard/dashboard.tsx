@@ -51,6 +51,7 @@ import {
   type Item,
 } from "./panels";
 import { BookingList, StartConversation } from "./bookings-panel";
+import { NotificationsPanel } from "./notifications-panel";
 import { JoinSessionButton } from "@/components/session/join-session-button";
 
 
@@ -960,35 +961,7 @@ export function Dashboard({
                   </article>
                 ))}
               {tab === "notifications" && (
-                <>
-                  <ActionForm
-                    endpoint="notifications"
-                    fields={[]}
-                    label="Mark all read"
-                    onDone={update}
-                  />
-                  {items.map((n) => (
-                    <article className="panel" key={str(n, "_id")}>
-                      <h3>{str(n, "title")}</h3>
-                      <p>{str(n, "body")}</p>
-                      <small>{date(n.createdAt)}</small>
-                      <Link
-                        className="text-link"
-                        href={str(n, "href") || "/dashboard"}
-                      >
-                        View →
-                      </Link>
-                      {!n.readAt && (
-                        <ActionForm
-                          endpoint={`notifications/${str(n, "_id")}`}
-                          fields={[]}
-                          label="Mark read"
-                          onDone={update}
-                        />
-                      )}
-                    </article>
-                  ))}
-                </>
+                <NotificationsPanel items={items} update={update} />
               )}
               {selectedRole === "admin" &&
                 ![

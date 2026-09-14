@@ -15,7 +15,7 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
   return (
     <button
       type="button"
-      className="payment-copy-button"
+      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs transition-all shadow-xs cursor-pointer shrink-0"
       aria-label={`Copy ${label || "account details"}`}
       onClick={async () => {
         try {
@@ -31,7 +31,17 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
         }
       }}
     >
-      {copied ? <Check size={18} /> : <Copy size={18} />}
+      {copied ? (
+        <>
+          <Check size={14} className="text-white shrink-0" />
+          <span>Copied!</span>
+        </>
+      ) : (
+        <>
+          <Copy size={14} className="shrink-0" />
+          <span>Copy</span>
+        </>
+      )}
     </button>
   );
 }
@@ -378,67 +388,47 @@ function Checkout({
                     )}
                   </div>
 
-                  <div
-                    className="panel payment-details-card mt-4"
-                    style={{
-                      background: "rgba(15, 23, 42, 0.6)",
-                      borderRadius: "12px",
-                      padding: "1.25rem",
-                      border: "1px solid rgba(255, 255, 255, 0.12)",
-                      marginTop: "1rem",
-                      marginBottom: "1rem",
-                    }}
-                  >
+                  <div className="payment-details-card">
+                    {/* Accent top gradient bar */}
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-lime-400 via-emerald-400 to-sky-400" />
+
                     {selectedPaymentMethod === "EASYPAISA" && (
                       <div>
-                        <h3
-                          style={{
-                            margin: "0 0 1rem 0",
-                            color: "#38bdf8",
-                            fontSize: "1.1rem",
-                          }}
-                        >
-                          Easypaisa Account Details
-                        </h3>
-                        <div style={{ display: "grid", gap: "0.75rem" }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              borderBottom:
-                                "1px solid rgba(255, 255, 255, 0.08)",
-                              paddingBottom: "0.5rem",
-                            }}
-                          >
-                            <span style={{ color: "#94a3b8" }}>
+                        <div className="payment-details-header">
+                          <div className="flex items-center gap-3">
+                            <span className="w-10 h-10 rounded-xl bg-lime-400/20 text-lime-400 border border-lime-400/35 flex items-center justify-center font-extrabold text-sm shrink-0 shadow-xs">
+                              EP
+                            </span>
+                            <div>
+                              <h3 className="payment-details-title">
+                                Easypaisa Account Details
+                              </h3>
+                              <span className="payment-details-subtitle">
+                                Official Payment Receiver
+                              </span>
+                            </div>
+                          </div>
+                          <span className="payment-verified-badge">
+                            ✓ Verified
+                          </span>
+                        </div>
+
+                        <div>
+                          <div className="payment-details-row">
+                            <span className="payment-details-label">
                               Account Title
                             </span>
-                            <strong style={{ color: "#f8fafc" }}>
-                              {paymentAccounts?.accountName ||
-                                "Spotter Training"}
+                            <strong className="payment-details-value">
+                              {paymentAccounts?.accountName || "Spotter Training"}
                             </strong>
                           </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                            }}
-                          >
-                            <span style={{ color: "#94a3b8" }}>
+
+                          <div className="payment-details-row">
+                            <span className="payment-details-label">
                               Easypaisa Number
                             </span>
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <strong
-                                style={{
-                                  color: "#f8fafc",
-                                  fontFamily: "monospace",
-                                  fontSize: "1.1rem",
-                                }}
-                              >
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <strong className="payment-details-number">
                                 {easypaisaNumber}
                               </strong>
                               <CopyButton
@@ -453,56 +443,41 @@ function Checkout({
 
                     {selectedPaymentMethod === "BANK_TRANSFER" && (
                       <div>
-                        <h3
-                          style={{
-                            margin: "0 0 1rem 0",
-                            color: "#38bdf8",
-                            fontSize: "1.1rem",
-                          }}
-                        >
-                          Bank Transfer Details
-                        </h3>
-                        <div style={{ display: "grid", gap: "0.75rem" }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              borderBottom:
-                                "1px solid rgba(255, 255, 255, 0.08)",
-                              paddingBottom: "0.5rem",
-                            }}
-                          >
-                            <span style={{ color: "#94a3b8" }}>
+                        <div className="payment-details-header">
+                          <div className="flex items-center gap-3">
+                            <span className="w-10 h-10 rounded-xl bg-sky-400/20 text-sky-400 border border-sky-400/35 flex items-center justify-center font-extrabold text-sm shrink-0 shadow-xs">
+                              BANK
+                            </span>
+                            <div>
+                              <h3 className="payment-details-title">
+                                Bank Transfer Details
+                              </h3>
+                              <span className="payment-details-subtitle">
+                                Direct Bank Deposit / Online Transfer
+                              </span>
+                            </div>
+                          </div>
+                          <span className="payment-verified-badge">
+                            ✓ Verified
+                          </span>
+                        </div>
+
+                        <div>
+                          <div className="payment-details-row">
+                            <span className="payment-details-label">
                               Account Name
                             </span>
-                            <strong style={{ color: "#f8fafc" }}>
+                            <strong className="payment-details-value">
                               {bankDetails.accountName}
                             </strong>
                           </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              borderBottom:
-                                "1px solid rgba(255, 255, 255, 0.08)",
-                              paddingBottom: "0.5rem",
-                            }}
-                          >
-                            <span style={{ color: "#94a3b8" }}>
+
+                          <div className="payment-details-row">
+                            <span className="payment-details-label">
                               Account Number
                             </span>
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <strong
-                                style={{
-                                  color: "#f8fafc",
-                                  fontFamily: "monospace",
-                                  fontSize: "1.05rem",
-                                }}
-                              >
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <strong className="payment-details-number">
                                 {bankDetails.accountNumber}
                               </strong>
                               <CopyButton
@@ -511,27 +486,13 @@ function Checkout({
                               />
                             </div>
                           </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              borderBottom:
-                                "1px solid rgba(255, 255, 255, 0.08)",
-                              paddingBottom: "0.5rem",
-                            }}
-                          >
-                            <span style={{ color: "#94a3b8" }}>IBAN</span>
-                            <div
-                              style={{ display: "flex", alignItems: "center" }}
-                            >
-                              <strong
-                                style={{
-                                  color: "#f8fafc",
-                                  fontFamily: "monospace",
-                                  fontSize: "0.92rem",
-                                }}
-                              >
+
+                          <div className="payment-details-row">
+                            <span className="payment-details-label">
+                              IBAN
+                            </span>
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <strong className="payment-details-number !text-base sm:!text-lg">
                                 {bankDetails.iban}
                               </strong>
                               <CopyButton
@@ -540,15 +501,12 @@ function Checkout({
                               />
                             </div>
                           </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                            }}
-                          >
-                            <span style={{ color: "#94a3b8" }}>Branch</span>
-                            <strong style={{ color: "#f8fafc" }}>
+
+                          <div className="payment-details-row">
+                            <span className="payment-details-label">
+                              Branch
+                            </span>
+                            <strong className="payment-details-value">
                               {bankDetails.branch}
                             </strong>
                           </div>
@@ -558,41 +516,48 @@ function Checkout({
 
                     {selectedPaymentMethod === "JAZZCASH" && (
                       <div>
-                        <h3
-                          style={{
-                            margin: "0 0 1rem 0",
-                            color: "#38bdf8",
-                            fontSize: "1.1rem",
-                          }}
-                        >
-                          JazzCash Account Details
-                        </h3>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                          }}
-                        >
-                          <span style={{ color: "#94a3b8" }}>
-                            JazzCash Number
+                        <div className="payment-details-header">
+                          <div className="flex items-center gap-3">
+                            <span className="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-400 border border-amber-400/35 flex items-center justify-center font-extrabold text-sm shrink-0 shadow-xs">
+                              JC
+                            </span>
+                            <div>
+                              <h3 className="payment-details-title">
+                                JazzCash Account Details
+                              </h3>
+                              <span className="payment-details-subtitle">
+                                Official Payment Receiver
+                              </span>
+                            </div>
+                          </div>
+                          <span className="payment-verified-badge">
+                            ✓ Verified
                           </span>
-                          <div
-                            style={{ display: "flex", alignItems: "center" }}
-                          >
-                            <strong
-                              style={{
-                                color: "#f8fafc",
-                                fontFamily: "monospace",
-                                fontSize: "1.1rem",
-                              }}
-                            >
-                              {paymentAccounts?.jazzcash}
+                        </div>
+
+                        <div>
+                          <div className="payment-details-row">
+                            <span className="payment-details-label">
+                              Account Title
+                            </span>
+                            <strong className="payment-details-value">
+                              {paymentAccounts?.accountName || "Spotter Training"}
                             </strong>
-                            <CopyButton
-                              text={paymentAccounts?.jazzcash || ""}
-                              label="JazzCash Number"
-                            />
+                          </div>
+
+                          <div className="payment-details-row">
+                            <span className="payment-details-label">
+                              JazzCash Number
+                            </span>
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <strong className="payment-details-number">
+                                {paymentAccounts?.jazzcash}
+                              </strong>
+                              <CopyButton
+                                text={paymentAccounts?.jazzcash || ""}
+                                label="JazzCash Number"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>

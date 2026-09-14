@@ -857,33 +857,8 @@
     overflow-wrap: anywhere;
     font-size: 14px;
   }
-  .payment-details-card {
-    background: var(--charcoal) !important;
-    border-radius: 16px !important;
-  }
-  .payment-details-card > div > div > div,
-  .payment-details-card > div > div[style*="flex"] {
-    flex-wrap: wrap;
-    align-items: flex-start !important;
-    gap: 8px;
-  }
   .payment-details-card strong {
     overflow-wrap: anywhere;
-  }
-  .payment-details-card strong + .payment-copy-button {
-    margin-left: 8px;
-  }
-  .payment-details-card .id-copy-chip {
-    background: rgb(255 255 255 / 8%);
-    border-color: rgb(255 255 255 / 16%);
-    color: #fff;
-    margin-left: 0;
-  }
-  .payment-details-card h3 {
-    color: var(--lime) !important;
-  }
-  .payment-details-card .id-copy-btn {
-    color: var(--lime);
   }
   .booking-action-bar {
     position: relative;
