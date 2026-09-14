@@ -289,6 +289,98 @@ function AdminOverviewAlerts({
   );
 }
 
+function BookingsChart({
+  series,
+  showMoney = false,
+}: {
+  series: Item[];
+  showMoney?: boolean;
+}) {
+  const maxBookings = Math.max(
+    1,
+    ...series.map((r) => num(r, "bookings")),
+  );
+  const totalBookings = series.reduce((sum, r) => sum + num(r, "bookings"), 0);
+
+  const formatDateLabel = (dateStr: string) => {
+    try {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const [year, month, day] = dateStr.split("-").map(Number);
+        const d = new Date(year, month - 1, day);
+        return d.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+      }
+      return dateStr;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  return (
+    <div className="bookings-chart-container pt-2">
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-zinc-800">
+        <div>
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
+            Booking Activity
+          </span>
+          <span className="text-xs text-slate-400">
+            Recorded bookings across timeline
+          </span>
+        </div>
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+          {totalBookings} {totalBookings === 1 ? "Booking" : "Bookings"} Total
+        </span>
+      </div>
+
+      <div className="space-y-3">
+        {series.map((r) => {
+          const dateStr = str(r, "_id");
+          const formattedDate = formatDateLabel(dateStr);
+          const bookings = num(r, "bookings");
+          const pct = Math.min(100, Math.max(10, (bookings / maxBookings) * 100));
+
+          return (
+            <div
+              key={dateStr}
+              className="group p-3.5 bg-slate-50/70 hover:bg-slate-100/90 dark:bg-zinc-900/50 dark:hover:bg-zinc-900/80 border border-slate-200/80 dark:border-zinc-800 rounded-xl transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+            >
+              <div className="flex items-center gap-3 min-w-[160px]">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 group-hover:scale-125 transition-transform" />
+                <div>
+                  <span className="text-sm font-bold text-slate-800 dark:text-zinc-100 block leading-tight">
+                    {formattedDate}
+                  </span>
+                  {formattedDate !== dateStr && (
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      {dateStr}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex-1 flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex-1 h-3 bg-slate-200/80 dark:bg-zinc-800 rounded-full overflow-hidden p-0.5">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-lime-500 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="text-xs font-bold px-3 py-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-slate-700 dark:text-zinc-200 min-w-[85px] text-center shadow-xs">
+                  {bookings} {bookings === 1 ? "booking" : "bookings"}
+                  {showMoney && r.value ? ` · ${amount(r.value)}` : ""}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function Dashboard({
   role = "customer",
   tab = "overview",
@@ -766,56 +858,38 @@ export function Dashboard({
                       ),
                     )}
                   </div>
-                  <section className="panel financial-overview-section">
-                    <h2>
-                      {selectedRole === "customer"
-                        ? "Your payments"
-                        : "Financial overview"}
-                    </h2>
-                    <div className="financial-overview-grid">
-                      {Object.entries(record(data.finance))
-                        .filter(([key]) => key !== "_id")
-                        .map(([key, value]) => (
-                          <article className="financial-metric-card" key={key}>
-                            <span className="financial-metric-label">
-                              {formatMetricKey(key)}
-                            </span>
-                            <strong className="financial-metric-value">
-                              {amount(value)}
-                            </strong>
-                          </article>
-                        ))}
-                    </div>
-                    <p className="financial-notice-text">
-                      Financial totals come from recorded payments and refunds.
-                      Payouts require settlement review.
-                    </p>
-                  </section>
+                  {selectedRole !== "customer" && (
+                    <section className="panel financial-overview-section">
+                      <h2>Financial overview</h2>
+                      <div className="financial-overview-grid">
+                        {Object.entries(record(data.finance))
+                          .filter(([key]) => key !== "_id")
+                          .map(([key, value]) => (
+                            <article className="financial-metric-card" key={key}>
+                              <span className="financial-metric-label">
+                                {formatMetricKey(key)}
+                              </span>
+                              <strong className="financial-metric-value">
+                                {amount(value)}
+                              </strong>
+                            </article>
+                          ))}
+                      </div>
+                      <p className="financial-notice-text">
+                        Financial totals come from recorded payments and refunds.
+                        Payouts require settlement review.
+                      </p>
+                    </section>
+                  )}
                   <section className="panel">
                     <h2>Bookings over time</h2>
                     {rows(data.series).length ? (
-                      <div className="real-chart">
-                        {rows(data.series).map((r) => (
-                          <div key={str(r, "_id")}>
-                            <span>{str(r, "_id")}</span>
-                            <meter
-                              aria-label={`Bookings on ${str(r, "_id")}`}
-                              min={0}
-                              max={Math.max(
-                                ...rows(data.series).map((r) =>
-                                  num(r, "bookings"),
-                                ),
-                              )}
-                              value={num(r, "bookings")}
-                            />
-                            <strong>
-                              {num(r, "bookings")} · {amount(r.value)}
-                            </strong>
-                          </div>
-                        ))}
-                      </div>
+                      <BookingsChart
+                        series={rows(data.series)}
+                        showMoney={selectedRole !== "customer"}
+                      />
                     ) : (
-                      <p>
+                      <p className="text-sm text-slate-500 py-4">
                         Booking activity will appear here when customers book.
                       </p>
                     )}
