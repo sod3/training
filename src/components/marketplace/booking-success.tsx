@@ -21,6 +21,7 @@ import {
 } from "@/components/dashboard/panels";
 import { StatusBadge } from "@/components/dashboard/admin-panel";
 import { IdCopyChip } from "@/components/ui/id-copy-chip";
+import { formatSessionDateTime } from "@/lib/admin-formatters";
 
 export function BookingSuccess({ id }: { id?: string }) {
   const { data, error, loading, reload } = useApi<Item>(
@@ -287,23 +288,26 @@ export function BookingSuccess({ id }: { id?: string }) {
                 <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-3">
                   Scheduled Sessions
                 </h3>
-                <div className="space-y-2">
-                  {rows(data?.sessions).map((s, i) => (
-                    <div
-                      key={str(s, "_id")}
-                      className="p-3.5 bg-slate-50/80 dark:bg-zinc-800/40 rounded-xl border border-slate-200/60 dark:border-zinc-700/50 flex items-center justify-between gap-3 flex-wrap"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="w-7 h-7 rounded-full bg-slate-200 dark:bg-zinc-700 text-slate-800 dark:text-zinc-200 font-bold text-xs flex items-center justify-center">
-                          {num(s, "sessionNumber") || i + 1}
-                        </span>
-                        <div className="text-xs font-semibold text-slate-800 dark:text-zinc-200">
-                          {date(s.start)}
+                <div className="space-y-2.5">
+                  {rows(data?.sessions).map((s, i) => {
+                    const dt = formatSessionDateTime(s.start, s.end);
+                    return (
+                      <div
+                        key={str(s, "_id")}
+                        className="p-3.5 bg-slate-50/80 dark:bg-zinc-800/40 rounded-xl border border-slate-200/60 dark:border-zinc-700/50 flex items-center justify-between gap-3 flex-wrap"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="w-7 h-7 rounded-full bg-slate-200 dark:bg-zinc-700 text-slate-800 dark:text-zinc-200 font-bold text-xs flex items-center justify-center shrink-0">
+                            {num(s, "sessionNumber") || i + 1}
+                          </span>
+                          <div className="text-xs font-semibold text-slate-800 dark:text-zinc-200">
+                            {dt.fullStr}
+                          </div>
                         </div>
+                        <StatusBadge status={str(s, "status")} />
                       </div>
-                      <StatusBadge status={str(s, "status")} />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

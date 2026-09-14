@@ -5798,6 +5798,27 @@ a {
   padding: 14px;
 }
 
+/* SESSION CARD & BOOKING REDESIGN STYLES */
+.session-card {
+  min-width: 0;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+}
+
+.session-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+}
+
+.booking-archive {
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.booking-archive summary {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--duration-fast);
+}
+
 .admin-proof-thumbnail-wrapper {
   max-width: 320px;
   max-height: 220px;

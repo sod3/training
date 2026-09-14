@@ -158,3 +158,88 @@ export function truncateId(idString: string, prefixLen = 8, suffixLen = 4): stri
   }
   return `${idString.slice(0, prefixLen)}…${idString.slice(-suffixLen)}`;
 }
+
+/**
+ * Formats a session's start and end timestamps into a clean, compact date and time range.
+ * Avoids redundant date repetition when start and end fall on the same day.
+ * e.g. Same day: { dateStr: "Sat, Sep 19, 2026", timeStr: "9:00 AM – 10:00 AM", fullStr: "Sat, Sep 19, 2026 · 9:00 AM – 10:00 AM" }
+ */
+export function formatSessionDateTime(
+  startRaw: unknown,
+  endRaw?: unknown,
+): { dateStr: string; timeStr: string; fullStr: string } {
+  if (!startRaw) {
+    return { dateStr: "—", timeStr: "—", fullStr: "—" };
+  }
+  try {
+    const startDate = new Date(String(startRaw));
+    if (isNaN(startDate.getTime())) {
+      return { dateStr: "—", timeStr: "—", fullStr: "—" };
+    }
+
+    const dateStr = startDate.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    const startTimeStr = startDate.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    if (!endRaw) {
+      return {
+        dateStr,
+        timeStr: startTimeStr,
+        fullStr: `${dateStr} · ${startTimeStr}`,
+      };
+    }
+
+    const endDate = new Date(String(endRaw));
+    if (isNaN(endDate.getTime())) {
+      return {
+        dateStr,
+        timeStr: startTimeStr,
+        fullStr: `${dateStr} · ${startTimeStr}`,
+      };
+    }
+
+    const endTimeStr = endDate.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    const isSameDay =
+      startDate.getFullYear() === endDate.getFullYear() &&
+      startDate.getMonth() === endDate.getMonth() &&
+      startDate.getDate() === endDate.getDate();
+
+    if (isSameDay) {
+      const timeStr = `${startTimeStr} – ${endTimeStr}`;
+      return {
+        dateStr,
+        timeStr,
+        fullStr: `${dateStr} · ${timeStr}`,
+      };
+    } else {
+      const endDateStr = endDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      const fullStr = `${dateStr}, ${startTimeStr} – ${endDateStr}, ${endTimeStr}`;
+      return {
+        dateStr: `${dateStr} – ${endDateStr}`,
+        timeStr: `${startTimeStr} – ${endTimeStr}`,
+        fullStr,
+      };
+    }
+  } catch {
+    return { dateStr: "—", timeStr: "—", fullStr: "—" };
+  }
+}
+

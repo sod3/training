@@ -130,7 +130,13 @@ export function AdminSubNav({ section }: { section: string }) {
   return null;
 }
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({
+  status,
+  className = "",
+}: {
+  status: string;
+  className?: string;
+}) {
   if (!status) return null;
   const s = status.toUpperCase();
   const formatted = status.replace(/_/g, " ");
@@ -149,7 +155,7 @@ export function StatusBadge({ status }: { status: string }) {
     ].includes(s)
   ) {
     return (
-      <span className="admin-badge badge-pending">
+      <span className={`admin-badge badge-pending whitespace-nowrap inline-flex items-center gap-1.5 shrink-0 ${className}`}>
         <span className="badge-dot dot-pending" aria-hidden="true" />
         {formatted}
       </span>
@@ -169,7 +175,7 @@ export function StatusBadge({ status }: { status: string }) {
     ].includes(s)
   ) {
     return (
-      <span className="admin-badge badge-approved">
+      <span className={`admin-badge badge-approved whitespace-nowrap inline-flex items-center gap-1.5 shrink-0 ${className}`}>
         <span className="badge-dot dot-approved" aria-hidden="true" />
         {formatted}
       </span>
@@ -188,7 +194,7 @@ export function StatusBadge({ status }: { status: string }) {
     ].includes(s)
   ) {
     return (
-      <span className="admin-badge badge-rejected">
+      <span className={`admin-badge badge-rejected whitespace-nowrap inline-flex items-center gap-1.5 shrink-0 ${className}`}>
         <span className="badge-dot dot-rejected" aria-hidden="true" />
         {formatted}
       </span>
@@ -196,7 +202,7 @@ export function StatusBadge({ status }: { status: string }) {
   }
 
   return (
-    <span className="admin-badge badge-neutral">
+    <span className={`admin-badge badge-neutral whitespace-nowrap inline-flex items-center gap-1.5 shrink-0 ${className}`}>
       <span className="badge-dot dot-neutral" aria-hidden="true" />
       {formatted}
     </span>

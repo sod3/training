@@ -292,7 +292,7 @@
   .admin-badge {
     font-size: 11px;
     letter-spacing: 0.025em;
-    white-space: normal;
+    white-space: nowrap;
     line-height: 1.4;
   }
   .empty-state {

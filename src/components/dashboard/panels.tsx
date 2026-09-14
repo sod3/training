@@ -7,6 +7,8 @@ import { ActionForm, UploadForm, type Field } from "./action-form";
 import { DEFAULT_CATEGORIES, PREFERRED_TIMES } from "@/lib/catalog";
 import { ReviewComposer } from "./review-composer";
 import { IdCopyChip } from "@/components/ui/id-copy-chip";
+import { formatSessionDateTime } from "@/lib/admin-formatters";
+import { StatusBadge } from "./admin-panel";
 import {
   Dialog,
   DialogContent,
@@ -1379,8 +1381,11 @@ export function ClientsPanel({
                 <h3>NEXT SESSION</h3>
                 {selectedClient.nextSession ? (
                   <div className="mt-2">
-                    <strong className="text-lg block">
-                      {date(record(selectedClient.nextSession).start)}
+                    <strong className="text-base font-bold block text-slate-900 dark:text-zinc-100">
+                      {formatSessionDateTime(
+                        record(selectedClient.nextSession).start,
+                        record(selectedClient.nextSession).end
+                      ).fullStr}
                     </strong>
                     <p className="muted text-xs mt-1">
                       Session{" "}
@@ -1478,19 +1483,26 @@ export function ClientsPanel({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <section className="panel">
                 <h3>SESSION HISTORY</h3>
-                <div className="space-y-2 mt-3">
-                  {rows(selectedClient.sessions).map((s) => (
-                    <div
-                      className="p-2 border rounded flex justify-between items-center text-sm"
-                      key={str(s, "_id")}
-                    >
-                      <div>
-                        <strong>Session {num(s, "sessionNumber")}</strong>
-                        <small className="block muted">{date(s.start)}</small>
+                <div className="space-y-2.5 mt-3">
+                  {rows(selectedClient.sessions).map((s) => {
+                    const dt = formatSessionDateTime(s.start, s.end);
+                    return (
+                      <div
+                        className="p-3 bg-slate-50/70 dark:bg-zinc-800/40 border border-slate-200/80 dark:border-zinc-700/60 rounded-xl flex justify-between items-center text-sm gap-2 flex-wrap"
+                        key={str(s, "_id")}
+                      >
+                        <div>
+                          <strong className="block text-slate-900 dark:text-zinc-100 font-bold">
+                            Session {num(s, "sessionNumber")}
+                          </strong>
+                          <small className="block text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+                            {dt.fullStr}
+                          </small>
+                        </div>
+                        <StatusBadge status={str(s, "status")} />
                       </div>
-                      <span className="status text-xs">{str(s, "status")}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {!rows(selectedClient.sessions).length && (
                     <p className="muted text-sm">No session records yet.</p>
                   )}
@@ -1840,8 +1852,8 @@ export function CustomerTrainingPanel({
           <p className="eyebrow">NEXT UPCOMING SESSION</p>
           {nextSession ? (
             <div className="mt-2">
-              <strong className="text-xl block">
-                {date(nextSession.start)}
+              <strong className="text-base font-bold block text-slate-900 dark:text-zinc-100">
+                {formatSessionDateTime(nextSession.start, nextSession.end).fullStr}
               </strong>
               <p className="muted text-xs mt-1">
                 Session {num(nextSession, "sessionNumber")} · Live 1-on-1 Online
@@ -1903,20 +1915,27 @@ export function CustomerTrainingPanel({
       <div className="hub-sessions grid grid-cols-1 md:grid-cols-2 gap-4">
         <section className="panel">
           <details>
-            <summary>Session history</summary>
-            <div className="space-y-2 mt-3">
-              {sessions.map((s) => (
-                <div
-                  className="p-3 border rounded flex justify-between items-center text-sm"
-                  key={str(s, "_id")}
-                >
-                  <div>
-                    <strong>Session {num(s, "sessionNumber")}</strong>
-                    <small className="block muted">{date(s.start)}</small>
+            <summary className="cursor-pointer font-semibold">Session history</summary>
+            <div className="space-y-2.5 mt-3">
+              {sessions.map((s) => {
+                const dt = formatSessionDateTime(s.start, s.end);
+                return (
+                  <div
+                    className="p-3 bg-slate-50/70 dark:bg-zinc-800/40 border border-slate-200/80 dark:border-zinc-700/60 rounded-xl flex justify-between items-center text-sm gap-2 flex-wrap"
+                    key={str(s, "_id")}
+                  >
+                    <div>
+                      <strong className="block text-slate-900 dark:text-zinc-100 font-bold">
+                        Session {num(s, "sessionNumber")}
+                      </strong>
+                      <small className="block text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+                        {dt.fullStr}
+                      </small>
+                    </div>
+                    <StatusBadge status={str(s, "status")} />
                   </div>
-                  <span className="status text-xs">{str(s, "status")}</span>
-                </div>
-              ))}
+                );
+              })}
               {!sessions.length && (
                 <p className="muted text-sm">No session records yet.</p>
               )}

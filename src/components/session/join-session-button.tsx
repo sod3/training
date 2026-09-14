@@ -45,7 +45,7 @@ export function JoinSessionButton({
 
   if (status === "COMPLETED") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">
+      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 ${className}`}>
         <CheckCircle2 size={14} /> Completed
       </span>
     );
@@ -60,7 +60,7 @@ export function JoinSessionButton({
     return (
       <button
         disabled
-        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium bg-slate-800/60 text-slate-500 border border-slate-700/50 cursor-not-allowed opacity-60"
+        className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium bg-slate-100 dark:bg-zinc-800/60 text-slate-500 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700/50 cursor-not-allowed opacity-75 ${className}`}
         title="This session has ended"
       >
         <Clock size={14} /> Session Ended
@@ -70,11 +70,10 @@ export function JoinSessionButton({
 
   // Case 2: Join window is open (15 mins before start through end)
   if (now >= windowStartMs && now <= windowEndMs) {
-    const isLoud = size === "lg";
     return (
       <Link
         href={targetUrl}
-        className={`inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-all duration-200 shadow-lg shadow-sky-500/25 bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white hover:scale-[1.02] active:scale-[0.98] ${
+        className={`inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-all duration-200 shadow-md shadow-sky-500/20 bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white hover:scale-[1.02] active:scale-[0.98] ${
           size === "sm"
             ? "px-3 py-1.5 text-xs"
             : size === "lg"
@@ -102,7 +101,7 @@ export function JoinSessionButton({
   return (
     <button
       disabled
-      className={`inline-flex items-center gap-1.5 rounded-xl font-medium bg-slate-800/50 text-slate-400 border border-slate-700/60 cursor-not-allowed opacity-75 transition-all ${
+      className={`inline-flex items-center gap-1.5 rounded-xl font-medium bg-slate-100 dark:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-zinc-700/70 cursor-not-allowed transition-all ${
         size === "sm"
           ? "px-3 py-1.5 text-xs"
           : size === "lg"
@@ -111,8 +110,9 @@ export function JoinSessionButton({
       } ${className}`}
       title={`Join window opens 15 minutes before start (${startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`}
     >
-      <Clock size={size === "sm" ? 13 : 15} />
-      <span>{timeText}</span>
+      <Clock size={size === "sm" ? 13 : 15} className="text-slate-500 dark:text-zinc-400 flex-shrink-0" />
+      <span className="whitespace-nowrap">{timeText}</span>
     </button>
   );
 }
+
