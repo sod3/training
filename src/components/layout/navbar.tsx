@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
+  ArrowUpRight,
   Bell,
   ChevronDown,
   LayoutDashboard,
@@ -150,7 +151,7 @@ export function Navbar() {
         <Logo />
         {minimal ? (
           <Link href="/trainers" className="text-link">
-            Exit ↗
+            Exit <ArrowUpRight size={16} aria-hidden="true" />
           </Link>
         ) : (
           <>
@@ -175,7 +176,9 @@ export function Navbar() {
                 >
                   <Bell size={17} />
                   {state.unread > 0 && (
-                    <span className="nav-notification-badge">{state.unread}</span>
+                    <span className="nav-notification-badge">
+                      {state.unread}
+                    </span>
                   )}
                 </Link>
               )}
@@ -205,13 +208,19 @@ export function Navbar() {
                   </button>
 
                   {accountOpen && (
-                    <div id="account-menu-items" role="menu" className="account-dropdown-panel">
+                    <div
+                      id="account-menu-items"
+                      role="menu"
+                      className="account-dropdown-panel"
+                    >
                       <div className="account-profile-header">
                         <div className="account-profile-name">
                           {state.name || "User Account"}
                         </div>
                         {state.email && (
-                          <div className="account-profile-email">{state.email}</div>
+                          <div className="account-profile-email">
+                            {state.email}
+                          </div>
                         )}
                         <div className="account-profile-badge-wrapper">
                           <span className="account-role-badge">
@@ -242,7 +251,9 @@ export function Navbar() {
                           <Bell size={15} className="menu-icon" />
                           <span>Notifications</span>
                           {state.unread > 0 && (
-                            <span className="menu-item-badge">{state.unread}</span>
+                            <span className="menu-item-badge">
+                              {state.unread}
+                            </span>
                           )}
                         </Link>
 
@@ -264,7 +275,13 @@ export function Navbar() {
                         )}
 
                         <Link
-                          href={state.role === "admin" ? "/admin/settings" : state.role === "trainer" ? "/trainer/profile" : "/dashboard/customer/profile"}
+                          href={
+                            state.role === "admin"
+                              ? "/admin/settings"
+                              : state.role === "trainer"
+                                ? "/trainer/profile"
+                                : "/dashboard/customer/profile"
+                          }
                           onClick={() => setAccountOpen(false)}
                           role="menuitem"
                           className="account-menu-link"
@@ -304,7 +321,10 @@ export function Navbar() {
               >
                 <Menu size={20} />
               </SheetTrigger>
-              <SheetContent className="spotter-mobile-menu" showCloseButton={false}>
+              <SheetContent
+                className="spotter-mobile-menu"
+                showCloseButton={false}
+              >
                 <div className="mobile-menu-head">
                   <Logo />
                   <SheetTitle className="sr-only">Explore Spotter</SheetTitle>
@@ -324,6 +344,9 @@ export function Navbar() {
                           key={item.href}
                           href={item.href}
                           className="mobile-main-link"
+                          aria-current={
+                            pathname === item.href ? "page" : undefined
+                          }
                           onClick={() => setOpen(false)}
                         >
                           <span>{item.title}</span>
@@ -355,7 +378,9 @@ export function Navbar() {
                               {state.name || "User Account"}
                             </div>
                             {state.email && (
-                              <div className="mobile-user-email">{state.email}</div>
+                              <div className="mobile-user-email">
+                                {state.email}
+                              </div>
                             )}
                           </div>
                           <span className="account-role-badge">
@@ -369,7 +394,10 @@ export function Navbar() {
                             className="mobile-account-link"
                             onClick={() => setOpen(false)}
                           >
-                            <LayoutDashboard size={18} className="mobile-link-icon" />
+                            <LayoutDashboard
+                              size={18}
+                              className="mobile-link-icon"
+                            />
                             <span>Dashboard</span>
                             <ArrowRight size={16} className="mobile-arrow" />
                           </Link>
@@ -385,7 +413,9 @@ export function Navbar() {
                             </div>
                             <div className="mobile-link-right">
                               {state.unread > 0 && (
-                                <span className="menu-item-badge">{state.unread}</span>
+                                <span className="menu-item-badge">
+                                  {state.unread}
+                                </span>
                               )}
                               <ArrowRight size={16} className="mobile-arrow" />
                             </div>
@@ -398,7 +428,10 @@ export function Navbar() {
                               onClick={() => setOpen(false)}
                             >
                               <div className="mobile-link-left">
-                                <MessageSquare size={18} className="mobile-link-icon" />
+                                <MessageSquare
+                                  size={18}
+                                  className="mobile-link-icon"
+                                />
                                 <span>Messages</span>
                               </div>
                               <div className="mobile-link-right">
@@ -407,13 +440,22 @@ export function Navbar() {
                                     {state.unreadMessages}
                                   </span>
                                 )}
-                                <ArrowRight size={16} className="mobile-arrow" />
+                                <ArrowRight
+                                  size={16}
+                                  className="mobile-arrow"
+                                />
                               </div>
                             </Link>
                           )}
 
                           <Link
-                            href={state.role === "admin" ? "/admin/settings" : state.role === "trainer" ? "/trainer/profile" : "/dashboard/customer/profile"}
+                            href={
+                              state.role === "admin"
+                                ? "/admin/settings"
+                                : state.role === "trainer"
+                                  ? "/trainer/profile"
+                                  : "/dashboard/customer/profile"
+                            }
                             className="mobile-account-link"
                             onClick={() => setOpen(false)}
                           >
@@ -458,5 +500,3 @@ export function Navbar() {
     </header>
   );
 }
-
-

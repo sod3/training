@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Instrument_Sans } from "next/font/google";
 import "./globals.css";
+import "./mobile.css";
 import { siteConfig } from "@/config/site";
 import { SiteMotion } from "@/components/motion/site-motion";
 import { Navbar } from "@/components/layout/navbar";
@@ -18,6 +19,13 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#101210",
+};
 
 export const metadata: Metadata = {
   title: {

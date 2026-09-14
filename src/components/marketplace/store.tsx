@@ -2,8 +2,21 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { X, CheckCircle, AlertTriangle, ShieldCheck, Info, HelpCircle } from "lucide-react";
+import {
+  X,
+  CheckCircle,
+  AlertTriangle,
+  ShieldCheck,
+  Info,
+  HelpCircle,
+} from "lucide-react";
 import { api, useApi } from "@/lib/client-api";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 type State = {
   saved: string[];
@@ -46,7 +59,11 @@ export type ToastItem = {
 const Context = createContext<{
   state: State;
   update: (patch: { compare?: string[] }) => void;
-  notify: (text: string, type?: "success" | "error" | "warning" | "info", title?: string) => void;
+  notify: (
+    text: string,
+    type?: "success" | "error" | "warning" | "info",
+    title?: string,
+  ) => void;
   confirmModal: (options: ConfirmOptions) => Promise<boolean>;
   ready: boolean;
   refresh: () => void;
@@ -64,7 +81,12 @@ const Context = createContext<{
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { data, reload, loading } = useApi<{
-    user: { name: string; email?: string; role: string; emailVerified: boolean } | null;
+    user: {
+      name: string;
+      email?: string;
+      role: string;
+      emailVerified: boolean;
+    } | null;
     saved: string[];
     unread: number;
     unreadMessages: number;
@@ -101,17 +123,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }, 4500);
     return () => clearTimeout(timer);
   }, [toasts]);
-
-  useEffect(() => {
-    if (!confirmState.isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        handleConfirmResponse(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [confirmState.isOpen]);
 
   const notify = (
     message: string,
@@ -210,68 +221,83 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       {children}
 
       {/* Confirmation Modal Overlay */}
-      {confirmState.isOpen && (
-        <div
-          className="spotter-modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="spotter-modal-title"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) handleConfirmResponse(false);
-          }}
-        >
-          <div className="spotter-modal-card">
-            <div className="spotter-modal-header">
-              <div className={`spotter-modal-icon-badge ${confirmState.options.variant || "lime"}`}>
-                {confirmState.options.icon === "check" && <CheckCircle size={22} />}
-                {confirmState.options.icon === "alert" && <AlertTriangle size={22} />}
-                {confirmState.options.icon === "shield" && <ShieldCheck size={22} />}
-                {confirmState.options.icon === "info" && <Info size={22} />}
-                {(confirmState.options.icon === "help" || !confirmState.options.icon) && (
-                  confirmState.options.variant === "danger" ? <AlertTriangle size={22} /> : <HelpCircle size={22} />
-                )}
-              </div>
-              <div className="spotter-modal-title-group">
-                <h3 id="spotter-modal-title">
-                  {confirmState.options.title || "Confirm Action"}
-                </h3>
-                <p className="spotter-modal-description">
-                  {confirmState.options.description}
-                </p>
-              </div>
+      <Dialog
+        open={confirmState.isOpen}
+        onOpenChange={(open) => {
+          if (!open) handleConfirmResponse(false);
+        }}
+      >
+        <DialogContent className="spotter-modal-card" showCloseButton={false}>
+          <div className="spotter-modal-header">
+            <div
+              className={`spotter-modal-icon-badge ${confirmState.options.variant || "lime"}`}
+            >
+              {confirmState.options.icon === "check" && (
+                <CheckCircle size={22} />
+              )}
+              {confirmState.options.icon === "alert" && (
+                <AlertTriangle size={22} />
+              )}
+              {confirmState.options.icon === "shield" && (
+                <ShieldCheck size={22} />
+              )}
+              {confirmState.options.icon === "info" && <Info size={22} />}
+              {(confirmState.options.icon === "help" ||
+                !confirmState.options.icon) &&
+                (confirmState.options.variant === "danger" ? (
+                  <AlertTriangle size={22} />
+                ) : (
+                  <HelpCircle size={22} />
+                ))}
             </div>
-            <div className="spotter-modal-actions">
-              <button
-                type="button"
-                className="btn outline small spotter-modal-cancel-btn"
-                onClick={() => handleConfirmResponse(false)}
-              >
-                {confirmState.options.cancelText || "Cancel"}
-              </button>
-              <button
-                type="button"
-                className={`btn small spotter-modal-confirm-btn ${
-                  confirmState.options.variant === "danger"
-                    ? "danger"
-                    : confirmState.options.variant === "lime"
-                    ? "lime"
-                    : ""
-                }`}
-                autoFocus
-                onClick={() => handleConfirmResponse(true)}
-              >
-                {confirmState.options.confirmText || "Confirm"}
-              </button>
+            <div className="spotter-modal-title-group">
+              <DialogTitle id="spotter-modal-title">
+                {confirmState.options.title || "Confirm Action"}
+              </DialogTitle>
+              <DialogDescription className="spotter-modal-description">
+                {confirmState.options.description}
+              </DialogDescription>
             </div>
           </div>
-        </div>
-      )}
+          <div className="spotter-modal-actions">
+            <button
+              type="button"
+              className="btn outline small spotter-modal-cancel-btn"
+              onClick={() => handleConfirmResponse(false)}
+            >
+              {confirmState.options.cancelText || "Cancel"}
+            </button>
+            <button
+              type="button"
+              className={`btn small spotter-modal-confirm-btn ${
+                confirmState.options.variant === "danger"
+                  ? "danger"
+                  : confirmState.options.variant === "lime"
+                    ? "lime"
+                    : ""
+              }`}
+              autoFocus
+              onClick={() => handleConfirmResponse(true)}
+            >
+              {confirmState.options.confirmText || "Confirm"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Enhanced Toast System */}
       {toasts.length > 0 && (
-        <div className="spotter-toast-container" role="region" aria-label="Notifications">
+        <div
+          className="spotter-toast-container"
+          role="region"
+          aria-label="Notifications"
+        >
           {toasts.map((t) => (
-            <div key={t.id} className={`spotter-toast spotter-toast-${t.type || "info"}`} role="status">
+            <div
+              key={t.id}
+              className={`spotter-toast spotter-toast-${t.type || "info"}`}
+              role="status"
+            >
               <div className="spotter-toast-icon">
                 {t.type === "success" && <CheckCircle size={18} />}
                 {t.type === "error" && <AlertTriangle size={18} />}
@@ -279,7 +305,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
                 {t.type === "info" && <Info size={18} />}
               </div>
               <div className="spotter-toast-body">
-                {t.title && <strong className="spotter-toast-title">{t.title}</strong>}
+                {t.title && (
+                  <strong className="spotter-toast-title">{t.title}</strong>
+                )}
                 <p className="spotter-toast-message">{t.message}</p>
               </div>
               <button

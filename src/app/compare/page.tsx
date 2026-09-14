@@ -6,12 +6,15 @@ import { useStore } from "@/components/marketplace/store";
 import { useApi } from "@/lib/client-api";
 import type { Trainer } from "@/types/trainer";
 import { localAvailabilityLabel, money } from "@/lib/marketplace";
+import { Skeleton } from "@/components/ui/skeleton";
 export default function Page() {
-  const { state, update } = useStore();
-  const { data, error } = useApi<{ trainers: Trainer[] }>(
+  const { state, update, ready } = useStore();
+  const { data, error, loading, reload } = useApi<{ trainers: Trainer[] }>(
     state.compare.length ? `trainers?ids=${state.compare.join(",")}` : null,
   );
-  const selected = data?.trainers || [];
+  const selected = (data?.trainers || []).filter((t) =>
+    state.compare.includes(t.id),
+  );
   return (
     <div className="container section">
       <div className="page-heading">
@@ -20,7 +23,23 @@ export default function Page() {
         <p>Compare up to three coaches, side by side.</p>
       </div>
       {error ? (
-        <p role="alert">{error}</p>
+        <div className="empty-state compact" role="alert">
+          <h2>Couldn’t load your comparison.</h2>
+          <p>{error}</p>
+          <button className="btn" onClick={reload}>
+            Try again
+          </button>
+        </div>
+      ) : !ready || (state.compare.length > 0 && (loading || !data)) ? (
+        <div
+          className="comparison-loading"
+          role="status"
+          aria-label="Loading selected trainers"
+        >
+          <Skeleton className="h-48 rounded-2xl" />
+          <Skeleton className="h-48 rounded-2xl" />
+          <span className="sr-only">Loading selected trainers…</span>
+        </div>
       ) : !selected.length ? (
         <div className="empty-state">
           <Columns3 size={38} />
@@ -63,7 +82,10 @@ export default function Page() {
                 </h2>
                 <dl className="comparison-details">
                   {[
-                    ["Starting price", `${money(t.basePrice)} / ${t.priceUnit || "session"}`],
+                    [
+                      "Starting price",
+                      `${money(t.basePrice)} / ${t.priceUnit || "session"}`,
+                    ],
                     ["Rating", `${t.rating} · ${t.reviewCount} reviews`],
                     ["Experience", `${t.experienceYears} years`],
                     ["Specialties", t.specialties.join(", ")],

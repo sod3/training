@@ -23,7 +23,20 @@ export default async function Page({
   if (tab in customerRedirects) {
     const dest = customerRedirects[tab];
     const trainer = (await searchParams).trainer;
-    redirect(`/dashboard/customer/${dest}${trainer ? `?trainer=${trainer}` : ""}`);
+    const query = new URLSearchParams();
+    if (trainer) query.set("trainer", trainer);
+    if (dest === "training")
+      query.set(
+        "section",
+        tab === "messages"
+          ? "messages"
+          : ["bookings", "payments", "reviews"].includes(tab)
+            ? "sessions"
+            : "summary",
+      );
+    redirect(
+      `/dashboard/customer/${dest}${query.size ? `?${query.toString()}` : ""}`,
+    );
   }
   if (!["training", "saved", "profile", "notifications"].includes(tab))
     notFound();

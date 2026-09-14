@@ -1,11 +1,18 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { api, apiResult, useApi } from "@/lib/client-api";
 import { ActionForm, UploadForm, type Field } from "./action-form";
 import { DEFAULT_CATEGORIES, PREFERRED_TIMES } from "@/lib/catalog";
 import { ReviewComposer } from "./review-composer";
 import { IdCopyChip } from "@/components/ui/id-copy-chip";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 export type Item = Record<string, unknown>;
 export const str = (item: Item, key: string) => String(item[key] ?? "");
 export const num = (item: Item, key: string) => Number(item[key] || 0);
@@ -295,19 +302,11 @@ export function PackagesPanel({
 }
 function getRuleDurationMinutes(startTime: string, endTime: string) {
   if (!startTime || !endTime) return 0;
-  const startMin = Number(startTime.slice(0, 2)) * 60 + Number(startTime.slice(3));
+  const startMin =
+    Number(startTime.slice(0, 2)) * 60 + Number(startTime.slice(3));
   let endMin = Number(endTime.slice(0, 2)) * 60 + Number(endTime.slice(3));
   if (endMin <= startMin) endMin += 1440;
   return endMin - startMin;
-}
-
-function formatDurationText(mins: number) {
-  if (mins <= 0) return "0m";
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (h > 0 && m > 0) return `${h}h ${m}m`;
-  if (h > 0) return `${h}h`;
-  return `${m}m`;
 }
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -335,7 +334,8 @@ export function AvailabilityPanel({
   const dailyTotals = DAY_ORDER.map((dayCode) => {
     const dayRules = rules.filter((r) => num(r, "dayOfWeek") === dayCode);
     const totalMins = dayRules.reduce(
-      (sum, r) => sum + getRuleDurationMinutes(str(r, "startTime"), str(r, "endTime")),
+      (sum, r) =>
+        sum + getRuleDurationMinutes(str(r, "startTime"), str(r, "endTime")),
       0,
     );
     return {
@@ -361,8 +361,14 @@ export function AvailabilityPanel({
     }
   };
 
-  const updateRule = (ruleIndex: number, field: "startTime" | "endTime", value: string) => {
-    setRules(rules.map((r, i) => (i === ruleIndex ? { ...r, [field]: value } : r)));
+  const updateRule = (
+    ruleIndex: number,
+    field: "startTime" | "endTime",
+    value: string,
+  ) => {
+    setRules(
+      rules.map((r, i) => (i === ruleIndex ? { ...r, [field]: value } : r)),
+    );
   };
 
   const addTimeShift = (dayCode: number) => {
@@ -389,12 +395,20 @@ export function AvailabilityPanel({
       <section className="panel">
         <h2>Your Weekly Schedule</h2>
         <p className="muted text-sm mb-4">
-          Timezone: <strong>{str(data, "timezone") || "Asia/Karachi"}</strong>. Set your availability for each day of the week. Maximum <strong>4 hours (240 minutes) per day</strong>.
+          Timezone: <strong>{str(data, "timezone") || "Asia/Karachi"}</strong>.
+          Set your availability for each day of the week. Maximum{" "}
+          <strong>4 hours (240 minutes) per day</strong>.
         </p>
 
         <div className="weekly-schedule-rows space-y-3">
           {dailyTotals.map((dayData) => {
-            const { dayCode, dayName, rules: dayRules, active, exceeds } = dayData;
+            const {
+              dayCode,
+              dayName,
+              rules: dayRules,
+              active,
+              exceeds,
+            } = dayData;
             return (
               <div
                 key={dayCode}
@@ -411,6 +425,8 @@ export function AvailabilityPanel({
                         : "bg-slate-300 text-slate-700"
                     }`}
                     onClick={() => toggleDay(dayCode, active)}
+                    aria-label={`${active ? "Disable" : "Enable"} ${dayName}`}
+                    aria-pressed={active}
                   >
                     {active ? "ON" : "OFF"}
                   </button>
@@ -422,18 +438,27 @@ export function AvailabilityPanel({
                     {dayRules.map((rule) => {
                       const idx = rules.indexOf(rule);
                       return (
-                        <div key={idx} className="flex items-center gap-2 bg-white p-1.5 border rounded">
+                        <div
+                          key={idx}
+                          className="time-period flex items-center gap-2 bg-white p-1.5 border rounded"
+                        >
                           <input
                             type="time"
+                            aria-label={`${dayName} start time ${idx + 1}`}
                             value={str(rule, "startTime")}
-                            onChange={(e) => updateRule(idx, "startTime", e.target.value)}
+                            onChange={(e) =>
+                              updateRule(idx, "startTime", e.target.value)
+                            }
                             className="text-sm p-1 border rounded"
                           />
                           <span className="text-slate-400">→</span>
                           <input
                             type="time"
+                            aria-label={`${dayName} end time ${idx + 1}`}
                             value={str(rule, "endTime")}
-                            onChange={(e) => updateRule(idx, "endTime", e.target.value)}
+                            onChange={(e) =>
+                              updateRule(idx, "endTime", e.target.value)
+                            }
                             className="text-sm p-1 border rounded"
                           />
                           {dayRules.length > 1 && (
@@ -442,6 +467,7 @@ export function AvailabilityPanel({
                               onClick={() => removeRule(rule)}
                               className="text-red-500 hover:text-red-700 font-bold px-1.5"
                               title="Remove time period"
+                              aria-label={`Remove ${dayName} time period ${idx + 1}`}
                             >
                               ×
                             </button>
@@ -482,13 +508,16 @@ export function AvailabilityPanel({
               setBusy(true);
               setMessage("");
               try {
-                const res = await api<{ message: string }>("trainer/availability", {
-                  rules: rules.map((r) => ({
-                    dayOfWeek: num(r, "dayOfWeek"),
-                    startTime: str(r, "startTime"),
-                    endTime: str(r, "endTime"),
-                  })),
-                });
+                const res = await api<{ message: string }>(
+                  "trainer/availability",
+                  {
+                    rules: rules.map((r) => ({
+                      dayOfWeek: num(r, "dayOfWeek"),
+                      startTime: str(r, "startTime"),
+                      endTime: str(r, "endTime"),
+                    })),
+                  },
+                );
                 setMessage(res.message);
                 reload();
               } catch (e) {
@@ -541,9 +570,13 @@ export function AvailabilityPanel({
               })}
             />
             {rows(data.exceptions).map((r) => (
-              <div key={str(r, "_id")} className="booking-row flex justify-between items-center p-2 border rounded mt-2">
+              <div
+                key={str(r, "_id")}
+                className="booking-row flex justify-between items-center p-2 border rounded mt-2"
+              >
                 <p className="text-sm">
-                  <strong>{str(r, "kind")}</strong>: {date(r.start)} — {date(r.end)} ({str(r, "reason")})
+                  <strong>{str(r, "kind")}</strong>: {date(r.start)} —{" "}
+                  {date(r.end)} ({str(r, "reason")})
                 </p>
                 <ActionForm
                   endpoint={`trainer/exceptions/${str(r, "_id")}`}
@@ -576,7 +609,8 @@ export function VerificationPanel({
       <section className="panel">
         <h2>Identity verification</h2>
         <p>
-          Upload a clear picture of your CNIC so the SPOTTER team can verify your identity. Your document is private and never shown publicly.
+          Upload a clear picture of your CNIC so the SPOTTER team can verify
+          your identity. Your document is private and never shown publicly.
         </p>
         <span className="status">
           {str(application, "status") || "Not submitted"}
@@ -784,13 +818,14 @@ export function MessagesPanel({
     return () => window.clearInterval(timer);
   }, [reload, reloadMessages, selected]);
   return (
-    <div className="message-layout">
-      <div className="panel">
+    <div className={`message-layout ${selected ? "thread-open" : ""}`}>
+      <div className="panel conversation-list">
         <h2>Conversations</h2>
         {rows(data.items).map((c) => (
           <button
             key={str(c, "_id")}
             className="conversation-row"
+            aria-pressed={selected === str(c, "_id")}
             onClick={async () => {
               setSelected(str(c, "_id"));
               try {
@@ -816,8 +851,27 @@ export function MessagesPanel({
         {error && <p role="alert">{error}</p>}
         {selected ? (
           <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-              <span className="status-badge status-badge-paid" style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem" }}>Live Chat Active</span>
+            <button
+              type="button"
+              className="text-link conversation-back"
+              onClick={() => setSelected("")}
+            >
+              ← All conversations
+            </button>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "0.75rem",
+              }}
+            >
+              <span
+                className="status-badge status-badge-paid"
+                style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem" }}
+              >
+                Live Chat Active
+              </span>
               <small className="muted">Updates automatically</small>
             </div>
             <div className="message-history">
@@ -910,55 +964,58 @@ export function EarningsPanel({
         </div>
 
         {/* Modal / Inline Payout Request Form */}
-        {showRequestModal && (
-          <div className="payout-modal-overlay">
-            <div className="panel payout-modal-content">
-              <div className="payout-modal-header">
-                <h3>Request a Payout</h3>
-                <button
-                  type="button"
-                  className="payout-modal-close"
-                  onClick={() => setShowRequestModal(false)}
-                >
-                  ✕
-                </button>
-              </div>
-              <p>
-                Available balance for payout:{" "}
-                <strong>{amount(availableBalancePaisa)}</strong>
-              </p>
-              {availableBalancePaisa < 10000 ? (
-                <p className="form-notice">
-                  Minimum payout threshold is {amount(10000)}. Completed earnings will be available here once accrued.
-                </p>
-              ) : (
-                <ActionForm
-                  endpoint="trainer/payouts"
-                  fields={[
-                    {
-                      name: "amount",
-                      label: "Amount in PKR",
-                      type: "number",
-                      value: availableBalancePaisa / 100,
-                      min: 100,
-                      max: availableBalancePaisa / 100,
-                      required: true,
-                    },
-                  ]}
-                  transform={(v) => ({
-                    amount: Math.round(Number(v.amount) * 100),
-                    idempotencyKey: crypto.randomUUID(),
-                  })}
-                  label="Submit Payout Request"
-                  onDone={() => {
-                    setShowRequestModal(false);
-                    reload();
-                  }}
-                />
-              )}
+        <Dialog open={showRequestModal} onOpenChange={setShowRequestModal}>
+          <DialogContent
+            className="panel payout-modal-content"
+            showCloseButton={false}
+          >
+            <div className="payout-modal-header">
+              <DialogTitle>Request a payout</DialogTitle>
+              <button
+                type="button"
+                className="payout-modal-close"
+                aria-label="Close payout request"
+                onClick={() => setShowRequestModal(false)}
+              >
+                ✕
+              </button>
             </div>
-          </div>
-        )}
+            <DialogDescription>
+              Available balance for payout:{" "}
+              <strong>{amount(availableBalancePaisa)}</strong>
+            </DialogDescription>
+            {availableBalancePaisa < 10000 ? (
+              <p className="form-notice">
+                Minimum payout threshold is {amount(10000)}. Completed earnings
+                will be available here once accrued.
+              </p>
+            ) : (
+              <ActionForm
+                endpoint="trainer/payouts"
+                fields={[
+                  {
+                    name: "amount",
+                    label: "Amount in PKR",
+                    type: "number",
+                    value: availableBalancePaisa / 100,
+                    min: 100,
+                    max: availableBalancePaisa / 100,
+                    required: true,
+                  },
+                ]}
+                transform={(v) => ({
+                  amount: Math.round(Number(v.amount) * 100),
+                  idempotencyKey: crypto.randomUUID(),
+                })}
+                label="Submit Payout Request"
+                onDone={() => {
+                  setShowRequestModal(false);
+                  reload();
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </section>
 
       {/* Summary Metrics */}
@@ -994,12 +1051,16 @@ export function EarningsPanel({
               <tbody>
                 {payoutHistoryRows.map((p) => (
                   <tr key={str(p, "_id")}>
-                    <td>{date(p.createdAt)}</td>
-                    <td>
+                    <td data-label="Date">{date(p.createdAt)}</td>
+                    <td data-label="Amount">
                       <strong>{amount(p.amount)}</strong>
                     </td>
-                    <td>{str(p, "reference") || "Bank Transfer"}</td>
-                    <td>{getStatusBadge(str(p, "status"))}</td>
+                    <td data-label="Method">
+                      {str(p, "reference") || "Bank Transfer"}
+                    </td>
+                    <td data-label="Status">
+                      {getStatusBadge(str(p, "status"))}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1030,8 +1091,8 @@ export function EarningsPanel({
               <tbody>
                 {completedEarningsHistoryRows.map((item) => (
                   <tr key={str(item, "_id")}>
-                    <td>{date(item.date)}</td>
-                    <td>
+                    <td data-label="Date">{date(item.date)}</td>
+                    <td data-label="Client">
                       <strong>{str(item, "clientName")}</strong>
                       {str(item, "bookingNumber") !== "—" && (
                         <div className="mt-1">
@@ -1039,14 +1100,14 @@ export function EarningsPanel({
                         </div>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Package">
                       {str(item, "packageName")}{" "}
                       <span style={{ fontSize: "0.85rem", opacity: 0.8 }}>
                         (Session {num(item, "sessionNumber")} of{" "}
                         {num(item, "totalSessions")})
                       </span>
                     </td>
-                    <td>
+                    <td data-label="Net earned">
                       <strong style={{ color: "var(--primary, #10b981)" }}>
                         +{amount(num(item, "earnedAmount"))}
                       </strong>
@@ -1071,8 +1132,12 @@ export function ConversationThread({
   conversationId: string;
   onMessageSent?: () => void;
 }) {
-  const [error, setError] = useState("");
-  const { data: messages, reload } = useApi<{ items: Item[] }>(
+  const {
+    data: messages,
+    error,
+    loading,
+    reload,
+  } = useApi<{ items: Item[] }>(
     conversationId ? `messages/${conversationId}` : null,
   );
 
@@ -1089,13 +1154,23 @@ export function ConversationThread({
   return (
     <div className="conversation-thread-panel">
       <div className="flex justify-between items-center mb-3">
-        <span className="status-badge status-badge-paid" style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem" }}>
+        <span
+          className="status-badge status-badge-paid"
+          style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem" }}
+        >
           Live Chat Active
         </span>
         <small className="muted">Updates automatically</small>
       </div>
-      {error && <p role="alert" className="form-error">{error}</p>}
-      <div className="message-history mb-4" style={{ maxHeight: "350px", overflowY: "auto" }}>
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
+        </p>
+      )}
+      <div
+        className="message-history mb-4"
+        style={{ maxHeight: "350px", overflowY: "auto" }}
+      >
         {messages?.items?.length ? (
           messages.items.map((m) => (
             <article className="message-bubble" key={str(m, "_id")}>
@@ -1103,9 +1178,15 @@ export function ConversationThread({
               <small>{date(m.createdAt)}</small>
             </article>
           ))
-        ) : (
-          <p className="muted text-sm">No messages yet. Send your first message below.</p>
-        )}
+        ) : loading ? (
+          <p className="muted text-sm" role="status">
+            Loading your conversation…
+          </p>
+        ) : !error ? (
+          <p className="muted text-sm">
+            No messages yet. Send your first message below.
+          </p>
+        ) : null}
       </div>
       <ActionForm
         key={conversationId}
@@ -1145,7 +1226,8 @@ export function SchedulePanel({
           <p className="eyebrow">SECTION 1: SERVICES & PRICING</p>
           <h2>Packages & Pricing</h2>
           <p className="muted text-sm">
-            Create, edit, or disable coaching services and package rates for your clients.
+            Create, edit, or disable coaching services and package rates for
+            your clients.
           </p>
         </div>
         <PackagesPanel items={packagesList} reload={reload} />
@@ -1164,19 +1246,24 @@ export function ClientsPanel({
   reload: () => void;
 }) {
   const clients = rows(data.items);
-  const [selectedId, setSelectedId] = useState<string>(clients[0] ? str(clients[0], "_id") : "");
+  const [selectedId, setSelectedId] = useState<string>(
+    clients[0] ? str(clients[0], "_id") : "",
+  );
   const [search, setSearch] = useState("");
 
-  const filteredClients = clients.filter((c) =>
-    str(c, "name").toLowerCase().includes(search.toLowerCase()) ||
-    str(c, "email").toLowerCase().includes(search.toLowerCase())
+  const filteredClients = clients.filter(
+    (c) =>
+      str(c, "name").toLowerCase().includes(search.toLowerCase()) ||
+      str(c, "email").toLowerCase().includes(search.toLowerCase()),
   );
 
-  const selectedClient = clients.find((c) => str(c, "_id") === selectedId) || filteredClients[0];
+  const selectedClient = clients.find((c) => str(c, "_id") === selectedId);
 
   return (
     <div className="clients-merged-container grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className={`clients-list-col ${selectedClient ? "hidden lg:block" : "block"}`}>
+      <div
+        className={`clients-list-col ${selectedClient ? "hidden lg:block" : "block"}`}
+      >
         <div className="panel mb-4">
           <label className="field">
             Search Clients
@@ -1191,7 +1278,8 @@ export function ClientsPanel({
         <div className="space-y-3">
           {filteredClients.map((client) => {
             const cid = str(client, "_id");
-            const isSelected = selectedClient && str(selectedClient, "_id") === cid;
+            const isSelected =
+              selectedClient && str(selectedClient, "_id") === cid;
             const orders = rows(client.orders || client.bookings);
             const activeOrder = orders[0];
             const activePkg = record(record(activeOrder).packageSnapshot);
@@ -1202,7 +1290,9 @@ export function ClientsPanel({
                 type="button"
                 key={cid}
                 className={`panel w-full text-left transition-all cursor-pointer ${
-                  isSelected ? "border-emerald-500 ring-1 ring-emerald-500 bg-emerald-50/10" : ""
+                  isSelected
+                    ? "border-emerald-500 ring-1 ring-emerald-500 bg-emerald-50/10"
+                    : ""
                 }`}
                 onClick={() => setSelectedId(cid)}
               >
@@ -1212,7 +1302,9 @@ export function ClientsPanel({
                       {str(client, "name").charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <strong className="block text-base">{str(client, "name")}</strong>
+                      <strong className="block text-base">
+                        {str(client, "name")}
+                      </strong>
                       <span className="text-xs muted block">
                         {str(activePkg, "name") || "Active Client"}
                       </span>
@@ -1236,7 +1328,9 @@ export function ClientsPanel({
         </div>
       </div>
 
-      <div className={`client-detail-col lg:col-span-2 ${!selectedClient ? "hidden lg:block" : "block"}`}>
+      <div
+        className={`client-detail-col lg:col-span-2 ${!selectedClient ? "hidden lg:block" : "block"}`}
+      >
         {selectedClient ? (
           <div className="space-y-6">
             <button
@@ -1256,7 +1350,10 @@ export function ClientsPanel({
                   <p className="eyebrow">CLIENT PROFILE</p>
                   <h2>{str(selectedClient, "name")}</h2>
                   <p className="muted text-sm">
-                    {str(selectedClient, "email")} {str(selectedClient, "phone") ? `· ${str(selectedClient, "phone")}` : ""}
+                    {str(selectedClient, "email")}{" "}
+                    {str(selectedClient, "phone")
+                      ? `· ${str(selectedClient, "phone")}`
+                      : ""}
                   </p>
                 </div>
               </div>
@@ -1271,20 +1368,27 @@ export function ClientsPanel({
                       {date(record(selectedClient.nextSession).start)}
                     </strong>
                     <p className="muted text-xs mt-1">
-                      Session {num(record(selectedClient.nextSession), "sessionNumber")} · Live online
+                      Session{" "}
+                      {num(record(selectedClient.nextSession), "sessionNumber")}{" "}
+                      · Live online
                     </p>
 
                     {str(record(selectedClient.nextSession), "meetingUrl") ? (
                       <a
                         className="btn small lime mt-3 inline-block"
-                        href={str(record(selectedClient.nextSession), "meetingUrl")}
+                        href={str(
+                          record(selectedClient.nextSession),
+                          "meetingUrl",
+                        )}
                         target="_blank"
                         rel="noreferrer"
                       >
                         Open session link →
                       </a>
                     ) : (
-                      <span className="status-badge status-badge-pending mt-2 inline-block text-xs">No video URL added</span>
+                      <span className="status-badge status-badge-pending mt-2 inline-block text-xs">
+                        No video URL added
+                      </span>
                     )}
 
                     <div className="mt-4 pt-3 border-t">
@@ -1294,17 +1398,26 @@ export function ClientsPanel({
                           {
                             name: "meetingUrl",
                             label: "Private video link (Google Meet / Zoom)",
-                            value: str(record(selectedClient.nextSession), "meetingUrl"),
+                            value: str(
+                              record(selectedClient.nextSession),
+                              "meetingUrl",
+                            ),
                             required: true,
                           },
                         ]}
-                        label={str(record(selectedClient.nextSession), "meetingUrl") ? "Update meeting link" : "Add meeting link"}
+                        label={
+                          str(record(selectedClient.nextSession), "meetingUrl")
+                            ? "Update meeting link"
+                            : "Add meeting link"
+                        }
                         onDone={reload}
                       />
                     </div>
                   </div>
                 ) : (
-                  <p className="muted text-sm mt-2">No upcoming session scheduled.</p>
+                  <p className="muted text-sm mt-2">
+                    No upcoming session scheduled.
+                  </p>
                 )}
               </section>
 
@@ -1313,10 +1426,18 @@ export function ClientsPanel({
                 {rows(selectedClient.orders)[0] ? (
                   <div className="mt-2">
                     <strong className="text-xl block text-emerald-600">
-                      {num(rows(selectedClient.orders)[0], "remainingSessions")} sessions remaining
+                      {num(rows(selectedClient.orders)[0], "remainingSessions")}{" "}
+                      sessions remaining
                     </strong>
                     <p className="muted text-xs mt-1">
-                      Package: {str(record(record(rows(selectedClient.orders)[0]).packageSnapshot), "name")}
+                      Package:{" "}
+                      {str(
+                        record(
+                          record(rows(selectedClient.orders)[0])
+                            .packageSnapshot,
+                        ),
+                        "name",
+                      )}
                     </p>
                   </div>
                 ) : (
@@ -1333,7 +1454,9 @@ export function ClientsPanel({
                   onMessageSent={reload}
                 />
               ) : (
-                <p className="muted text-sm">Conversation will activate when client messages or books.</p>
+                <p className="muted text-sm">
+                  Conversation will activate when client messages or books.
+                </p>
               )}
             </section>
 
@@ -1342,7 +1465,10 @@ export function ClientsPanel({
                 <h3>SESSION HISTORY</h3>
                 <div className="space-y-2 mt-3">
                   {rows(selectedClient.sessions).map((s) => (
-                    <div className="p-2 border rounded flex justify-between items-center text-sm" key={str(s, "_id")}>
+                    <div
+                      className="p-2 border rounded flex justify-between items-center text-sm"
+                      key={str(s, "_id")}
+                    >
                       <div>
                         <strong>Session {num(s, "sessionNumber")}</strong>
                         <small className="block muted">{date(s.start)}</small>
@@ -1361,12 +1487,23 @@ export function ClientsPanel({
                 {rows(selectedClient.orders).map((ord) => {
                   const snap = record(ord.packageSnapshot);
                   return (
-                    <div className="p-3 border rounded mt-3 text-sm space-y-1" key={str(ord, "_id")}>
+                    <div
+                      className="p-3 border rounded mt-3 text-sm space-y-1"
+                      key={str(ord, "_id")}
+                    >
                       <strong>{str(snap, "name")}</strong>
-                      <p className="font-bold text-emerald-700">{amount(ord.total)}</p>
-                      <small className="block muted">Booking #{str(ord, "bookingNumber")}</small>
-                      <small className="block muted">Purchased: {date(ord.createdAt)}</small>
-                      <span className="status-badge status-badge-paid inline-block text-xs mt-1">{str(ord, "paymentStatus")}</span>
+                      <p className="font-bold text-emerald-700">
+                        {amount(ord.total)}
+                      </p>
+                      <small className="block muted">
+                        Booking #{str(ord, "bookingNumber")}
+                      </small>
+                      <small className="block muted">
+                        Purchased: {date(ord.createdAt)}
+                      </small>
+                      <span className="status-badge status-badge-paid inline-block text-xs mt-1">
+                        {str(ord, "paymentStatus")}
+                      </span>
                     </div>
                   );
                 })}
@@ -1376,7 +1513,10 @@ export function ClientsPanel({
         ) : (
           <div className="panel empty-state">
             <h3>Select a client</h3>
-            <p>Choose a client from the list to view their relationship details, sessions, and live chat.</p>
+            <p>
+              Choose a client from the list to view their relationship details,
+              sessions, and live chat.
+            </p>
           </div>
         )}
       </div>
@@ -1459,11 +1599,15 @@ export function TrainerProfilePanel({
             {rows(data.reviews).map((r) => (
               <article className="p-3 border rounded" key={str(r, "_id")}>
                 <div className="flex justify-between items-center mb-1">
-                  <strong className="text-yellow-500">{"★".repeat(num(r, "rating"))}</strong>
+                  <strong className="text-yellow-500">
+                    {"★".repeat(num(r, "rating"))}
+                  </strong>
                   <small className="muted">{date(r.createdAt)}</small>
                 </div>
                 <p className="text-sm">{str(r, "review")}</p>
-                <small className="muted block mt-1">Client: {str(r, "customerName") || "Verified Customer"}</small>
+                <small className="muted block mt-1">
+                  Client: {str(r, "customerName") || "Verified Customer"}
+                </small>
               </article>
             ))}
             {!rows(data.reviews).length && (
@@ -1522,34 +1666,134 @@ export function TrainerProfilePanel({
 export function CustomerTrainingPanel({
   data,
   reload,
+  bookingContent,
+  trainerId,
 }: {
   data: Item;
   reload: () => void;
+  bookingContent?: ReactNode;
+  trainerId?: string;
 }) {
+  const searchParams = useSearchParams();
+  const section = searchParams.get("section");
+  const mobileSection =
+    section === "sessions" || section === "messages" ? section : "summary";
+  const selectedConversation = searchParams.get("conversation") || "";
+  const requestedTrainer = searchParams.get("trainer") || trainerId;
   const orders = rows(data.orders || data.items);
   const activeOrder = orders[0];
   const activeTrainer = record(activeOrder?.trainer);
   const sessions = rows(data.sessions);
   const upcomingSessions = sessions.filter(
-    (s) => str(s, "status") === "CONFIRMED" && new Date(str(s, "start")) >= new Date(),
+    (s) =>
+      str(s, "status") === "CONFIRMED" &&
+      new Date(str(s, "start")) >= new Date(),
   );
   const nextSession = upcomingSessions[0];
   const conversations = rows(data.conversations);
-  const conversationId = conversations[0] ? str(conversations[0], "_id") : "";
+  const unknownContacts = Array.from(
+    new Set(conversations.map((c) => str(c, "trainerId"))),
+  ).filter((id) => !rows(data.trainers).some((t) => str(t, "_id") === id));
+  const { data: contactProfiles } = useApi<{
+    trainers: { id: string; firstName: string; lastName: string }[];
+  }>(
+    unknownContacts.length ? `trainers?ids=${unknownContacts.join(",")}` : null,
+  );
+  const conversation =
+    conversations.find((c) => str(c, "_id") === selectedConversation) ||
+    conversations.find((c) => str(c, "trainerId") === requestedTrainer) ||
+    conversations[0];
+  const conversationId = conversation ? str(conversation, "_id") : "";
   const eligibleReviews = rows(data.eligible);
+  const chatContent = (
+    <section className="panel hub-messages">
+      <h2 className="mb-4">Messages with your coach</h2>
+      {conversations.length > 1 && (
+        <label className="field">
+          Choose a conversation
+          <select
+            value={conversationId}
+            onChange={(e) => {
+              const query = new URLSearchParams(searchParams.toString());
+              query.set("conversation", e.target.value);
+              window.history.replaceState(null, "", `?${query.toString()}`);
+            }}
+          >
+            {conversations.map((c, index) => (
+              <option key={str(c, "_id")} value={str(c, "_id")}>
+                {str(
+                  rows(data.trainers).find(
+                    (t) => str(t, "_id") === str(c, "trainerId"),
+                  ) || {},
+                  "displayName",
+                ) ||
+                  contactProfiles?.trainers
+                    .filter((t) => t.id === str(c, "trainerId"))
+                    .map((t) => `${t.firstName} ${t.lastName}`)
+                    .join("") ||
+                  `Coach conversation ${index + 1}`}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {conversationId ? (
+        <ConversationThread
+          key={conversationId}
+          conversationId={conversationId}
+          onMessageSent={reload}
+        />
+      ) : (
+        <p className="muted text-sm">
+          Messages will appear here when you communicate with your coach.
+        </p>
+      )}
+    </section>
+  );
 
   if (!orders.length) {
     return (
-      <div className="panel empty-state">
-        <h2>No active training plan yet.</h2>
-        <p>Browse our verified online personal trainers to find your match and book your first session.</p>
-        <Link className="btn lime mt-4 inline-block" href="/trainers">Browse Personal Trainers →</Link>
+      <div className="space-y-6">
+        {conversationId && chatContent}
+        <div className="panel empty-state">
+          <h2>No active training plan yet.</h2>
+          <p>
+            Browse our verified online personal trainers to find your match and
+            book your first session.
+          </p>
+          <Link className="btn lime mt-4 inline-block" href="/trainers">
+            Browse Personal Trainers →
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="customer-training-hub space-y-6">
+    <div
+      className="customer-training-hub space-y-6"
+      data-mobile-section={mobileSection}
+    >
+      <nav className="training-sections" aria-label="Training sections">
+        {[
+          ["summary", "Summary"],
+          ["sessions", "Bookings"],
+          ["messages", "Messages"],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={mobileSection === key}
+            onClick={() => {
+              const query = new URLSearchParams(searchParams.toString());
+              query.set("section", key);
+              window.history.replaceState(null, "", `?${query.toString()}`);
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
       <section className="panel">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -1559,24 +1803,34 @@ export function CustomerTrainingPanel({
             <div>
               <p className="eyebrow">YOUR TRAINER & PLAN</p>
               <h2>{str(activeTrainer, "displayName") || "Personal Coach"}</h2>
-              <p className="muted text-sm">{str(record(activeOrder?.packageSnapshot), "name")} · {amount(activeOrder?.total)}</p>
+              <p className="muted text-sm">
+                {str(record(activeOrder?.packageSnapshot), "name")} ·{" "}
+                {amount(activeOrder?.total)}
+              </p>
             </div>
           </div>
           {str(activeTrainer, "slug") && (
-            <Link className="btn outline small" href={`/trainers/${str(activeTrainer, "slug")}`}>
+            <Link
+              className="btn outline small"
+              href={`/trainers/${str(activeTrainer, "slug")}`}
+            >
               View Coach Profile
             </Link>
           )}
         </div>
       </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="hub-summary grid grid-cols-1 md:grid-cols-2 gap-4">
         <section className="panel">
           <p className="eyebrow">NEXT UPCOMING SESSION</p>
           {nextSession ? (
             <div className="mt-2">
-              <strong className="text-xl block">{date(nextSession.start)}</strong>
-              <p className="muted text-xs mt-1">Session {num(nextSession, "sessionNumber")} · Live 1-on-1 Online</p>
+              <strong className="text-xl block">
+                {date(nextSession.start)}
+              </strong>
+              <p className="muted text-xs mt-1">
+                Session {num(nextSession, "sessionNumber")} · Live 1-on-1 Online
+              </p>
               {str(nextSession, "meetingUrl") ? (
                 <a
                   className="btn lime small mt-3 inline-block"
@@ -1587,16 +1841,24 @@ export function CustomerTrainingPanel({
                   Join Online Session →
                 </a>
               ) : (
-                <span className="status-badge status-badge-pending mt-3 inline-block text-xs">Video link pending from coach</span>
+                <span className="status-badge status-badge-pending mt-3 inline-block text-xs">
+                  Video link pending from coach
+                </span>
               )}
             </div>
           ) : (
             <div className="mt-2">
               <h2>No session scheduled yet.</h2>
               {num(activeOrder, "remainingSessions") > 0 ? (
-                <p className="muted text-sm mt-1">You have {num(activeOrder, "remainingSessions")} session(s) left to schedule.</p>
+                <p className="muted text-sm mt-1">
+                  You have {num(activeOrder, "remainingSessions")} session(s)
+                  left to schedule.
+                </p>
               ) : (
-                <p className="muted text-sm mt-1">All sessions for this package have been scheduled or completed.</p>
+                <p className="muted text-sm mt-1">
+                  All sessions for this package have been scheduled or
+                  completed.
+                </p>
               )}
             </div>
           )}
@@ -1609,40 +1871,46 @@ export function CustomerTrainingPanel({
               {num(activeOrder, "remainingSessions")} sessions remaining
             </strong>
             <p className="muted text-xs mt-1">
-              Package Total: {num(record(activeOrder?.packageSnapshot), "sessionCount")} sessions
+              Package Total:{" "}
+              {num(record(activeOrder?.packageSnapshot), "sessionCount")}{" "}
+              sessions
             </p>
           </div>
         </section>
       </div>
 
-      <section className="panel">
-        <h2 className="mb-4">MESSAGES WITH YOUR COACH</h2>
-        {conversationId ? (
-          <ConversationThread conversationId={conversationId} onMessageSent={reload} />
-        ) : (
-          <p className="muted text-sm">Messages will appear here when you communicate with your coach.</p>
-        )}
-      </section>
+      {chatContent}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {bookingContent && (
+        <div className="hub-sessions space-y-4">{bookingContent}</div>
+      )}
+
+      <div className="hub-sessions grid grid-cols-1 md:grid-cols-2 gap-4">
         <section className="panel">
-          <h2>SESSION HISTORY</h2>
-          <div className="space-y-2 mt-3">
-            {sessions.map((s) => (
-              <div className="p-3 border rounded flex justify-between items-center text-sm" key={str(s, "_id")}>
-                <div>
-                  <strong>Session {num(s, "sessionNumber")}</strong>
-                  <small className="block muted">{date(s.start)}</small>
+          <details>
+            <summary>Session history</summary>
+            <div className="space-y-2 mt-3">
+              {sessions.map((s) => (
+                <div
+                  className="p-3 border rounded flex justify-between items-center text-sm"
+                  key={str(s, "_id")}
+                >
+                  <div>
+                    <strong>Session {num(s, "sessionNumber")}</strong>
+                    <small className="block muted">{date(s.start)}</small>
+                  </div>
+                  <span className="status text-xs">{str(s, "status")}</span>
                 </div>
-                <span className="status text-xs">{str(s, "status")}</span>
-              </div>
-            ))}
-            {!sessions.length && <p className="muted text-sm">No session records yet.</p>}
-          </div>
+              ))}
+              {!sessions.length && (
+                <p className="muted text-sm">No session records yet.</p>
+              )}
+            </div>
+          </details>
         </section>
 
         <section className="panel">
-          <h2>LEAVE A REVIEW</h2>
+          <h2>Leave a review</h2>
           {eligibleReviews.length > 0 ? (
             <ReviewComposer eligible={eligibleReviews} onDone={reload} />
           ) : (
@@ -1655,4 +1923,3 @@ export function CustomerTrainingPanel({
     </div>
   );
 }
-

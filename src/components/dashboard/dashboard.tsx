@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -12,12 +12,12 @@ import {
   CreditCard,
   FileCode,
   FileText,
-  Folder,
   Headphones,
   Layers,
   LayoutDashboard,
   Lock,
   LogOut,
+  Menu,
   MessageSquare,
   Package,
   PanelLeftClose,
@@ -34,18 +34,14 @@ import {
 import { api, useApi } from "@/lib/client-api";
 import { useStore } from "@/components/marketplace/store";
 import { ActionForm } from "./action-form";
-import { AdminPanel, AdminSettings, RecordDetails } from "./admin-panel";
+import { AdminPanel, AdminSettings } from "./admin-panel";
 import {
-  AvailabilityPanel,
   ClientsPanel,
   CustomerTrainingPanel,
   EarningsPanel,
-  MessagesPanel,
-  PackagesPanel,
   ProfilePanel,
   SchedulePanel,
   TrainerProfilePanel,
-  VerificationPanel,
   amount,
   date,
   num,
@@ -55,27 +51,11 @@ import {
   type Item,
 } from "./panels";
 import { BookingList, StartConversation } from "./bookings-panel";
-import { ReviewComposer } from "./review-composer";
 
 const primaryTabsByRole: Record<string, string[]> = {
-  customer: [
-    "overview",
-    "training",
-    "saved",
-  ],
-  trainer: [
-    "overview",
-    "clients",
-    "schedule",
-    "earnings",
-  ],
-  admin: [
-    "overview",
-    "users",
-    "bookings",
-    "operations",
-    "settings",
-  ],
+  customer: ["overview", "training", "saved"],
+  trainer: ["overview", "clients", "schedule", "earnings"],
+  admin: ["overview", "users", "bookings", "operations", "settings"],
 };
 
 const accountTabsByRole: Record<string, string[]> = {
@@ -198,7 +178,11 @@ function useDebouncedValue(value: string, delay = 300) {
   return debounced;
 }
 
-function AdminOverviewAlerts({ metrics }: { metrics: Record<string, unknown> }) {
+function AdminOverviewAlerts({
+  metrics,
+}: {
+  metrics: Record<string, unknown>;
+}) {
   const pendingPayments = Number(metrics["Pending payments"] || 0);
   const pendingApplications = Number(metrics["Pending applications"] || 0);
   const refundRequests = Number(metrics["Refund requests"] || 0);
@@ -209,7 +193,9 @@ function AdminOverviewAlerts({ metrics }: { metrics: Record<string, unknown> }) 
       <div className="admin-alerts-header flex items-center justify-between pb-3 border-b mb-4">
         <div>
           <h2 className="text-lg font-bold">Operational Action Items</h2>
-          <p className="muted text-sm">Immediate review items requiring administrative decision</p>
+          <p className="muted text-sm">
+            Immediate review items requiring administrative decision
+          </p>
         </div>
         {totalPending > 0 ? (
           <span className="admin-badge badge-pending font-semibold px-3 py-1 text-xs rounded-full">
@@ -224,18 +210,31 @@ function AdminOverviewAlerts({ metrics }: { metrics: Record<string, unknown> }) 
 
       {totalPending === 0 ? (
         <div className="admin-alert-clean p-3 bg-emerald-50/60 text-emerald-800 rounded-md border border-emerald-200 text-sm">
-          <p>🎉 All pending payment verifications, trainer applications, and refund requests are up to date.</p>
+          <p>
+            🎉 All pending payment verifications, trainer applications, and
+            refund requests are up to date.
+          </p>
         </div>
       ) : (
         <div className="admin-alerts-grid grid grid-cols-1 md:grid-cols-3 gap-4">
           {pendingPayments > 0 && (
             <div className="admin-alert-card urgent-payment p-4 bg-amber-50/70 border border-amber-200 rounded-lg flex flex-col justify-between">
               <div className="admin-alert-info mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-800 block mb-1">Payment Verification</span>
-                <strong className="text-base text-amber-950 block">{pendingPayments} Payment proof{pendingPayments === 1 ? "" : "s"} pending</strong>
-                <p className="text-xs text-amber-800 mt-1">Verify bank & JazzCash screenshots to confirm bookings.</p>
+                <span className="text-xs font-bold uppercase tracking-wider text-amber-800 block mb-1">
+                  Payment Verification
+                </span>
+                <strong className="text-base text-amber-950 block">
+                  {pendingPayments} Payment proof
+                  {pendingPayments === 1 ? "" : "s"} pending
+                </strong>
+                <p className="text-xs text-amber-800 mt-1">
+                  Verify bank & JazzCash screenshots to confirm bookings.
+                </p>
               </div>
-              <Link href="/admin/payments" className="btn lime small w-full text-center">
+              <Link
+                href="/admin/payments"
+                className="btn lime small w-full text-center"
+              >
                 Review Payments →
               </Link>
             </div>
@@ -243,11 +242,21 @@ function AdminOverviewAlerts({ metrics }: { metrics: Record<string, unknown> }) 
           {pendingApplications > 0 && (
             <div className="admin-alert-card urgent-application p-4 bg-blue-50/70 border border-blue-200 rounded-lg flex flex-col justify-between">
               <div className="admin-alert-info mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-blue-800 block mb-1">Trainer Onboarding</span>
-                <strong className="text-base text-blue-950 block">{pendingApplications} Application{pendingApplications === 1 ? "" : "s"} pending</strong>
-                <p className="text-xs text-blue-800 mt-1">Inspect identity documents and approve trainer profiles.</p>
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-800 block mb-1">
+                  Trainer Onboarding
+                </span>
+                <strong className="text-base text-blue-950 block">
+                  {pendingApplications} Application
+                  {pendingApplications === 1 ? "" : "s"} pending
+                </strong>
+                <p className="text-xs text-blue-800 mt-1">
+                  Inspect identity documents and approve trainer profiles.
+                </p>
               </div>
-              <Link href="/admin/applications" className="btn outline small w-full text-center">
+              <Link
+                href="/admin/applications"
+                className="btn outline small w-full text-center"
+              >
                 Review Applications →
               </Link>
             </div>
@@ -255,11 +264,21 @@ function AdminOverviewAlerts({ metrics }: { metrics: Record<string, unknown> }) 
           {refundRequests > 0 && (
             <div className="admin-alert-card urgent-refund p-4 bg-purple-50/70 border border-purple-200 rounded-lg flex flex-col justify-between">
               <div className="admin-alert-info mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-purple-800 block mb-1">Refund Requests</span>
-                <strong className="text-base text-purple-950 block">{refundRequests} Request{refundRequests === 1 ? "" : "s"} pending</strong>
-                <p className="text-xs text-purple-800 mt-1">Review refund requests and record manual transfer reference.</p>
+                <span className="text-xs font-bold uppercase tracking-wider text-purple-800 block mb-1">
+                  Refund Requests
+                </span>
+                <strong className="text-base text-purple-950 block">
+                  {refundRequests} Request{refundRequests === 1 ? "" : "s"}{" "}
+                  pending
+                </strong>
+                <p className="text-xs text-purple-800 mt-1">
+                  Review refund requests and record manual transfer reference.
+                </p>
               </div>
-              <Link href="/admin/refunds" className="btn outline small w-full text-center">
+              <Link
+                href="/admin/refunds"
+                className="btn outline small w-full text-center"
+              >
                 Review Refunds →
               </Link>
             </div>
@@ -289,6 +308,57 @@ export function Dashboard({
         : "/dashboard/customer";
   const { state, notify, refresh } = useStore();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const menuRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+    const trigger = menuRef.current;
+    const background = Array.from(
+      document.querySelectorAll<HTMLElement>(".site-nav, .workspace-main"),
+    );
+    const previousInert = background.map((element) => element.inert);
+    background.forEach((element) => {
+      element.inert = true;
+    });
+    const focusable = () =>
+      Array.from(
+        sidebar.querySelectorAll<HTMLElement>(
+          "a[href], button:not([disabled])",
+        ),
+      ).filter((element) => element.getClientRects().length > 0);
+    focusable()[0]?.focus();
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileNavOpen(false);
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      const first = items[0];
+      const last = items.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    const media = window.matchMedia("(max-width: 768px)");
+    const resize = () => {
+      if (!media.matches) setMobileNavOpen(false);
+    };
+    document.addEventListener("keydown", keydown);
+    media.addEventListener("change", resize);
+    return () => {
+      document.removeEventListener("keydown", keydown);
+      media.removeEventListener("change", resize);
+      background.forEach((element, index) => {
+        element.inert = previousInert[index];
+      });
+      trigger?.focus();
+    };
+  }, [mobileNavOpen]);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
@@ -325,7 +395,10 @@ export function Dashboard({
     operations: "categories",
   };
 
-  const targetTab = selectedRole === "admin" && adminDefaultApiTab[tab] ? adminDefaultApiTab[tab] : tab;
+  const targetTab =
+    selectedRole === "admin" && adminDefaultApiTab[tab]
+      ? adminDefaultApiTab[tab]
+      : tab;
   const endpoint = `${selectedRole === "admin" ? "admin" : selectedRole === "trainer" ? "trainer" : "dashboard"}/${targetTab}?${new URLSearchParams({ q: debouncedQuery, status: debouncedStatus, page: String(page), days })}`;
   const { data, error, loading, reload } = useApi<Item>(endpoint);
   const items = rows(data?.items);
@@ -339,37 +412,72 @@ export function Dashboard({
 
   const primaryNavItems = primaryTabsByRole[selectedRole] || [];
   const accountNavItems = accountTabsByRole[selectedRole] || [];
-  const activeAdminMainTab = selectedRole === "admin" ? (adminMainTabMap[tab] || "overview") : tab;
+  const activeAdminMainTab =
+    selectedRole === "admin" ? adminMainTabMap[tab] || "overview" : tab;
 
   return (
-    <div className={`workspace ${collapsed ? "collapsed" : ""}`}>
-      <aside className="workspace-sidebar">
+    <div
+      className={`workspace ${collapsed ? "collapsed" : ""} ${mobileNavOpen ? "mobile-nav-open" : ""}`}
+    >
+      <aside
+        ref={sidebarRef}
+        id="workspace-navigation"
+        className="workspace-sidebar"
+        role={mobileNavOpen ? "dialog" : undefined}
+        aria-modal={mobileNavOpen ? true : undefined}
+        aria-label="Workspace navigation"
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest("a[href]"))
+            setMobileNavOpen(false);
+        }}
+      >
         {/* Identity Header */}
         <div className="sidebar-identity">
           <div className="sidebar-identity-info">
             <p className="eyebrow">SPOTTER / {selectedRole}</p>
-            <strong className="sidebar-user-name" title={state.name || "Workspace"}>
+            <strong
+              className="sidebar-user-name"
+              title={state.name || "Workspace"}
+            >
               {state.name || "Workspace"}
             </strong>
           </div>
           <button
             type="button"
             className="sidebar-collapse-btn"
-            onClick={() => setCollapsed(!collapsed)}
-            aria-label={collapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
+            onClick={() => {
+              if (!mobileNavOpen) setCollapsed(!collapsed);
+              setMobileNavOpen(false);
+            }}
+            aria-label={
+              mobileNavOpen
+                ? "Close navigation"
+                : collapsed
+                  ? "Expand navigation sidebar"
+                  : "Collapse navigation sidebar"
+            }
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            {collapsed ? (
+              <PanelLeftOpen size={18} />
+            ) : (
+              <PanelLeftClose size={18} />
+            )}
           </button>
         </div>
 
         {/* Scrollable Navigation Area */}
         <div className="sidebar-scroll-area">
           <div className="sidebar-section">
-            {!collapsed && <p className="eyebrow sidebar-section-title">WORKSPACE</p>}
+            {!collapsed && (
+              <p className="eyebrow sidebar-section-title">WORKSPACE</p>
+            )}
             <nav aria-label="Dashboard primary navigation">
               {primaryNavItems.map((t) => {
-                const isActive = selectedRole === "admin" ? activeAdminMainTab === t : tab === t;
+                const isActive =
+                  selectedRole === "admin"
+                    ? activeAdminMainTab === t
+                    : tab === t;
                 const label = getTabLabel(t);
                 const href = t === "overview" ? base : `${base}/${t}`;
                 const unreadCount =
@@ -384,10 +492,17 @@ export function Dashboard({
                     key={t}
                     className={`sidebar-nav-item ${isActive ? "active" : ""}`}
                     href={href}
+                    aria-current={isActive ? "page" : undefined}
                     title={label}
                   >
-                    <span className="sidebar-nav-icon-container">{getNavIcon(t)}</span>
-                    {!collapsed && <span className="sidebar-nav-label">{label}</span>}
+                    <span className="sidebar-nav-icon-container">
+                      {getNavIcon(t)}
+                    </span>
+                    <span
+                      className={`sidebar-nav-label ${collapsed ? "desktop-collapsed-label" : ""}`}
+                    >
+                      {label}
+                    </span>
                     {unreadCount > 0 && (
                       <span className="sidebar-nav-badge">{unreadCount}</span>
                     )}
@@ -398,7 +513,9 @@ export function Dashboard({
           </div>
 
           <div className="sidebar-section sidebar-account-section">
-            {!collapsed && <p className="eyebrow sidebar-section-title">ACCOUNT</p>}
+            {!collapsed && (
+              <p className="eyebrow sidebar-section-title">ACCOUNT</p>
+            )}
             <nav aria-label="Account navigation">
               {accountNavItems.map((t) => {
                 const isActive = tab === t;
@@ -411,10 +528,17 @@ export function Dashboard({
                     key={t}
                     className={`sidebar-nav-item ${isActive ? "active" : ""}`}
                     href={href}
+                    aria-current={isActive ? "page" : undefined}
                     title={label}
                   >
-                    <span className="sidebar-nav-icon-container">{getNavIcon(t)}</span>
-                    {!collapsed && <span className="sidebar-nav-label">{label}</span>}
+                    <span className="sidebar-nav-icon-container">
+                      {getNavIcon(t)}
+                    </span>
+                    <span
+                      className={`sidebar-nav-label ${collapsed ? "desktop-collapsed-label" : ""}`}
+                    >
+                      {label}
+                    </span>
                     {unreadCount > 0 && (
                       <span className="sidebar-nav-badge">{unreadCount}</span>
                     )}
@@ -443,11 +567,33 @@ export function Dashboard({
             }}
           >
             <LogOut size={18} className="sidebar-logout-icon" />
-            {!collapsed && <span>Log out</span>}
+            <span className={collapsed ? "desktop-collapsed-label" : undefined}>
+              Log out
+            </span>
           </button>
         </div>
       </aside>
+      {mobileNavOpen && (
+        <button
+          type="button"
+          className="workspace-sidebar-overlay"
+          aria-label="Close navigation"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
       <div className="workspace-main">
+        <button
+          ref={menuRef}
+          type="button"
+          className="workspace-mobile-menu"
+          aria-label="Open workspace navigation"
+          aria-expanded={mobileNavOpen}
+          aria-controls="workspace-navigation"
+          onClick={() => setMobileNavOpen(true)}
+        >
+          <Menu size={20} />
+          <span>Menu</span>
+        </button>
         <div className="page-heading">
           <p className="eyebrow">YOUR SPACE TO MOVE FORWARD</p>
           <h1>
@@ -457,16 +603,31 @@ export function Dashboard({
                 ? "Services & Pricing."
                 : tab === "application"
                   ? "Application status."
-                  : `${tab.replaceAll("-", " ")}.`}
+                  : getTabLabel(tab)}
           </h1>
         </div>
-        {trainerId && tab === "messages" && (
-          <StartConversation trainerId={trainerId} />
-        )}
+        {trainerId &&
+          (tab === "messages" || tab === "training") &&
+          !rows(data?.conversations).some(
+            (c) => str(c, "trainerId") === trainerId,
+          ) && <StartConversation trainerId={trainerId} onStarted={update} />}
         <div className="workspace-toolbar">
           {loading && data && (
-            <span className="status-badge status-badge-processing" style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", fontSize: "0.8rem", padding: "0.25rem 0.6rem" }}>
-              <RefreshCw size={12} style={{ animation: "spin 1s linear infinite" }} /> Updating data…
+            <span
+              className="status-badge status-badge-processing"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.35rem",
+                fontSize: "0.8rem",
+                padding: "0.25rem 0.6rem",
+              }}
+            >
+              <RefreshCw
+                size={12}
+                style={{ animation: "spin 1s linear infinite" }}
+              />{" "}
+              Updating data…
             </span>
           )}
           {selectedRole === "admin" &&
@@ -591,9 +752,16 @@ export function Dashboard({
                   <div className="workspace-stats">
                     {Object.entries(record(data.metrics)).map(
                       ([key, value]) => (
-                        <article className="panel workspace-stat-card" key={key}>
-                          <span className="stat-label">{formatMetricKey(key)}</span>
-                          <strong className="stat-value">{String(value)}</strong>
+                        <article
+                          className="panel workspace-stat-card"
+                          key={key}
+                        >
+                          <span className="stat-label">
+                            {formatMetricKey(key)}
+                          </span>
+                          <strong className="stat-value">
+                            {String(value)}
+                          </strong>
                         </article>
                       ),
                     )}
@@ -609,8 +777,12 @@ export function Dashboard({
                         .filter(([key]) => key !== "_id")
                         .map(([key, value]) => (
                           <article className="financial-metric-card" key={key}>
-                            <span className="financial-metric-label">{formatMetricKey(key)}</span>
-                            <strong className="financial-metric-value">{amount(value)}</strong>
+                            <span className="financial-metric-label">
+                              {formatMetricKey(key)}
+                            </span>
+                            <strong className="financial-metric-value">
+                              {amount(value)}
+                            </strong>
                           </article>
                         ))}
                     </div>
@@ -627,6 +799,7 @@ export function Dashboard({
                           <div key={str(r, "_id")}>
                             <span>{str(r, "_id")}</span>
                             <meter
+                              aria-label={`Bookings on ${str(r, "_id")}`}
                               min={0}
                               max={Math.max(
                                 ...rows(data.series).map((r) =>
@@ -674,7 +847,18 @@ export function Dashboard({
                 <TrainerProfilePanel data={data} reload={update} />
               )}
               {tab === "training" && selectedRole === "customer" && (
-                <CustomerTrainingPanel data={data} reload={update} />
+                <CustomerTrainingPanel
+                  data={data}
+                  reload={update}
+                  trainerId={trainerId}
+                  bookingContent={
+                    <BookingList
+                      items={rows(data.orders || data.items)}
+                      role="customer"
+                      reload={update}
+                    />
+                  }
+                />
               )}
               {tab === "profile" && selectedRole === "customer" && (
                 <ProfilePanel data={data} role="customer" reload={update} />
@@ -741,10 +925,15 @@ export function Dashboard({
                   <AdminPanel section={tab} items={items} reload={reload} />
                 )}
               {Array.isArray(data.items) &&
+                !overview &&
                 !items.length &&
-                !["packages", "availability", "messages", "earnings"].includes(
-                  tab,
-                ) && (
+                ![
+                  "training",
+                  "packages",
+                  "availability",
+                  "messages",
+                  "earnings",
+                ].includes(tab) && (
                   <div className="empty-state">
                     <h2>Nothing here yet.</h2>
                     <p>

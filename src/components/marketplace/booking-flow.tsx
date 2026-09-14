@@ -7,10 +7,33 @@ import { api, apiResult, useApi } from "@/lib/client-api";
 import { useStore } from "./store";
 import { money } from "@/lib/marketplace";
 import type { Trainer } from "@/types/trainer";
-import { IdCopyChip } from "@/components/ui/id-copy-chip";
+import { Copy, Check } from "lucide-react";
 
 function CopyButton({ text, label }: { text: string; label?: string }) {
-  return <IdCopyChip value={text} truncate={false} className="ml-2" />;
+  const [copied, setCopied] = useState(false);
+  const { notify } = useStore();
+  return (
+    <button
+      type="button"
+      className="payment-copy-button"
+      aria-label={`Copy ${label || "account details"}`}
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          notify(`${label || "Account details"} copied.`, "success");
+          window.setTimeout(() => setCopied(false), 2000);
+        } catch {
+          notify(
+            "Could not copy. Select and copy the account details instead.",
+            "error",
+          );
+        }
+      }}
+    >
+      {copied ? <Check size={18} /> : <Copy size={18} />}
+    </button>
+  );
 }
 
 export function BookingFlow({
@@ -305,9 +328,9 @@ function Checkout({
             <>
               <h2>Select Payment Method</h2>
               <p>
-                Transfer the exact amount to your chosen account below, then submit your
-                payer name, transaction ID, and payment screenshot. An admin will verify the transfer
-                to confirm your booking.
+                Transfer the exact amount to your chosen account below, then
+                submit your payer name, transaction ID, and payment screenshot.
+                An admin will verify the transfer to confirm your booking.
               </p>
               {paymentMethodsLoading ? (
                 <p role="status">Loading payment account details…</p>
@@ -368,21 +391,60 @@ function Checkout({
                   >
                     {selectedPaymentMethod === "EASYPAISA" && (
                       <div>
-                        <h3 style={{ margin: "0 0 1rem 0", color: "#38bdf8", fontSize: "1.1rem" }}>
+                        <h3
+                          style={{
+                            margin: "0 0 1rem 0",
+                            color: "#38bdf8",
+                            fontSize: "1.1rem",
+                          }}
+                        >
                           Easypaisa Account Details
                         </h3>
                         <div style={{ display: "grid", gap: "0.75rem" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "0.5rem" }}>
-                            <span style={{ color: "#94a3b8" }}>Account Title</span>
-                            <strong style={{ color: "#f8fafc" }}>{paymentAccounts?.accountName || "Spotter Training"}</strong>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              borderBottom:
+                                "1px solid rgba(255, 255, 255, 0.08)",
+                              paddingBottom: "0.5rem",
+                            }}
+                          >
+                            <span style={{ color: "#94a3b8" }}>
+                              Account Title
+                            </span>
+                            <strong style={{ color: "#f8fafc" }}>
+                              {paymentAccounts?.accountName ||
+                                "Spotter Training"}
+                            </strong>
                           </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ color: "#94a3b8" }}>Easypaisa Number</span>
-                            <div style={{ display: "flex", alignItems: "center" }}>
-                              <strong style={{ color: "#f8fafc", fontFamily: "monospace", fontSize: "1.1rem" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <span style={{ color: "#94a3b8" }}>
+                              Easypaisa Number
+                            </span>
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <strong
+                                style={{
+                                  color: "#f8fafc",
+                                  fontFamily: "monospace",
+                                  fontSize: "1.1rem",
+                                }}
+                              >
                                 {easypaisaNumber}
                               </strong>
-                              <CopyButton text={easypaisaNumber} label="Easypaisa Number" />
+                              <CopyButton
+                                text={easypaisaNumber}
+                                label="Easypaisa Number"
+                              />
                             </div>
                           </div>
                         </div>
@@ -391,35 +453,104 @@ function Checkout({
 
                     {selectedPaymentMethod === "BANK_TRANSFER" && (
                       <div>
-                        <h3 style={{ margin: "0 0 1rem 0", color: "#38bdf8", fontSize: "1.1rem" }}>
+                        <h3
+                          style={{
+                            margin: "0 0 1rem 0",
+                            color: "#38bdf8",
+                            fontSize: "1.1rem",
+                          }}
+                        >
                           Bank Transfer Details
                         </h3>
                         <div style={{ display: "grid", gap: "0.75rem" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "0.5rem" }}>
-                            <span style={{ color: "#94a3b8" }}>Account Name</span>
-                            <strong style={{ color: "#f8fafc" }}>{bankDetails.accountName}</strong>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              borderBottom:
+                                "1px solid rgba(255, 255, 255, 0.08)",
+                              paddingBottom: "0.5rem",
+                            }}
+                          >
+                            <span style={{ color: "#94a3b8" }}>
+                              Account Name
+                            </span>
+                            <strong style={{ color: "#f8fafc" }}>
+                              {bankDetails.accountName}
+                            </strong>
                           </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "0.5rem" }}>
-                            <span style={{ color: "#94a3b8" }}>Account Number</span>
-                            <div style={{ display: "flex", alignItems: "center" }}>
-                              <strong style={{ color: "#f8fafc", fontFamily: "monospace", fontSize: "1.05rem" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              borderBottom:
+                                "1px solid rgba(255, 255, 255, 0.08)",
+                              paddingBottom: "0.5rem",
+                            }}
+                          >
+                            <span style={{ color: "#94a3b8" }}>
+                              Account Number
+                            </span>
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <strong
+                                style={{
+                                  color: "#f8fafc",
+                                  fontFamily: "monospace",
+                                  fontSize: "1.05rem",
+                                }}
+                              >
                                 {bankDetails.accountNumber}
                               </strong>
-                              <CopyButton text={bankDetails.accountNumber} label="Account Number" />
+                              <CopyButton
+                                text={bankDetails.accountNumber}
+                                label="Account Number"
+                              />
                             </div>
                           </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "0.5rem" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              borderBottom:
+                                "1px solid rgba(255, 255, 255, 0.08)",
+                              paddingBottom: "0.5rem",
+                            }}
+                          >
                             <span style={{ color: "#94a3b8" }}>IBAN</span>
-                            <div style={{ display: "flex", alignItems: "center" }}>
-                              <strong style={{ color: "#f8fafc", fontFamily: "monospace", fontSize: "0.92rem" }}>
+                            <div
+                              style={{ display: "flex", alignItems: "center" }}
+                            >
+                              <strong
+                                style={{
+                                  color: "#f8fafc",
+                                  fontFamily: "monospace",
+                                  fontSize: "0.92rem",
+                                }}
+                              >
                                 {bankDetails.iban}
                               </strong>
-                              <CopyButton text={bankDetails.iban} label="IBAN" />
+                              <CopyButton
+                                text={bankDetails.iban}
+                                label="IBAN"
+                              />
                             </div>
                           </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
                             <span style={{ color: "#94a3b8" }}>Branch</span>
-                            <strong style={{ color: "#f8fafc" }}>{bankDetails.branch}</strong>
+                            <strong style={{ color: "#f8fafc" }}>
+                              {bankDetails.branch}
+                            </strong>
                           </div>
                         </div>
                       </div>
@@ -427,16 +558,41 @@ function Checkout({
 
                     {selectedPaymentMethod === "JAZZCASH" && (
                       <div>
-                        <h3 style={{ margin: "0 0 1rem 0", color: "#38bdf8", fontSize: "1.1rem" }}>
+                        <h3
+                          style={{
+                            margin: "0 0 1rem 0",
+                            color: "#38bdf8",
+                            fontSize: "1.1rem",
+                          }}
+                        >
                           JazzCash Account Details
                         </h3>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ color: "#94a3b8" }}>JazzCash Number</span>
-                          <div style={{ display: "flex", alignItems: "center" }}>
-                            <strong style={{ color: "#f8fafc", fontFamily: "monospace", fontSize: "1.1rem" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <span style={{ color: "#94a3b8" }}>
+                            JazzCash Number
+                          </span>
+                          <div
+                            style={{ display: "flex", alignItems: "center" }}
+                          >
+                            <strong
+                              style={{
+                                color: "#f8fafc",
+                                fontFamily: "monospace",
+                                fontSize: "1.1rem",
+                              }}
+                            >
                               {paymentAccounts?.jazzcash}
                             </strong>
-                            <CopyButton text={paymentAccounts?.jazzcash || ""} label="JazzCash Number" />
+                            <CopyButton
+                              text={paymentAccounts?.jazzcash || ""}
+                              label="JazzCash Number"
+                            />
                           </div>
                         </div>
                       </div>
@@ -480,81 +636,93 @@ function Checkout({
                 Cancellation and refund outcomes follow the policy saved with
                 your booking.
               </p>
-              {state.role === "visitor" ? (
-                <Link
-                  className="btn"
-                  href={`/login?next=${encodeURIComponent(resume)}`}
-                >
-                  Sign in to finish booking →
-                </Link>
-              ) : state.role !== "customer" ? (
-                <div className="empty-state compact" role="alert">
-                  <h3>Customer account required.</h3>
-                  <p>
-                    Trainer and admin accounts cannot place customer bookings.
-                    Sign in with a customer account to continue.
-                  </p>
-                </div>
-              ) : (
+              <div className="workspace-actions booking-action-bar payment-final-action">
                 <button
                   type="button"
-                  className="btn"
-                  aria-busy={busy}
-                  disabled={
-                    busy ||
-                    !selectedPaymentNumber ||
-                    !payerName.trim() ||
-                    !transactionId.trim() ||
-                    !proof ||
-                    !start ||
-                    !packageId
-                  }
-                  onClick={async () => {
-                    if (busy) return;
-                    setBusy(true);
-                    setError("");
-                    try {
-                      let id = orderId;
-                      if (!id) {
-                        const order = await api<{ _id: string }>("bookings", {
-                          packageId,
-                          start,
-                          idempotencyKey: key,
-                        });
-                        id = order._id;
-                        setOrderId(id);
-                      }
-                      if (!proof)
-                        throw new Error("Upload your payment screenshot first");
-                      const upload = new FormData();
-                      upload.set("file", proof);
-                      upload.set("purpose", "PAYMENT_PROOF");
-                      const uploadResponse = await fetch("/api/uploads", {
-                        method: "POST",
-                        body: upload,
-                      });
-                      const uploadResult = await apiResult<{ id: string }>(
-                        uploadResponse,
-                      );
-                      await api(`bookings/${id}/pay`, {
-                        method: selectedPaymentMethod,
-                        payerName: payerName.trim(),
-                        transactionId: transactionId.trim(),
-                        proofUploadId: uploadResult.id,
-                      });
-                      router.push(`/booking/success?id=${id}`);
-                    } catch (e) {
-                      setError((e as Error).message);
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
+                  className="btn outline"
+                  disabled={busy}
+                  onClick={() => setStep(1)}
                 >
-                  {busy
-                    ? "Submitting payment proof…"
-                    : "Submit payment for review →"}
+                  Back
                 </button>
-              )}
+                {state.role === "visitor" ? (
+                  <Link
+                    className="btn booking-submit"
+                    href={`/login?next=${encodeURIComponent(resume)}`}
+                  >
+                    Sign in to finish booking →
+                  </Link>
+                ) : state.role !== "customer" ? (
+                  <div className="empty-state compact" role="alert">
+                    <h3>Customer account required.</h3>
+                    <p>
+                      Trainer and admin accounts cannot place customer bookings.
+                      Sign in with a customer account to continue.
+                    </p>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn booking-submit"
+                    aria-busy={busy}
+                    disabled={
+                      busy ||
+                      !selectedPaymentNumber ||
+                      !payerName.trim() ||
+                      !transactionId.trim() ||
+                      !proof ||
+                      !start ||
+                      !packageId
+                    }
+                    onClick={async () => {
+                      if (busy) return;
+                      setBusy(true);
+                      setError("");
+                      try {
+                        let id = orderId;
+                        if (!id) {
+                          const order = await api<{ _id: string }>("bookings", {
+                            packageId,
+                            start,
+                            idempotencyKey: key,
+                          });
+                          id = order._id;
+                          setOrderId(id);
+                        }
+                        if (!proof)
+                          throw new Error(
+                            "Upload your payment screenshot first",
+                          );
+                        const upload = new FormData();
+                        upload.set("file", proof);
+                        upload.set("purpose", "PAYMENT_PROOF");
+                        const uploadResponse = await fetch("/api/uploads", {
+                          method: "POST",
+                          body: upload,
+                        });
+                        const uploadResult = await apiResult<{ id: string }>(
+                          uploadResponse,
+                        );
+                        await api(`bookings/${id}/pay`, {
+                          method: selectedPaymentMethod,
+                          payerName: payerName.trim(),
+                          transactionId: transactionId.trim(),
+                          proofUploadId: uploadResult.id,
+                        });
+                        router.push(`/booking/success?id=${id}`);
+                      } catch (e) {
+                        setError((e as Error).message);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    {busy
+                      ? "Submitting payment proof…"
+                      : "Submit payment for review →"}
+                  </button>
+                )}
+              </div>
               {orderId && (
                 <Link
                   className="text-link mt-4"
@@ -571,8 +739,8 @@ function Checkout({
               {error}
             </p>
           )}
-          <div className="workspace-actions">
-            {step > 0 && (
+          <div className="workspace-actions booking-action-bar">
+            {step > 0 && step < 2 && (
               <button
                 type="button"
                 className="btn outline"

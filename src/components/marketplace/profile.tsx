@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   BadgeCheck,
   Star,
@@ -20,16 +20,32 @@ import { useStore } from "./store";
 import { VerifiedBadge } from "./verified-badge";
 import { TrainerCard } from "./trainer-card";
 
-export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; recommended?: Trainer[] }) {
+const subscribeToLocale = () => () => {};
+
+export function Profile({
+  trainer: t,
+  recommended = [],
+}: {
+  trainer: Trainer;
+  recommended?: Trainer[];
+}) {
   const { state, notify, toggleSaved } = useStore();
-  const [selectedPackageId, setSelectedPackageId] = useState(t.packages[0]?.id || "");
+  const [selectedPackageId, setSelectedPackageId] = useState(
+    t.packages[0]?.id || "",
+  );
   const [selectedDate, setSelectedDate] = useState("");
   const [time, setTime] = useState("");
   const [showMobileBooking, setShowMobileBooking] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const saved = state.saved.includes(t.id);
+  const availabilityLabel = useSyncExternalStore(
+    subscribeToLocale,
+    () => localAvailabilityLabel(t),
+    () => t.nextAvailable,
+  );
 
-  const selectedPkg = t.packages.find((p) => p.id === selectedPackageId) || t.packages[0];
+  const selectedPkg =
+    t.packages.find((p) => p.id === selectedPackageId) || t.packages[0];
 
   const {
     data: availability,
@@ -51,17 +67,22 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
       : null,
   );
 
-  const availableDays = availability?.days.filter((day) => day.slots.length) || [];
-  const currentDayObj = availableDays.find((day) => day.date === selectedDate) || availableDays[0];
+  const availableDays =
+    availability?.days.filter((day) => day.slots.length) || [];
+  const currentDayObj =
+    availableDays.find((day) => day.date === selectedDate) || availableDays[0];
   const activeDate = currentDayObj?.date || "";
   const activeSlots = currentDayObj?.slots || [];
 
   useEffect(() => {
     const node = heroRef.current;
     if (!node || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(([entry]) => {
-      setShowMobileBooking(!entry.isIntersecting);
-    }, { threshold: 0.08 });
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setShowMobileBooking(!entry.isIntersecting);
+      },
+      { threshold: 0.08 },
+    );
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
@@ -87,7 +108,7 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
           </h1>
           <p>{t.headline}</p>
           <p className="profile-online-line">
-            <span>Next available: {localAvailabilityLabel(t)}</span>
+            <span>Next available: {availabilityLabel}</span>
           </p>
         </div>
         <div className="profile-actions">
@@ -116,11 +137,32 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
         </div>
       </div>
 
-      <div className="mobile-profile-summary" aria-label="Trainer booking summary">
-        {selectedPkg && <span><small>From</small><strong>{money(selectedPkg.price)}</strong></span>}
-        <span><small>Next</small><strong>{localAvailabilityLabel(t)}</strong></span>
-        {t.reviewCount > 0 && <span><small>Rating</small><strong>{t.rating.toFixed(1)} / 5</strong></span>}
-        {t.verifiedIdentity && <span><small>Status</small><strong>Identity reviewed</strong></span>}
+      <div
+        className="mobile-profile-summary"
+        aria-label="Trainer booking summary"
+      >
+        {selectedPkg && (
+          <span>
+            <small>From</small>
+            <strong>{money(selectedPkg.price)}</strong>
+          </span>
+        )}
+        <span>
+          <small>Next</small>
+          <strong>{availabilityLabel}</strong>
+        </span>
+        {t.reviewCount > 0 && (
+          <span>
+            <small>Rating</small>
+            <strong>{t.rating.toFixed(1)} / 5</strong>
+          </span>
+        )}
+        {t.verifiedIdentity && (
+          <span>
+            <small>Status</small>
+            <strong>Identity reviewed</strong>
+          </span>
+        )}
       </div>
 
       <div className="profile-gallery">
@@ -160,13 +202,20 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
           <div className="profile-facts">
             <span>
               <Star size={17} />
-              <strong>{t.reviewCount ? t.rating.toFixed(1) : "No reviews yet"}</strong>{t.reviewCount ? ` · ${t.reviewCount} reviews` : ""}
+              <strong>
+                {t.reviewCount ? t.rating.toFixed(1) : "No reviews yet"}
+              </strong>
+              {t.reviewCount ? ` · ${t.reviewCount} reviews` : ""}
             </span>
-            {t.sessionsCompleted > 0 && <span>{t.sessionsCompleted} sessions completed</span>}
-            {t.responseTime && <span>
-              <Clock size={16} />
-              Replies {t.responseTime}
-            </span>}
+            {t.sessionsCompleted > 0 && (
+              <span>{t.sessionsCompleted} sessions completed</span>
+            )}
+            {t.responseTime && (
+              <span>
+                <Clock size={16} />
+                Replies {t.responseTime}
+              </span>
+            )}
           </div>
 
           <nav className="profile-anchors" aria-label="Profile sections">
@@ -206,10 +255,14 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
               )}
             </div>
 
-            {t.category && <>
-              <h3>Primary category</h3>
-              <div className="choice-chips"><span>{t.category}</span></div>
-            </>}
+            {t.category && (
+              <>
+                <h3>Primary category</h3>
+                <div className="choice-chips">
+                  <span>{t.category}</span>
+                </div>
+              </>
+            )}
 
             <h3>What we can work on</h3>
             <div className="choice-chips">
@@ -302,8 +355,11 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
                   key={pkg.id}
                   type="button"
                   className={`text-left p-3 border rounded-lg transition-all ${
-                    selectedPackageId === pkg.id ? "selected border-primary bg-primary/5" : ""
+                    selectedPackageId === pkg.id
+                      ? "selected border-primary bg-primary/5"
+                      : ""
                   }`}
+                  aria-pressed={selectedPackageId === pkg.id}
                   onClick={() => {
                     setSelectedPackageId(pkg.id);
                     setTime("");
@@ -314,20 +370,30 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
                     <strong className="text-primary">{money(pkg.price)}</strong>
                   </div>
                   <p className="text-xs text-muted mt-1">
-                    {pkg.sessions} {pkg.sessions === 1 ? "session" : "sessions"} · {pkg.duration} mins each
+                    {pkg.sessions} {pkg.sessions === 1 ? "session" : "sessions"}{" "}
+                    · {pkg.duration} mins each
                   </p>
                 </button>
               ))}
             </div>
           ) : (
-            <p className="muted">This trainer has not published a bookable package yet.</p>
+            <p className="muted">
+              This trainer has not published a bookable package yet.
+            </p>
           )}
 
           {selectedPkg && (
             <>
               <p className="eyebrow mt-4">STEP 2: CHOOSE DAY</p>
+              {slotError && (
+                <p className="form-error" role="alert">
+                  {slotError}
+                </p>
+              )}
               {slotsLoading ? (
-                <p className="fine-print" role="status">Checking available slots…</p>
+                <p className="fine-print" role="status">
+                  Checking available slots…
+                </p>
               ) : availableDays.length > 0 ? (
                 <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
                   {availableDays.map((day) => (
@@ -335,20 +401,27 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
                       key={day.date}
                       type="button"
                       className={`px-3 py-2 border rounded-lg text-center min-w-[70px] ${
-                        activeDate === day.date ? "selected border-primary bg-primary/10 font-bold" : ""
+                        activeDate === day.date
+                          ? "selected border-primary bg-primary/10 font-bold"
+                          : ""
                       }`}
+                      aria-pressed={activeDate === day.date}
                       onClick={() => {
                         setSelectedDate(day.date);
                         setTime("");
                       }}
                     >
                       <div className="text-xs">{day.label.split(",")[0]}</div>
-                      <div className="text-sm font-semibold">{day.label.split(",")[1] || day.date.slice(5)}</div>
+                      <div className="text-sm font-semibold">
+                        {day.label.split(",")[1] || day.date.slice(5)}
+                      </div>
                     </button>
                   ))}
                 </div>
               ) : (
-                <p className="fine-print text-muted mb-4">No open days available in the next 7 days.</p>
+                <p className="fine-print text-muted mb-4">
+                  No open days available in the next 7 days.
+                </p>
               )}
 
               <p className="eyebrow mt-2">STEP 3: CHOOSE TIME</p>
@@ -359,6 +432,7 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
                       key={slot.start}
                       type="button"
                       className={time === slot.start ? "selected" : ""}
+                      aria-pressed={time === slot.start}
                       onClick={() => setTime(slot.start)}
                     >
                       {new Date(slot.start).toLocaleTimeString(undefined, {
@@ -369,13 +443,19 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
                   ))}
                 </div>
               ) : (
-                <p className="fine-print text-muted mb-6">Select a date to view available start times.</p>
+                <p className="fine-print text-muted mb-6">
+                  Select a date to view available start times.
+                </p>
               )}
 
               <div className="border-t pt-4">
                 <div className="flex justify-between items-center mb-4">
-                  <span className="text-sm text-muted">Selected Plan Total</span>
-                  <strong className="text-xl font-bold">{money(selectedPkg.price)}</strong>
+                  <span className="text-sm text-muted">
+                    Selected Plan Total
+                  </span>
+                  <strong className="text-xl font-bold">
+                    {money(selectedPkg.price)}
+                  </strong>
                 </div>
                 <Link href={bookUrl} className="btn w-full">
                   Continue to Booking <ArrowRight size={17} />
@@ -384,13 +464,13 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
             </>
           )}
 
-          <Link
-            href={`/dashboard/customer/messages?trainer=${t.id}`}
+          <a
+            href={`/dashboard/customer/training?section=messages&trainer=${encodeURIComponent(t.id)}`}
             className="btn outline w-full mt-3"
           >
             <MessageCircle size={16} />
             Message {t.firstName}
-          </Link>
+          </a>
           <p className="fine-print text-center mt-3">
             Times shown in your device timezone.
           </p>
@@ -403,18 +483,27 @@ export function Profile({ trainer: t, recommended = [] }: { trainer: Trainer; re
 
       {/* ALSO RECOMMENDED: Hidden for logged-in trainers */}
       {recommended.length > 0 && state.role !== "trainer" && (
-        <section className="profile-section mt-10" aria-labelledby="recommended-trainers">
+        <section
+          className="profile-section mt-10"
+          aria-labelledby="recommended-trainers"
+        >
           <p className="eyebrow">MORE COACHES TO CONSIDER</p>
           <h2 id="recommended-trainers">Also Recommended</h2>
-          <p>Approved online trainers with a similar category or coaching focus.</p>
+          <p>
+            Approved online trainers with a similar category or coaching focus.
+          </p>
           <div className="trainer-grid mt-6">
-            {recommended.map((trainer) => <TrainerCard key={trainer.id} trainer={trainer} />)}
+            {recommended.map((trainer) => (
+              <TrainerCard key={trainer.id} trainer={trainer} />
+            ))}
           </div>
         </section>
       )}
 
       {selectedPkg && (
-        <div className={`mobile-booking-bar ${showMobileBooking ? "visible" : ""}`}>
+        <div
+          className={`mobile-booking-bar ${showMobileBooking ? "visible" : ""}`}
+        >
           <div>
             <small>{selectedPkg.title}</small>
             <strong>{money(selectedPkg.price)}</strong>

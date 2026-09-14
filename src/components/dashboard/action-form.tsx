@@ -10,6 +10,7 @@ export type Field = {
     | "number"
     | "password"
     | "email"
+    | "tel"
     | "textarea"
     | "select"
     | "checkbox"
@@ -48,12 +49,13 @@ export function ActionForm({
   const submitting = useRef(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const { confirmModal, notify } = useStore();
+  const { confirmModal } = useStore();
   return (
     <form
       className="workspace-form"
       onSubmit={async (e) => {
         e.preventDefault();
+        const form = e.currentTarget;
         if (submitting.current || pending || disabled) return;
         if (confirmation) {
           const confirmed = await confirmModal({
@@ -66,7 +68,6 @@ export function ActionForm({
           });
           if (!confirmed) return;
         }
-        const form = e.currentTarget;
         const values = new FormData(form);
         const input: Record<string, unknown> = {};
         fields.forEach((field) => {
@@ -99,37 +100,10 @@ export function ActionForm({
         }
       }}
     >
-      {fields.map((field) => (
-        <label
-          className={field.type === "checkbox" ? "check-label" : "field"}
-          key={field.name}
-        >
-          {field.label}
-          {field.type === "textarea" ? (
-            <textarea
-              name={field.name}
-              defaultValue={String(field.value || "")}
-              required={field.required}
-              rows={4}
-              maxLength={5000}
-            />
-          ) : field.type === "select" ? (
-            <select
-              name={field.name}
-              defaultValue={String(field.value || field.options?.[0] || "")}
-              required={field.required}
-            >
-              {field.options?.map((value) => (
-                <option key={value}>{value}</option>
-              ))}
-            </select>
-          ) : field.type === "checkbox" ? (
-            <input
-              type="checkbox"
-              name={field.name}
-              defaultChecked={!!field.value}
-            />
-          ) : field.type === "checkbox-group" ? (
+      {fields.map((field) =>
+        field.type === "checkbox-group" ? (
+          <fieldset className="field checkbox-fieldset" key={field.name}>
+            <legend>{field.label}</legend>
             <div className="checkbox-group">
               {field.options?.map((opt) => (
                 <label key={opt} className="check-label">
@@ -147,28 +121,90 @@ export function ActionForm({
                 </label>
               ))}
             </div>
-          ) : (
-            <input
-              name={field.name}
-              type={field.type || "text"}
-              defaultValue={String(field.value ?? "")}
-              required={field.required}
-              min={field.min}
-              max={field.max}
-              step={field.step}
-              maxLength={field.type === "password" ? 72 : 5000}
-            />
-          )}
-          {field.hint && <small>{field.hint}</small>}
-        </label>
-      ))}
+            {field.hint && <small>{field.hint}</small>}
+          </fieldset>
+        ) : (
+          <label
+            className={field.type === "checkbox" ? "check-label" : "field"}
+            key={field.name}
+          >
+            {field.label}
+            {field.type === "textarea" ? (
+              <textarea
+                name={field.name}
+                defaultValue={String(field.value || "")}
+                required={field.required}
+                rows={4}
+                maxLength={5000}
+              />
+            ) : field.type === "select" ? (
+              <select
+                name={field.name}
+                defaultValue={String(field.value || field.options?.[0] || "")}
+                required={field.required}
+              >
+                {field.options?.map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </select>
+            ) : field.type === "checkbox" ? (
+              <input
+                type="checkbox"
+                name={field.name}
+                defaultChecked={!!field.value}
+              />
+            ) : (
+              <input
+                name={field.name}
+                type={field.type || "text"}
+                autoComplete={
+                  (
+                    {
+                      firstName: "given-name",
+                      lastName: "family-name",
+                      name: "name",
+                      email: "email",
+                      phone: "tel",
+                      currentPassword: "current-password",
+                      newPassword: "new-password",
+                      confirmPassword: "new-password",
+                    } as Record<string, string>
+                  )[field.name]
+                }
+                inputMode={
+                  field.type === "number"
+                    ? "decimal"
+                    : field.name === "phone"
+                      ? "tel"
+                      : undefined
+                }
+                defaultValue={String(field.value ?? "")}
+                required={field.required}
+                min={field.min}
+                max={field.max}
+                step={field.step}
+                maxLength={field.type === "password" ? 72 : 5000}
+              />
+            )}
+            {field.hint && <small>{field.hint}</small>}
+          </label>
+        ),
+      )}
       {error && (
         <p className="form-error" role="alert">
           {error}
         </p>
       )}
-      {success && <p role="status" className="form-success">{success}</p>}
-      <button className="btn small" disabled={pending || disabled} aria-busy={pending}>
+      {success && (
+        <p role="status" className="form-success">
+          {success}
+        </p>
+      )}
+      <button
+        className="btn small"
+        disabled={pending || disabled}
+        aria-busy={pending}
+      >
         {pending ? "Saving…" : label}
       </button>
     </form>
@@ -206,7 +242,9 @@ export function UploadForm({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={visibleUrl} alt="Your uploaded profile" />
           ) : (
-            <span className="uploaded-file-icon" aria-hidden="true">✓</span>
+            <span className="uploaded-file-icon" aria-hidden="true">
+              ✓
+            </span>
           )}
           <div>
             <strong>
@@ -214,9 +252,17 @@ export function UploadForm({
                 ? "Photo saved to your profile"
                 : "Document uploaded and ready to save"}
             </strong>
-            <small>{savedFile?.name || (field ? "Current profile photo" : "Uploaded document")}</small>
+            <small>
+              {savedFile?.name ||
+                (field ? "Current profile photo" : "Uploaded document")}
+            </small>
             {visibleUrl && (
-              <a className="text-link" href={visibleUrl} target="_blank" rel="noreferrer">
+              <a
+                className="text-link"
+                href={visibleUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
                 {field ? "View full photo" : "View uploaded file"} →
               </a>
             )}
@@ -244,7 +290,9 @@ export function UploadForm({
               method: "POST",
               body: data,
             });
-            const result = await apiResult<{ id: string; url?: string }>(response);
+            const result = await apiResult<{ id: string; url?: string }>(
+              response,
+            );
             let url = result.url || `/api/media/${result.id}`;
             if (field) {
               const attached = await api<{ url: string }>("media", {
@@ -305,7 +353,12 @@ export function UploadForm({
               : "Upload and save"}
         </button>
         {message && (
-          <p className={message.includes("complete") ? "upload-success" : "form-error"} role="status">
+          <p
+            className={
+              message.includes("complete") ? "upload-success" : "form-error"
+            }
+            role="status"
+          >
             {message}
           </p>
         )}

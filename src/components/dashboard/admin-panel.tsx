@@ -5,21 +5,48 @@ import { api } from "@/lib/client-api";
 import { useStore } from "@/components/marketplace/store";
 import { ActionForm, type Field } from "./action-form";
 import { amount, date, num, rows, str, type Item } from "./panels";
-import { formatFieldLabel, isIdKey, isLongIdValue, truncateId } from "@/lib/admin-formatters";
+import {
+  formatFieldLabel,
+  isIdKey,
+  isLongIdValue,
+  truncateId,
+} from "@/lib/admin-formatters";
 import { IdCopyChip } from "@/components/ui/id-copy-chip";
 
 export function AdminSubNav({ section }: { section: string }) {
-  const usersSections = ["users", "customers", "trainers", "applications", "verification"];
+  const usersSections = [
+    "users",
+    "customers",
+    "trainers",
+    "applications",
+    "verification",
+  ];
   const bookingsSections = ["bookings", "payments", "refunds", "payouts"];
-  const operationsSections = ["categories", "specialties", "content", "sessions", "reviews", "support", "audit-logs"];
+  const operationsSections = [
+    "categories",
+    "specialties",
+    "content",
+    "sessions",
+    "reviews",
+    "support",
+    "audit-logs",
+  ];
 
   if (usersSections.includes(section)) {
     const tabs = [
       { key: "users", label: "All Users", href: "/admin/users" },
       { key: "customers", label: "Customers", href: "/admin/customers" },
       { key: "trainers", label: "Trainers", href: "/admin/trainers" },
-      { key: "applications", label: "Applications", href: "/admin/applications" },
-      { key: "verification", label: "Verifications", href: "/admin/verification" },
+      {
+        key: "applications",
+        label: "Applications",
+        href: "/admin/applications",
+      },
+      {
+        key: "verification",
+        label: "Verifications",
+        href: "/admin/verification",
+      },
     ];
     return (
       <div className="admin-subnav-bar mb-6">
@@ -42,7 +69,11 @@ export function AdminSubNav({ section }: { section: string }) {
   if (bookingsSections.includes(section)) {
     const tabs = [
       { key: "bookings", label: "All Bookings", href: "/admin/bookings" },
-      { key: "payments", label: "Pending Payments & Proof", href: "/admin/payments" },
+      {
+        key: "payments",
+        label: "Pending Payments & Proof",
+        href: "/admin/payments",
+      },
       { key: "refunds", label: "Refund Requests", href: "/admin/refunds" },
       { key: "payouts", label: "Trainer Payouts", href: "/admin/payouts" },
     ];
@@ -66,7 +97,11 @@ export function AdminSubNav({ section }: { section: string }) {
 
   if (operationsSections.includes(section)) {
     const tabs = [
-      { key: "categories", label: "Catalog (Categories)", href: "/admin/categories" },
+      {
+        key: "categories",
+        label: "Catalog (Categories)",
+        href: "/admin/categories",
+      },
       { key: "specialties", label: "Specialties", href: "/admin/specialties" },
       { key: "content", label: "FAQ & Content", href: "/admin/content" },
       { key: "sessions", label: "Sessions", href: "/admin/sessions" },
@@ -258,10 +293,10 @@ function ApplicationReviewSummary({ item }: { item: Item }) {
   });
   const profileReady = Boolean(
     str(trainer, "displayName") &&
-      str(trainer, "headline") &&
-      str(trainer, "biography").length >= 100 &&
-      str(trainer, "profileImage") &&
-      str(trainer, "cnicUploadId"),
+    str(trainer, "headline") &&
+    str(trainer, "biography").length >= 100 &&
+    str(trainer, "profileImage") &&
+    str(trainer, "cnicUploadId"),
   );
   const packageReady = packages.some((pkg) => pkg.active !== false);
   const availabilityReady = availability.some((slot) => slot.active !== false);
@@ -289,7 +324,9 @@ function ApplicationReviewSummary({ item }: { item: Item }) {
         </div>
         <div>
           <span>Phone Number</span>
-          <strong>{str(trainer, "phone") || str(account, "phone") || "—"}</strong>
+          <strong>
+            {str(trainer, "phone") || str(account, "phone") || "—"}
+          </strong>
         </div>
         <div>
           <span>Category</span>
@@ -398,7 +435,8 @@ function QuickPaymentReview({
     if (decision === "APPROVE") {
       const confirmed = await confirmModal({
         title: "Approve Payment Verification",
-        description: "Confirm bank transfer verification and approve this payment? This will confirm the booking.",
+        description:
+          "Confirm bank transfer verification and approve this payment? This will confirm the booking.",
         confirmText: "Approve Payment",
         cancelText: "Cancel",
         variant: "lime",
@@ -459,7 +497,9 @@ function QuickPaymentReview({
       ) : (
         <div className="admin-reject-box p-3 bg-red-50/50 rounded-md border border-red-200">
           <label className="field">
-            <span className="font-semibold text-red-900">Rejection Reason / Feedback</span>
+            <span className="font-semibold text-red-900">
+              Rejection Reason / Feedback
+            </span>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -535,7 +575,11 @@ export function AdminPanel({
         <section className="panel mb-6">
           <h2>
             Add{" "}
-            {section === "content" ? "FAQ" : section === "categories" ? "category" : "specialty"}
+            {section === "content"
+              ? "FAQ"
+              : section === "categories"
+                ? "category"
+                : "specialty"}
           </h2>
           <ActionForm
             endpoint={`admin/${section}`}
@@ -547,9 +591,12 @@ export function AdminPanel({
       {items.map((item) => {
         const id = str(item, "_id");
         const publicationBlockers = [
-          str(item, "applicationStatus") !== "APPROVED" && "application approval",
-          str(item, "identityVerificationStatus") !== "APPROVED" && "identity verification",
-          str(item, "credentialVerificationStatus") !== "APPROVED" && "credential verification",
+          str(item, "applicationStatus") !== "APPROVED" &&
+            "application approval",
+          str(item, "identityVerificationStatus") !== "APPROVED" &&
+            "identity verification",
+          str(item, "credentialVerificationStatus") !== "APPROVED" &&
+            "credential verification",
         ].filter(Boolean) as string[];
         const canPublish = publicationBlockers.length === 0;
         let fields: Field[] = [];
@@ -574,7 +621,10 @@ export function AdminPanel({
               label: "Advanced decision",
               type: "select",
               options: ["UNDER_REVIEW", "ACTION_REQUIRED", "REJECTED"],
-              value: str(item, "status") === "SUBMITTED" ? "UNDER_REVIEW" : str(item, "status"),
+              value:
+                str(item, "status") === "SUBMITTED"
+                  ? "UNDER_REVIEW"
+                  : str(item, "status"),
             },
             {
               name: "notes",
@@ -685,15 +735,37 @@ export function AdminPanel({
         if (section === "refunds" && str(item, "status") === "REQUESTED") {
           label = "Review refund request";
           fields = [
-            { name: "decision", label: "Decision", type: "select", options: ["APPROVE", "REJECT"], required: true },
-            { name: "notes", label: "Review notes", type: "textarea", hint: "A reason is required when rejecting." },
+            {
+              name: "decision",
+              label: "Decision",
+              type: "select",
+              options: ["APPROVE", "REJECT"],
+              required: true,
+            },
+            {
+              name: "notes",
+              label: "Review notes",
+              type: "textarea",
+              hint: "A reason is required when rejecting.",
+            },
           ];
         }
         if (section === "refunds" && str(item, "status") === "APPROVED") {
           label = "Record manual refund";
           fields = [
-            { name: "decision", label: "Action", type: "select", options: ["MARK_REFUNDED"], required: true, value: "MARK_REFUNDED" },
-            { name: "reference", label: "JazzCash / EasyPaisa refund reference", required: true },
+            {
+              name: "decision",
+              label: "Action",
+              type: "select",
+              options: ["MARK_REFUNDED"],
+              required: true,
+              value: "MARK_REFUNDED",
+            },
+            {
+              name: "reference",
+              label: "JazzCash / EasyPaisa refund reference",
+              required: true,
+            },
             { name: "notes", label: "Internal notes", type: "textarea" },
           ];
         }
@@ -707,7 +779,8 @@ export function AdminPanel({
 
         const rawId = str(item, "bookingNumber") || id;
         const mainTitleText =
-          section === "verification" && str((item.trainer as Item) || {}, "displayName")
+          section === "verification" &&
+          str((item.trainer as Item) || {}, "displayName")
             ? `${str((item.trainer as Item) || {}, "displayName")} · ${str(item, "type") || "credential"}`
             : str(item, "name") ||
               str(item, "displayName") ||
@@ -730,31 +803,34 @@ export function AdminPanel({
               <StatusBadge status={currentStatus} />
             </div>
 
-            {section === "applications" && <ApplicationReviewSummary item={item} />}
-            {section === "verification" && (() => {
-              const trainer = (item.trainer as Item) || {};
-              const account = (item.account as Item) || {};
-              return (
-                <div className="admin-verification-summary">
-                  <div>
-                    <span>Public Display Name</span>
-                    <strong>{str(trainer, "displayName") || "—"}</strong>
+            {section === "applications" && (
+              <ApplicationReviewSummary item={item} />
+            )}
+            {section === "verification" &&
+              (() => {
+                const trainer = (item.trainer as Item) || {};
+                const account = (item.account as Item) || {};
+                return (
+                  <div className="admin-verification-summary">
+                    <div>
+                      <span>Public Display Name</span>
+                      <strong>{str(trainer, "displayName") || "—"}</strong>
+                    </div>
+                    <div>
+                      <span>Email Address</span>
+                      <strong>{str(account, "normalizedEmail") || "—"}</strong>
+                    </div>
+                    <div>
+                      <span>Category</span>
+                      <strong>{str(trainer, "category") || "—"}</strong>
+                    </div>
+                    <div>
+                      <span>Application Status</span>
+                      <StatusBadge status={str(trainer, "applicationStatus")} />
+                    </div>
                   </div>
-                  <div>
-                    <span>Email Address</span>
-                    <strong>{str(account, "normalizedEmail") || "—"}</strong>
-                  </div>
-                  <div>
-                    <span>Category</span>
-                    <strong>{str(trainer, "category") || "—"}</strong>
-                  </div>
-                  <div>
-                    <span>Application Status</span>
-                    <StatusBadge status={str(trainer, "applicationStatus")} />
-                  </div>
-                </div>
-              );
-            })()}
+                );
+              })()}
 
             {section !== "applications" && <RecordDetails item={item} />}
             {section === "applications" && (
@@ -775,7 +851,8 @@ export function AdminPanel({
                   Open submitted evidence ↗
                 </a>
                 {str((item.trainer as Item) || {}, "cnicUploadId") &&
-                  str((item.trainer as Item) || {}, "cnicUploadId") !== str(item, "uploadId") && (
+                  str((item.trainer as Item) || {}, "cnicUploadId") !==
+                    str(item, "uploadId") && (
                     <a
                       className="btn outline small"
                       href={`/api/media/${str((item.trainer as Item) || {}, "cnicUploadId")}`}
@@ -820,6 +897,8 @@ export function AdminPanel({
                     rel="noreferrer"
                     title="Click to expand full resolution screenshot"
                   >
+                    {/* Authenticated proof media must remain a direct API image so reviewers can open full resolution. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`/api/media/${str(item, "proofUploadId")}`}
                       alt="Payment transfer proof screenshot"
@@ -833,24 +912,42 @@ export function AdminPanel({
             {section === "applications" && (
               <div className="admin-evidence-links">
                 {str((item.trainer as Item) || {}, "cnicUploadId") && (
-                  <a className="btn outline small" href={`/api/media/${str((item.trainer as Item) || {}, "cnicUploadId")}`} target="_blank" rel="noreferrer">View CNIC document ↗</a>
+                  <a
+                    className="btn outline small"
+                    href={`/api/media/${str((item.trainer as Item) || {}, "cnicUploadId")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View CNIC document ↗
+                  </a>
                 )}
                 {rows(item.credentials).map((credential) => (
-                  <a key={str(credential, "_id")} className="btn outline small" href={`/api/media/${str(credential, "uploadId")}`} target="_blank" rel="noreferrer">
-                    {str(credential, "type") === "IDENTITY" ? "Identity evidence ↗" : `${str(credential, "title") || "Certification"} ↗`}
+                  <a
+                    key={str(credential, "_id")}
+                    className="btn outline small"
+                    href={`/api/media/${str(credential, "uploadId")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {str(credential, "type") === "IDENTITY"
+                      ? "Identity evidence ↗"
+                      : `${str(credential, "title") || "Certification"} ↗`}
                   </a>
                 ))}
-                <Link className="text-link" href="/admin/verification">Review all credential evidence →</Link>
+                <Link className="text-link" href="/admin/verification">
+                  Review all credential evidence →
+                </Link>
               </div>
             )}
 
-            {section === "applications" && str(item, "status") !== "APPROVED" && (
-              <QuickApproveTrainer
-                applicationId={id}
-                trainerName={str((item.trainer as Item) || {}, "displayName")}
-                onDone={reload}
-              />
-            )}
+            {section === "applications" &&
+              str(item, "status") !== "APPROVED" && (
+                <QuickApproveTrainer
+                  applicationId={id}
+                  trainerName={str((item.trainer as Item) || {}, "displayName")}
+                  onDone={reload}
+                />
+              )}
 
             {section === "payments" && str(item, "status") === "SUBMITTED" && (
               <QuickPaymentReview paymentId={id} onDone={reload} />
@@ -858,13 +955,16 @@ export function AdminPanel({
 
             {section === "refunds" && item.status === "APPROVED" && (
               <p className="admin-notice-box mt-3 text-sm text-amber-700 bg-amber-50 p-3 rounded border border-amber-200">
-                This marketplace uses manual payments. Send the approved refund through JazzCash / EasyPaisa and record the transfer reference string below for your audit trail.
+                This marketplace uses manual payments. Send the approved refund
+                through JazzCash / EasyPaisa and record the transfer reference
+                string below for your audit trail.
               </p>
             )}
 
-            {["users", "customers"].includes(section) && str(item, "role") !== "ADMIN" && (
-              <PasswordResetControl userId={id} />
-            )}
+            {["users", "customers"].includes(section) &&
+              str(item, "role") !== "ADMIN" && (
+                <PasswordResetControl userId={id} />
+              )}
 
             {fields.length > 0 && section !== "payments" && (
               <div className="mt-5">
@@ -921,7 +1021,10 @@ function PasswordResetControl({ userId }: { userId: string }) {
           setBusy(true);
           setMessage("");
           try {
-            const result = await api<{ message: string; resetUrl: string }>(`admin/password-resets/${userId}`, {});
+            const result = await api<{ message: string; resetUrl: string }>(
+              `admin/password-resets/${userId}`,
+              {},
+            );
             setMessage(result.message);
             setResetUrl(result.resetUrl);
           } catch (error) {
@@ -933,10 +1036,22 @@ function PasswordResetControl({ userId }: { userId: string }) {
       >
         {busy ? "Creating…" : "🔑 Create password reset link"}
       </button>
-      {message && <small className="muted" style={{ display: "block", marginTop: "0.25rem" }}>{message}</small>}
+      {message && (
+        <small
+          className="muted"
+          style={{ display: "block", marginTop: "0.25rem" }}
+        >
+          {message}
+        </small>
+      )}
       {resetUrl && (
         <div className="reset-link-box mt-2 flex gap-2 items-center">
-          <input readOnly value={resetUrl} aria-label="One-time password reset link" className="flex-1 text-xs" />
+          <input
+            readOnly
+            value={resetUrl}
+            aria-label="One-time password reset link"
+            className="flex-1 text-xs"
+          />
           <button
             type="button"
             className="btn outline small"
@@ -997,18 +1112,34 @@ export function RecordDetails({ item }: { item: Item }) {
         } else if (
           isIdKey(key) ||
           isLongIdValue(value) ||
-          ["_id", "id", "customerId", "trainerId", "packageId", "bookingNumber", "cnicUploadId", "proofUploadId", "uploadId"].includes(key)
+          [
+            "_id",
+            "id",
+            "customerId",
+            "trainerId",
+            "packageId",
+            "bookingNumber",
+            "cnicUploadId",
+            "proofUploadId",
+            "uploadId",
+          ].includes(key)
         ) {
           content = <IdCopyChip value={strVal} />;
         } else if (
-          ["amount", "total", "price", "platformFee", "trainerAmount"].includes(key)
+          ["amount", "total", "price", "platformFee", "trainerAmount"].includes(
+            key,
+          )
         ) {
           content = (
             <span className="font-semibold text-slate-900 dark:text-zinc-100 text-sm">
               {amount(value)}
             </span>
           );
-        } else if (key.endsWith("At") || key.endsWith("Date") || ["start", "end"].includes(key)) {
+        } else if (
+          key.endsWith("At") ||
+          key.endsWith("Date") ||
+          ["start", "end"].includes(key)
+        ) {
           content = (
             <span className="text-slate-700 dark:text-zinc-300 font-medium">
               {date(value)}
@@ -1027,11 +1158,17 @@ export function RecordDetails({ item }: { item: Item }) {
             </span>
           );
         } else if (typeof value === "object") {
-          if (Array.isArray(value) && value.every((v) => typeof v !== "object")) {
+          if (
+            Array.isArray(value) &&
+            value.every((v) => typeof v !== "object")
+          ) {
             content = (
               <div className="flex flex-wrap gap-1 mt-0.5">
                 {value.map((v, i) => (
-                  <span key={i} className="px-2 py-0.5 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 rounded text-[11px] font-medium border border-slate-200 dark:border-zinc-700">
+                  <span
+                    key={i}
+                    className="px-2 py-0.5 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 rounded text-[11px] font-medium border border-slate-200 dark:border-zinc-700"
+                  >
                     {String(v)}
                   </span>
                 ))}
@@ -1067,7 +1204,9 @@ export function RecordDetails({ item }: { item: Item }) {
             </a>
           );
         } else {
-          content = <span className="text-slate-800 dark:text-zinc-200">{strVal}</span>;
+          content = (
+            <span className="text-slate-800 dark:text-zinc-200">{strVal}</span>
+          );
         }
 
         return (

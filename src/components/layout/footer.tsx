@@ -71,7 +71,18 @@ export function Footer() {
   const [subscribed, setSubscribed] = useState(false);
 
   if (
-    ["/match", "/checkout", "/login", "/signup"].includes(path) ||
+    [
+      "/match",
+      "/checkout",
+      "/booking",
+      "/booking/success",
+      "/login",
+      "/signup",
+      "/forgot-password",
+      "/reset-password",
+    ].includes(path) ||
+    path === "/trainer" ||
+    path.startsWith("/trainer/") ||
     path.startsWith("/dashboard") ||
     path.startsWith("/admin")
   ) {
@@ -94,8 +105,9 @@ export function Footer() {
             <div className="footer-brand-col">
               <Logo />
               <p className="footer-brand-desc">
-                The online marketplace connecting you with verified personal trainers
-                tailored around your goals, schedule, and coaching style.
+                The online marketplace connecting you with verified personal
+                trainers tailored around your goals, schedule, and coaching
+                style.
               </p>
               <div className="footer-status-pill">
                 <span className="footer-status-dot" aria-hidden="true" />
@@ -111,7 +123,10 @@ export function Footer() {
                     ✓ Thank you! You&apos;re subscribed to Spotter updates.
                   </p>
                 ) : (
-                  <form onSubmit={handleSubscribe} className="footer-newsletter-form">
+                  <form
+                    onSubmit={handleSubscribe}
+                    className="footer-newsletter-form"
+                  >
                     <input
                       type="email"
                       value={email}
@@ -121,7 +136,10 @@ export function Footer() {
                       required
                       aria-label="Email address for newsletter"
                     />
-                    <button type="submit" className="btn lime footer-newsletter-btn">
+                    <button
+                      type="submit"
+                      className="btn lime footer-newsletter-btn"
+                    >
                       Subscribe <ArrowRight size={14} />
                     </button>
                   </form>
@@ -185,7 +203,9 @@ export function Footer() {
 
           <div className="footer-bottom-row">
             <div className="footer-bottom-meta">
-              <span>© {new Date().getFullYear()} SPOTTER Inc. All rights reserved.</span>
+              <span>
+                © {new Date().getFullYear()} SPOTTER Inc. All rights reserved.
+              </span>
               <span>Made for your next chapter.</span>
             </div>
 

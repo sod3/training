@@ -1,8 +1,9 @@
 "use client";
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/lib/client-api";
+const subscribeToHydration = () => () => {};
 export function AuthForm({
   signup = false,
   initialRole = "customer",
@@ -19,6 +20,11 @@ export function AuthForm({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [visible, setVisible] = useState(false);
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
   return (
     <div className="auth-page">
       <div className="auth-photo">
@@ -193,6 +199,7 @@ export function AuthForm({
               <button
                 className="text-link"
                 type="button"
+                aria-pressed={visible}
                 onClick={() => setVisible(!visible)}
               >
                 {visible ? "Hide password" : "Show password"}
@@ -214,9 +221,11 @@ export function AuthForm({
           )}
           {signup && (
             <label className="check-label">
-              <input type="checkbox" name="terms" required />I agree to the{" "}
-              <Link href="/terms">Terms</Link> and{" "}
-              <Link href="/privacy">Privacy Policy</Link>.
+              <input type="checkbox" name="terms" required />
+              <span>
+                I agree to the <Link href="/terms">Terms</Link> and{" "}
+                <Link href="/privacy">Privacy Policy</Link>.
+              </span>
             </label>
           )}
           {error && (
@@ -274,7 +283,7 @@ export function AuthForm({
           <p className="auth-switch">
             <Link
               href={`${signup || mode ? "/login" : "/signup"}${
-                typeof window !== "undefined" ? window.location.search : ""
+                hydrated ? window.location.search : ""
               }`}
             >
               {signup || mode ? "Back to log in" : "Create a customer account"}
