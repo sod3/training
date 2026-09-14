@@ -17,7 +17,7 @@ import { assert } from "@/lib/server/errors";
 import { connectDB } from "@/lib/server/db";
 import { databaseOperation } from "@/lib/server/diagnostics";
 import { availabilityConflict, validateDailyAvailability } from "@/lib/server/rules";
-import { notifyUser } from "@/lib/server/email";
+import { notifyUser, sendTrainerStatusEmail } from "@/lib/server/email";
 import { type Actor } from "@/lib/server/security";
 import {
   availabilitySchema,
@@ -624,6 +624,12 @@ export async function quickApproveApplication(actor: Actor, id: string) {
       "/trainer/profile",
       session,
     );
+    sendTrainerStatusEmail({
+      trainerUserId: trainer.userId,
+      displayName: trainer.displayName,
+      status: "APPROVED",
+      adminNotes: "Approved by administrator.",
+    }).catch((err) => console.error("[quickApprove Trainer Email Error]", err));
 
     return { message: "Trainer approved and published." };
   });
@@ -731,6 +737,13 @@ export async function reviewApplication(
       "/trainer/verification",
       session,
     );
+    sendTrainerStatusEmail({
+      trainerUserId: trainer.userId,
+      displayName: trainer.displayName,
+      status: input.status,
+      adminNotes: input.notes,
+    }).catch((err) => console.error("[reviewApplication Trainer Email Error]", err));
+
     return { message: "Application reviewed" };
   });
 }

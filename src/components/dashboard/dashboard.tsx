@@ -51,6 +51,8 @@ import {
   type Item,
 } from "./panels";
 import { BookingList, StartConversation } from "./bookings-panel";
+import { JoinSessionButton } from "@/components/session/join-session-button";
+
 
 const primaryTabsByRole: Record<string, string[]> = {
   customer: ["overview", "training", "saved"],
@@ -814,20 +816,20 @@ export function Dashboard({
                           </>
                         )}
                       </div>
-                      <div className="dashboard-primary-actions">
-                        {rows(data.upcoming).length > 0 &&
-                          str(rows(data.upcoming)[0], "meetingUrl") && (
-                            <a
-                              className="btn lime"
-                              href={str(rows(data.upcoming)[0], "meetingUrl")}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              Join session →
-                            </a>
-                          )}
+                      <div className="dashboard-primary-actions flex flex-wrap items-center gap-3">
+                        {rows(data.upcoming).length > 0 && (
+                          <JoinSessionButton
+                            bookingId={str(rows(data.upcoming)[0], "orderId")}
+                            sessionId={str(rows(data.upcoming)[0], "_id")}
+                            start={str(rows(data.upcoming)[0], "start")}
+                            end={str(rows(data.upcoming)[0], "end")}
+                            status={str(rows(data.upcoming)[0], "status")}
+                            size="md"
+                          />
+                        )}
                         <Link
                           className="btn outline"
+
                           href={
                             selectedRole === "customer"
                               ? `${base}/bookings`

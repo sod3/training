@@ -30,6 +30,7 @@ import {
   getAvailableSlots,
   ownedOrder,
   scheduleSession,
+  joinSession,
 } from "@/services/bookings";
 import {
   accountAction,
@@ -310,8 +311,12 @@ async function handle(request: Request, context: Context) {
           page,
         });
       }
+      if ((root === "session" || root === "sessions") && id) {
+        return json(await joinSession(user, { bookingId: id, sessionId: params.sessionId }));
+      }
       assert(false, "Not found", 404);
     }
+
     operation = "request.checkOrigin";
     checkOrigin(request);
     if (root === "uploads" && !id) {
@@ -432,11 +437,17 @@ async function handle(request: Request, context: Context) {
         return json(await submitManualPayment(user, id, data));
       }
     }
+    if ((root === "session" || root === "sessions") && (id === "join" || action === "join")) {
+      requireMethod(method, "POST");
+      await rateLimit(`join-session:${user.id}`, 30, 15);
+      return json(await joinSession(user, data));
+    }
     if (root === "sessions" && id && !action) {
       requireMethod(method, "POST", "PATCH");
       return json(await completeSession(user, id, data));
     }
     assert(false, "Not found", 404);
+
   } catch (error) {
     return errorResponse(error, {
       method: request.method,

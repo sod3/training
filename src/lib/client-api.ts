@@ -5,6 +5,7 @@ export class ApiError extends Error {
     message: string,
     public status: number,
     public requestId?: string,
+    public fieldErrors?: Record<string, string>,
   ) {
     super(message);
     this.name = "ApiError";
@@ -13,7 +14,7 @@ export class ApiError extends Error {
 
 export async function apiResult<T>(response: Response): Promise<T> {
   const contentType = response.headers.get("content-type") || "";
-  let result: { error?: string } & Record<string, unknown> = {};
+  let result: { error?: string; fieldErrors?: Record<string, string> } & Record<string, unknown> = {};
   if (contentType.includes("application/json")) {
     try {
       result = (await response.json()) as typeof result;
@@ -23,40 +24,49 @@ export async function apiResult<T>(response: Response): Promise<T> {
   }
   if (!response.ok) {
     let errorMessage = typeof result.error === "string" && result.error ? result.error : "";
+    const fieldErrors =
+      result.fieldErrors && typeof result.fieldErrors === "object"
+        ? result.fieldErrors
+        : undefined;
+
     if (errorMessage) {
       console.error(`[SPOTTER API Error] Path response code ${response.status}:`, errorMessage);
-      // Sanitize raw stack traces or database errors for UI
+      // Only sanitize unhandled internal stack traces or database driver errors on 500 status code
       if (
-        errorMessage.includes("at ") ||
-        errorMessage.includes("MongoError") ||
-        errorMessage.includes("E11000") ||
-        errorMessage.includes("CastError") ||
-        errorMessage.includes("TypeError") ||
-        errorMessage.includes("ReferenceError")
+        response.status >= 500 &&
+        (errorMessage.includes("at ") ||
+          errorMessage.includes("MongoError") ||
+          errorMessage.includes("TypeError") ||
+          errorMessage.includes("ReferenceError"))
       ) {
         errorMessage = "A server error occurred. Please try again or contact support.";
       }
     }
     const fallback =
-      response.status === 401
-        ? "Your session has expired. Sign in and try again."
-        : response.status === 403
-          ? "You do not have permission to do that."
-          : response.status === 404
-            ? "The requested record was not found."
-            : response.status === 409
-              ? "This record changed or conflicts with another action. Refresh and try again."
-              : response.status === 413
-                ? "The submitted file or request is too large."
-                : response.status === 429
-                  ? "Too many attempts. Wait a moment and try again."
-                  : response.status === 503
-                    ? "This service is temporarily unavailable. Please try again shortly."
-                    : "Something went wrong. Please try again.";
+      response.status === 400
+        ? "Please check your inputs and try again."
+        : response.status === 401
+          ? "Your session has expired. Sign in and try again."
+          : response.status === 403
+            ? "You do not have permission to do that."
+            : response.status === 404
+              ? "The requested record was not found."
+              : response.status === 409
+                ? "This record changed or conflicts with another action. Refresh and try again."
+                : response.status === 413
+                  ? "The submitted file or request is too large."
+                  : response.status === 422
+                    ? "Unable to process the request. Check your entry and try again."
+                    : response.status === 429
+                      ? "Too many attempts. Wait a moment and try again."
+                      : response.status === 503
+                        ? "This service is temporarily unavailable. Please try again shortly."
+                        : "A server error occurred. Please try again or contact support.";
     throw new ApiError(
       errorMessage || fallback,
       response.status,
       response.headers.get("x-request-id") || undefined,
+      fieldErrors,
     );
   }
   return result as T;

@@ -2,7 +2,7 @@
 import { useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { api } from "@/lib/client-api";
+import { api, ApiError } from "@/lib/client-api";
 const subscribeToHydration = () => () => {};
 export function AuthForm({
   signup = false,
@@ -18,6 +18,7 @@ export function AuthForm({
   const submitting = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
   const [visible, setVisible] = useState(false);
   const hydrated = useSyncExternalStore(
@@ -25,6 +26,17 @@ export function AuthForm({
     () => true,
     () => false,
   );
+
+  const clearFieldError = (name: string) => {
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
+  };
+
   return (
     <div className="auth-page">
       <div className="auth-photo">
@@ -90,6 +102,7 @@ export function AuthForm({
             submitting.current = true;
             setBusy(true);
             setError("");
+            setFieldErrors({});
             const f = new FormData(e.currentTarget);
             const params = new URLSearchParams(window.location.search);
             try {
@@ -140,7 +153,14 @@ export function AuthForm({
                 window.location.assign(safe);
               } else setMessage(result.message || "Done.");
             } catch (e) {
-              setError((e as Error).message);
+              if (e instanceof ApiError) {
+                setError(e.message);
+                if (e.fieldErrors && Object.keys(e.fieldErrors).length > 0) {
+                  setFieldErrors(e.fieldErrors);
+                }
+              } else {
+                setError((e as Error).message);
+              }
             } finally {
               submitting.current = false;
               setBusy(false);
@@ -156,7 +176,14 @@ export function AuthForm({
                   required
                   autoComplete="given-name"
                   maxLength={80}
+                  className={fieldErrors.firstName ? "field-input-error" : undefined}
+                  onChange={() => clearFieldError("firstName")}
                 />
+                {fieldErrors.firstName && (
+                  <p className="field-error-msg" role="alert">
+                    {fieldErrors.firstName}
+                  </p>
+                )}
               </label>
               <label className="field">
                 Last name
@@ -165,7 +192,14 @@ export function AuthForm({
                   required
                   autoComplete="family-name"
                   maxLength={80}
+                  className={fieldErrors.lastName ? "field-input-error" : undefined}
+                  onChange={() => clearFieldError("lastName")}
                 />
+                {fieldErrors.lastName && (
+                  <p className="field-error-msg" role="alert">
+                    {fieldErrors.lastName}
+                  </p>
+                )}
               </label>
             </>
           )}
@@ -178,7 +212,14 @@ export function AuthForm({
                 required
                 autoComplete="email"
                 maxLength={254}
+                className={fieldErrors.email ? "field-input-error" : undefined}
+                onChange={() => clearFieldError("email")}
               />
+              {fieldErrors.email && (
+                <p className="field-error-msg" role="alert">
+                  {fieldErrors.email}
+                </p>
+              )}
             </label>
           )}
           {mode !== "forgot-password" && (
@@ -191,10 +232,17 @@ export function AuthForm({
                   required
                   minLength={signup || mode ? 12 : 1}
                   maxLength={72}
+                  className={fieldErrors.password ? "field-input-error" : undefined}
+                  onChange={() => clearFieldError("password")}
                   autoComplete={
                     signup || mode ? "new-password" : "current-password"
                   }
                 />
+                {fieldErrors.password && (
+                  <p className="field-error-msg" role="alert">
+                    {fieldErrors.password}
+                  </p>
+                )}
               </label>
               <button
                 className="text-link"
@@ -215,17 +263,34 @@ export function AuthForm({
                 required
                 minLength={12}
                 maxLength={72}
+                className={fieldErrors.confirmPassword ? "field-input-error" : undefined}
+                onChange={() => clearFieldError("confirmPassword")}
                 autoComplete="new-password"
               />
+              {fieldErrors.confirmPassword && (
+                <p className="field-error-msg" role="alert">
+                  {fieldErrors.confirmPassword}
+                </p>
+              )}
             </label>
           )}
           {signup && (
             <label className="check-label">
-              <input type="checkbox" name="terms" required />
+              <input
+                type="checkbox"
+                name="terms"
+                required
+                onChange={() => clearFieldError("terms")}
+              />
               <span>
                 I agree to the <Link href="/terms">Terms</Link> and{" "}
                 <Link href="/privacy">Privacy Policy</Link>.
               </span>
+              {fieldErrors.terms && (
+                <p className="field-error-msg" role="alert">
+                  {fieldErrors.terms}
+                </p>
+              )}
             </label>
           )}
           {error && (
@@ -233,7 +298,7 @@ export function AuthForm({
               {error}
             </p>
           )}
-          {message && <p role="status">{message}</p>}
+          {message && <p role="status" className="form-success">{message}</p>}
           <button
             className="btn w-full"
             disabled={busy}

@@ -292,9 +292,11 @@ const order = new Schema(
     trainerId: ref("TrainerProfile"),
     packageId: ref("TrainerPackage"),
     packageSnapshot: { type: snapshot, required: true },
-    videoProvider: { type: String, enum: ["NONE", "GOOGLE_MEET", "ZOOM", "LINK"], default: "NONE" },
+    videoProvider: { type: String, enum: ["NONE", "DAILY", "GOOGLE_MEET", "ZOOM", "LINK"], default: "NONE" },
     meetingId: text(),
     meetingUrl: text(1000),
+    dailyRoomName: text(200),
+    dailyRoomUrl: text(1000),
     timezone: String,
     total: money,
     currency: { type: String, default: "PKR" },
@@ -358,10 +360,13 @@ const session = new Schema(
       default: "HELD",
     },
     holdExpiresAt: Date,
-    videoProvider: { type: String, enum: ["NONE", "GOOGLE_MEET", "ZOOM", "LINK"], default: "NONE" },
+    videoProvider: { type: String, enum: ["NONE", "DAILY", "GOOGLE_MEET", "ZOOM", "LINK"], default: "NONE" },
     meetingId: text(),
     meetingUrl: text(1000),
+    dailyRoomName: text(200),
+    dailyRoomUrl: text(1000),
     meetingStatus: { type: String, enum: ["PENDING", "CREATED", "FAILED"], default: "PENDING" },
+
     trainerNotes: { ...text(3000), select: false },
     customerNotes: text(3000),
     completedAt: Date,
@@ -662,6 +667,27 @@ export const Upload = model(
     options,
   ),
 );
+const emailLog = new Schema(
+  {
+    recipient: { type: String, required: true, trim: true, maxlength: 254 },
+    userId: { type: Schema.Types.ObjectId, ref: "User" },
+    event: { type: String, required: true, trim: true, maxlength: 100 },
+    subject: { type: String, required: true, trim: true, maxlength: 300 },
+    status: {
+      type: String,
+      enum: ["SENT", "FAILED", "SKIPPED"],
+      required: true,
+    },
+    error: text(2000),
+    messageId: text(200),
+    idempotencyKey: { type: String, sparse: true, index: true },
+    metadata: Schema.Types.Mixed,
+  },
+  options,
+);
+emailLog.index({ recipient: 1, createdAt: -1 });
+emailLog.index({ event: 1, createdAt: -1 });
+export const EmailLog = model("EmailLog", emailLog);
 export const models = {
   User,
   CustomerProfile,
@@ -690,4 +716,5 @@ export const models = {
   AuthToken,
   RateLimit,
   Upload,
+  EmailLog,
 };

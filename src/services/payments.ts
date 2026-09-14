@@ -12,8 +12,14 @@ import {
 } from "@/models";
 import { assert } from "@/lib/server/errors";
 import { type Actor } from "@/lib/server/security";
-import { notifyUser } from "@/lib/server/email";
+import {
+  notifyUser,
+  sendPaymentApprovedEmail,
+  sendPaymentRejectedEmail,
+  sendPaymentSubmittedEmail,
+} from "@/lib/server/email";
 import { lockTrainer, ownedOrder } from "./bookings";
+import { createDailyRoom } from "@/lib/server/daily";
 
 const manualPaymentSchema = z
   .object({
@@ -104,6 +110,14 @@ export async function submitManualPayment(actor: Actor, id: string, data: unknow
       `/booking/success?id=${order._id}`,
       session,
     );
+    sendPaymentSubmittedEmail({
+      customerId: actor.id,
+      bookingNumber: order.bookingNumber,
+      method: input.method,
+      transactionId: input.transactionId,
+      orderId: String(order._id),
+    }).catch((err) => console.error("[submitManualPayment Email Error]", err));
+
     return {
       orderId: id,
       status: payment.status,
@@ -150,6 +164,13 @@ export async function reviewManualPayment(actor: Actor, id: string, data: unknow
         `/booking/success?id=${order._id}`,
         session,
       );
+      sendPaymentRejectedEmail({
+        customerId: order.customerId,
+        bookingNumber: order.bookingNumber,
+        reason: input.notes,
+        orderId: String(order._id),
+      }).catch((err) => console.error("[rejectPayment Email Error]", err));
+
       await AuditLog.create(
         [{ actorId: actor.id, actorRole: actor.role, action: "REJECT_MANUAL_PAYMENT", entityType: "Payment", entityId: id, newValues: { notes: input.notes } }],
         { session },
@@ -203,22 +224,47 @@ export async function reviewManualPayment(actor: Actor, id: string, data: unknow
     order.holdExpiresAt = undefined;
     held.status = "CONFIRMED";
     held.holdExpiresAt = undefined;
-    // Meeting links are intentionally not fabricated. Trainers attach a real
-    // Google Meet/Zoom/other HTTPS link from their calendar before the session.
-    held.videoProvider = "NONE";
-    held.meetingId = "";
-    held.meetingUrl = "";
-    held.meetingStatus = "PENDING";
+
+    // Automatically create one unique private Daily room for the confirmed booking if missing
+    let roomName = order.dailyRoomName;
+    let roomUrl = order.dailyRoomUrl;
+    if (!roomName || !roomUrl) {
+      const room = await createDailyRoom(order.bookingNumber || String(order._id));
+      roomName = room.roomName;
+      roomUrl = room.roomUrl;
+    }
+
+    order.dailyRoomName = roomName;
+    order.dailyRoomUrl = roomUrl;
+    order.videoProvider = "DAILY";
+
+    held.dailyRoomName = roomName;
+    held.dailyRoomUrl = roomUrl;
+    held.videoProvider = "DAILY";
+    held.meetingId = roomName;
+    held.meetingUrl = roomUrl;
+    held.meetingStatus = "CREATED";
+
     await Promise.all([held.save({ session }), payment.save({ session }), order.save({ session })]);
 
     for (const userId of [order.customerId, trainer.userId])
       await notifyUser(
         userId,
         "Booking confirmed",
-        `${order.bookingNumber} has been approved and confirmed. The trainer can add the private session link from their calendar.`,
-        "/dashboard",
+        `${order.bookingNumber} has been approved and confirmed. Your private video session room is ready.`,
+        `/session/${order._id}`,
         session,
       );
+
+    sendPaymentApprovedEmail({
+      customerId: order.customerId,
+      trainerId: order.trainerId,
+      bookingNumber: order.bookingNumber,
+      packageName: order.packageSnapshot.name || "Coaching Package",
+      orderId: String(order._id),
+      notes: input.notes,
+    }).catch((err) => console.error("[approvePayment Email Error]", err));
+
     await AuditLog.create(
       [{ actorId: actor.id, actorRole: actor.role, action: "APPROVE_MANUAL_PAYMENT", entityType: "Payment", entityId: id, newValues: { notes: input.notes, method: payment.method, transactionId: payment.transactionId } }],
       { session },

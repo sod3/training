@@ -611,16 +611,24 @@ function Checkout({
                 Name used for transfer
                 <input
                   value={payerName}
-                  onChange={(e) => setPayerName(e.target.value)}
+                  onChange={(e) => {
+                    setPayerName(e.target.value);
+                    if (error) setError("");
+                  }}
                   maxLength={120}
+                  placeholder="e.g. Ali Khan"
                 />
               </label>
               <label className="field">
                 Transaction ID
                 <input
                   value={transactionId}
-                  onChange={(e) => setTransactionId(e.target.value)}
+                  onChange={(e) => {
+                    setTransactionId(e.target.value);
+                    if (error) setError("");
+                  }}
                   maxLength={120}
+                  placeholder="e.g. 0293847291"
                 />
               </label>
               <label className="field">
@@ -628,7 +636,16 @@ function Checkout({
                 <input
                   type="file"
                   accept=".jpg,.jpeg,.png,.webp"
-                  onChange={(e) => setProof(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    const selected = e.target.files?.[0] || null;
+                    if (selected && selected.size > 4 * 1024 * 1024) {
+                      setError("Payment screenshot file size must be 4 MB or less.");
+                      setProof(null);
+                      return;
+                    }
+                    setError("");
+                    setProof(selected);
+                  }}
                 />
                 <small>JPG, PNG, or WebP up to 4 MB.</small>
               </label>
@@ -665,17 +682,25 @@ function Checkout({
                     type="button"
                     className="btn booking-submit"
                     aria-busy={busy}
-                    disabled={
-                      busy ||
-                      !selectedPaymentNumber ||
-                      !payerName.trim() ||
-                      !transactionId.trim() ||
-                      !proof ||
-                      !start ||
-                      !packageId
-                    }
+                    disabled={busy}
                     onClick={async () => {
                       if (busy) return;
+                      if (!payerName.trim()) {
+                        setError("Please enter the name used for the transfer.");
+                        return;
+                      }
+                      if (!transactionId.trim()) {
+                        setError("Please enter the transaction ID / reference number.");
+                        return;
+                      }
+                      if (!proof) {
+                        setError("Please select and upload your payment screenshot.");
+                        return;
+                      }
+                      if (!start || !packageId) {
+                        setError("Please go back and select a package and available time slot.");
+                        return;
+                      }
                       setBusy(true);
                       setError("");
                       try {
@@ -689,10 +714,6 @@ function Checkout({
                           id = order._id;
                           setOrderId(id);
                         }
-                        if (!proof)
-                          throw new Error(
-                            "Upload your payment screenshot first",
-                          );
                         const upload = new FormData();
                         upload.set("file", proof);
                         upload.set("purpose", "PAYMENT_PROOF");

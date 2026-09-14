@@ -16,7 +16,12 @@ import {
 } from "@/models";
 import { connectDB } from "@/lib/server/db";
 import { assert } from "@/lib/server/errors";
-import { notifyUser } from "@/lib/server/email";
+import {
+  notifyUser,
+  sendBookingCancelledEmail,
+  sendBookingCreatedEmail,
+  sendSessionRescheduledEmail,
+} from "@/lib/server/email";
 import { type Actor, hashToken } from "@/lib/server/security";
 import { bookingSchema, objectId } from "@/lib/server/validation";
 import {
@@ -25,6 +30,7 @@ import {
   generateSlots,
   ownsBooking,
 } from "@/lib/server/rules";
+import { createDailyRoom, createDailyMeetingToken } from "@/lib/server/daily";
 
 export async function settings(session?: ClientSession) {
   return (
@@ -281,6 +287,18 @@ export async function createBooking(actor: Actor, data: unknown) {
       [{ orderId: order._id, amount: order.total, currency: order.currency }],
       { session },
     );
+    sendBookingCreatedEmail({
+      customerId: actor.id,
+      trainerId: trainer._id,
+      bookingNumber: order.bookingNumber,
+      packageName: pkg.name,
+      sessionCount: pkg.sessionCount,
+      total: order.total,
+      currency: order.currency,
+      sessionStart: slot.start,
+      timezone: trainer.timezone,
+      orderId: String(order._id),
+    }).catch((err) => console.error("[createBooking Email Error]", err));
     return order.toObject();
   });
 }
@@ -360,6 +378,17 @@ export async function scheduleSession(actor: Actor, id: string, data: unknown) {
       previous.reminderSentAt = undefined;
       await previous.save({ session });
     } else {
+      let roomName = order.dailyRoomName;
+      let roomUrl = order.dailyRoomUrl;
+      if (!roomName || !roomUrl) {
+        const room = await createDailyRoom(order.bookingNumber || String(order._id));
+        roomName = room.roomName;
+        roomUrl = room.roomUrl;
+        order.dailyRoomName = roomName;
+        order.dailyRoomUrl = roomUrl;
+        order.videoProvider = "DAILY";
+      }
+
       const count = await Session.countDocuments({ orderId: id }).session(
         session,
       );
@@ -373,10 +402,12 @@ export async function scheduleSession(actor: Actor, id: string, data: unknown) {
             start: slot.start,
             end: slot.end,
             status: "CONFIRMED",
-            videoProvider: "NONE",
-            meetingId: "",
-            meetingUrl: "",
-            meetingStatus: "PENDING",
+            dailyRoomName: roomName,
+            dailyRoomUrl: roomUrl,
+            videoProvider: "DAILY",
+            meetingId: roomName,
+            meetingUrl: roomUrl,
+            meetingStatus: "CREATED",
           },
         ],
         { session },
@@ -384,6 +415,7 @@ export async function scheduleSession(actor: Actor, id: string, data: unknown) {
       order.remainingSessions--;
       await order.save({ session });
     }
+
     const trainer = await TrainerProfile.findById(order.trainerId).session(
       session,
     );
@@ -397,6 +429,15 @@ export async function scheduleSession(actor: Actor, id: string, data: unknown) {
         "/dashboard",
         session,
       );
+    sendSessionRescheduledEmail({
+      customerId: order.customerId,
+      trainerId: order.trainerId,
+      bookingNumber: order.bookingNumber,
+      newStart: slot.start,
+      timezone: order.timezone || undefined,
+      isNewSchedule: !previous,
+    }).catch((err) => console.error("[scheduleSession Email Error]", err));
+
     return { message: "Session saved" };
   });
 }
@@ -493,6 +534,14 @@ export async function cancelBooking(actor: Actor, id: string, data: unknown) {
         "/dashboard",
         session,
       );
+    sendBookingCancelledEmail({
+      customerId: order.customerId,
+      trainerId: order.trainerId,
+      bookingNumber: order.bookingNumber,
+      reason: input.reason,
+      refundAmount: amount,
+      orderId: id,
+    }).catch((err) => console.error("[cancelBooking Email Error]", err));
     return {
       message: "Booking cancelled",
       refundAmount: order.bookingStatus === "REFUND_PENDING" ? amount : 0,
@@ -579,3 +628,141 @@ export async function expireHolds() {
     });
   return orders.length;
 }
+
+export async function joinSession(actor: Actor, data: unknown) {
+  const input = z
+    .object({
+      bookingId: objectId.optional(),
+      sessionId: objectId.optional(),
+    })
+    .parse(data);
+
+  assert(
+    input.bookingId || input.sessionId,
+    "Booking ID or Session ID required",
+    400,
+  );
+
+  await connectDB();
+
+  let sessionDoc = input.sessionId
+    ? await Session.findById(input.sessionId)
+    : null;
+  let order = sessionDoc
+    ? await Order.findById(sessionDoc.orderId)
+    : null;
+
+  if (!order && input.bookingId) {
+    order = await Order.findById(input.bookingId);
+    if (order && !sessionDoc) {
+      sessionDoc = await Session.findOne({
+        orderId: order._id,
+        status: { $in: ["CONFIRMED", "COMPLETED"] },
+      }).sort({ start: 1 });
+    }
+  }
+
+  assert(order, "Booking not found", 404);
+  assert(sessionDoc, "Session not found", 404);
+
+  // 1. User is authenticated (enforced by actor).
+  // 2. Ownership check: user must be customer or trainer belonging to booking.
+  const isCustomer = String(order.customerId) === actor.id;
+  const trainer = await TrainerProfile.findById(order.trainerId).lean();
+  assert(trainer, "Trainer profile not found", 404);
+  const isTrainer = String(trainer.userId) === actor.id;
+
+  assert(
+    isCustomer || isTrainer || actor.role === "ADMIN",
+    "You are not authorized to join this session",
+    403,
+  );
+
+  // 3. Booking is confirmed check.
+  assert(
+    ["CONFIRMED", "COMPLETED"].includes(order.bookingStatus),
+    "Booking is not confirmed",
+    403,
+  );
+
+  // 4. Payment is approved check.
+  assert(order.paymentStatus === "PAID", "Payment is not approved", 403);
+
+  // 5. Joining time window check (15 minutes prior to session start up to session end).
+  const now = Date.now();
+  const startMs = sessionDoc.start.getTime();
+  const endMs = sessionDoc.end.getTime();
+  const allowedStart = startMs - 15 * 60 * 1000;
+  const allowedEnd = endMs;
+
+  assert(
+    now >= allowedStart,
+    `Session joining window opens 15 minutes before session start time`,
+    403,
+  );
+  assert(now <= allowedEnd, "Session has already ended", 403);
+
+  // Ensure Daily room exists
+  let roomName = sessionDoc.dailyRoomName || order.dailyRoomName;
+  let roomUrl = sessionDoc.dailyRoomUrl || order.dailyRoomUrl;
+
+  if (!roomName || !roomUrl) {
+    const room = await createDailyRoom(order.bookingNumber || String(order._id));
+    roomName = room.roomName;
+    roomUrl = room.roomUrl;
+    order.dailyRoomName = roomName;
+    order.dailyRoomUrl = roomUrl;
+    order.videoProvider = "DAILY";
+    sessionDoc.dailyRoomName = roomName;
+    sessionDoc.dailyRoomUrl = roomUrl;
+    sessionDoc.videoProvider = "DAILY";
+    sessionDoc.meetingId = roomName;
+    sessionDoc.meetingUrl = roomUrl;
+    sessionDoc.meetingStatus = "CREATED";
+    await Promise.all([order.save(), sessionDoc.save()]);
+  }
+
+  const userDoc = await User.findById(actor.id)
+    .select("name firstName lastName")
+    .lean();
+  const userName =
+    userDoc?.name ||
+    (userDoc?.firstName
+      ? `${userDoc.firstName} ${userDoc.lastName}`.trim()
+      : isTrainer
+        ? trainer.displayName
+        : "SPOTTER Member");
+
+  // Generate short-lived Daily meeting token
+  const token = await createDailyMeetingToken({
+    roomName,
+    userId: actor.id,
+    userName,
+    isTrainer: isTrainer || actor.role === "ADMIN",
+    start: sessionDoc.start,
+    end: sessionDoc.end,
+  });
+
+  const customerUser = await User.findById(order.customerId)
+    .select("name")
+    .lean();
+
+  return {
+    token,
+    roomUrl,
+    roomName,
+    isOwner: isTrainer || actor.role === "ADMIN",
+    session: {
+      id: String(sessionDoc._id),
+      orderId: String(order._id),
+      bookingNumber: order.bookingNumber,
+      sessionNumber: sessionDoc.sessionNumber,
+      start: sessionDoc.start.toISOString(),
+      end: sessionDoc.end.toISOString(),
+      trainerName: trainer.displayName,
+      customerName: customerUser?.name || "Customer",
+      packageName: order.packageSnapshot.name || "Coaching Session",
+    },
+  };
+}
+

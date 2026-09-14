@@ -35,7 +35,7 @@ const availabilityRows = (value: unknown): Item[] =>
       : "09:00",
     endTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(rule.endTime ?? ""))
       ? rule.endTime
-      : "17:00",
+      : "10:00",
   }));
 export const amount = (value: unknown) =>
   new Intl.NumberFormat("en-PK", { style: "currency", currency: "PKR" }).format(
@@ -234,6 +234,7 @@ export function PackagesPanel({
               type: "textarea",
               value: str(edit, "description"),
               required: true,
+              hint: "Write at least 10 characters detailing what this training package includes.",
             },
             {
               name: "sessionCount",
@@ -251,6 +252,7 @@ export function PackagesPanel({
               min: 15,
               max: 180,
               step: 15,
+              hint: "Must be a multiple of 15 minutes (e.g. 30, 45, 60, 90 minutes).",
             },
             {
               name: "price",
@@ -258,6 +260,7 @@ export function PackagesPanel({
               type: "number",
               value: num(edit, "price") / 100 || 1500,
               min: 100,
+              hint: "Minimum package price is PKR 100.",
             },
             {
               name: "sortOrder",
@@ -328,7 +331,8 @@ export function AvailabilityPanel({
   reload: () => void;
 }) {
   const [rules, setRules] = useState(availabilityRows(data.rules));
-  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
 
   const dailyTotals = DAY_ORDER.map((dayCode) => {
@@ -356,7 +360,7 @@ export function AvailabilityPanel({
     } else {
       setRules([
         ...rules,
-        { dayOfWeek: dayCode, startTime: "09:00", endTime: "13:00" },
+        { dayOfWeek: dayCode, startTime: "09:00", endTime: "10:00" },
       ]);
     }
   };
@@ -494,7 +498,18 @@ export function AvailabilityPanel({
 
         {totalExceededDay && (
           <p className="form-error mt-4" role="alert">
-            You can make up to 4 hours available per day.
+            Daily availability cannot exceed 4 hours (240 minutes) per day.
+          </p>
+        )}
+
+        {error && (
+          <p className="form-error mt-4" role="alert">
+            {error}
+          </p>
+        )}
+        {success && (
+          <p className="form-success mt-4" role="status">
+            {success}
           </p>
         )}
 
@@ -506,7 +521,8 @@ export function AvailabilityPanel({
             onClick={async () => {
               if (totalExceededDay) return;
               setBusy(true);
-              setMessage("");
+              setError("");
+              setSuccess("");
               try {
                 const res = await api<{ message: string }>(
                   "trainer/availability",
@@ -518,10 +534,10 @@ export function AvailabilityPanel({
                     })),
                   },
                 );
-                setMessage(res.message);
+                setSuccess(res.message);
                 reload();
               } catch (e) {
-                setMessage((e as Error).message);
+                setError((e as Error).message);
               } finally {
                 setBusy(false);
               }
@@ -529,7 +545,6 @@ export function AvailabilityPanel({
           >
             {busy ? "Saving availability…" : "Save Availability"}
           </button>
-          {message && <span className="text-sm font-semibold">{message}</span>}
         </div>
       </section>
 

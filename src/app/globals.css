@@ -702,6 +702,26 @@ a {
   min-width: 0;
 }
 
+.field-error-msg {
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 550;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.field-input-error,
+.field-input-error:focus,
+.field input.field-input-error,
+.field select.field-input-error,
+.field textarea.field-input-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+  background-color: #fef2f2 !important;
+}
+
 .form-success {
   color: var(--success);
   background: #edf7ee;

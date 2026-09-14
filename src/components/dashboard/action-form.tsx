@@ -1,6 +1,5 @@
-"use client";
 import { useRef, useState } from "react";
-import { api, apiResult } from "@/lib/client-api";
+import { api, ApiError, apiResult } from "@/lib/client-api";
 import { useStore } from "@/components/marketplace/store";
 export type Field = {
   name: string;
@@ -48,8 +47,20 @@ export function ActionForm({
   const [pending, setPending] = useState(false);
   const submitting = useRef(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState("");
   const { confirmModal } = useStore();
+
+  const clearFieldError = (name: string) => {
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
+  };
+
   return (
     <form
       className="workspace-form"
@@ -83,6 +94,7 @@ export function ActionForm({
         submitting.current = true;
         setPending(true);
         setError("");
+        setFieldErrors({});
         setSuccess("");
         try {
           const result = await api<{ message?: string }>(
@@ -93,15 +105,23 @@ export function ActionForm({
           setSuccess(result.message || "Saved successfully.");
           onDone?.();
         } catch (e) {
-          setError((e as Error).message);
+          if (e instanceof ApiError) {
+            setError(e.message);
+            if (e.fieldErrors && Object.keys(e.fieldErrors).length > 0) {
+              setFieldErrors(e.fieldErrors);
+            }
+          } else {
+            setError((e as Error).message);
+          }
         } finally {
           submitting.current = false;
           setPending(false);
         }
       }}
     >
-      {fields.map((field) =>
-        field.type === "checkbox-group" ? (
+      {fields.map((field) => {
+        const fieldError = fieldErrors[field.name];
+        return field.type === "checkbox-group" ? (
           <fieldset className="field checkbox-fieldset" key={field.name}>
             <legend>{field.label}</legend>
             <div className="checkbox-group">
@@ -111,6 +131,7 @@ export function ActionForm({
                     type="checkbox"
                     name={field.name}
                     value={opt}
+                    onChange={() => clearFieldError(field.name)}
                     defaultChecked={
                       Array.isArray(field.value)
                         ? field.value.includes(opt)
@@ -122,6 +143,11 @@ export function ActionForm({
               ))}
             </div>
             {field.hint && <small>{field.hint}</small>}
+            {fieldError && (
+              <p className="field-error-msg" role="alert">
+                {fieldError}
+              </p>
+            )}
           </fieldset>
         ) : (
           <label
@@ -136,12 +162,16 @@ export function ActionForm({
                 required={field.required}
                 rows={4}
                 maxLength={5000}
+                className={fieldError ? "field-input-error" : undefined}
+                onChange={() => clearFieldError(field.name)}
               />
             ) : field.type === "select" ? (
               <select
                 name={field.name}
                 defaultValue={String(field.value || field.options?.[0] || "")}
                 required={field.required}
+                className={fieldError ? "field-input-error" : undefined}
+                onChange={() => clearFieldError(field.name)}
               >
                 {field.options?.map((value) => (
                   <option key={value}>{value}</option>
@@ -152,11 +182,14 @@ export function ActionForm({
                 type="checkbox"
                 name={field.name}
                 defaultChecked={!!field.value}
+                onChange={() => clearFieldError(field.name)}
               />
             ) : (
               <input
                 name={field.name}
                 type={field.type || "text"}
+                className={fieldError ? "field-input-error" : undefined}
+                onChange={() => clearFieldError(field.name)}
                 autoComplete={
                   (
                     {
@@ -186,10 +219,15 @@ export function ActionForm({
                 maxLength={field.type === "password" ? 72 : 5000}
               />
             )}
+            {fieldError && (
+              <p className="field-error-msg" role="alert">
+                {fieldError}
+              </p>
+            )}
             {field.hint && <small>{field.hint}</small>}
           </label>
-        ),
-      )}
+        );
+      })}
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -226,6 +264,7 @@ export function UploadForm({
   const [busy, setBusy] = useState(false);
   const uploading = useRef(false);
   const [message, setMessage] = useState("");
+  const [fileError, setFileError] = useState("");
   const [selectedName, setSelectedName] = useState("");
   const [lastUploaded, setLastUploaded] = useState<UploadedFileInfo | null>(
     null,
@@ -237,8 +276,6 @@ export function UploadForm({
       {(visibleUrl || savedFile) && (
         <div className="uploaded-file-card" aria-live="polite">
           {field && visibleUrl ? (
-            // The media endpoint verifies ownership for unattached files and
-            // serves attached public images with the correct content type.
             // eslint-disable-next-line @next/next/no-img-element
             <img src={visibleUrl} alt="Your uploaded profile" />
           ) : (
@@ -278,13 +315,30 @@ export function UploadForm({
           const data = new FormData(form);
           const file = data.get("file");
           if (!(file instanceof File) || !file.size) {
-            setMessage("Choose a file first.");
+            setFileError("Please select a file to upload.");
+            return;
+          }
+          if (file.size > 4 * 1024 * 1024) {
+            setFileError("File size is too large. Maximum allowed size is 4 MB.");
+            return;
+          }
+          const validTypes =
+            purpose === "PRIVATE"
+              ? ["image/jpeg", "image/png", "image/webp", "application/pdf"]
+              : ["image/jpeg", "image/png", "image/webp"];
+          if (file.type && !validTypes.includes(file.type)) {
+            setFileError(
+              purpose === "PRIVATE"
+                ? "Invalid file type. Please upload a JPG, PNG, WebP or PDF."
+                : "Invalid file type. Please upload a JPG, PNG, or WebP photo.",
+            );
             return;
           }
           data.set("purpose", purpose);
           uploading.current = true;
           setBusy(true);
           setMessage("");
+          setFileError("");
           try {
             const response = await fetch("/api/uploads", {
               method: "POST",
@@ -308,11 +362,12 @@ export function UploadForm({
             await onUploaded?.(uploaded);
             setMessage(
               field
-                ? "Upload complete — this photo is saved to your profile."
-                : "Upload complete — now save the details below.",
+                ? "Upload complete — photo saved to your profile."
+                : "Upload complete — now save your details below.",
             );
           } catch (e) {
-            setMessage((e as Error).message);
+            if (e instanceof ApiError) setFileError(e.message);
+            else setFileError((e as Error).message);
           } finally {
             uploading.current = false;
             setBusy(false);
@@ -331,9 +386,15 @@ export function UploadForm({
             name="file"
             type="file"
             required
-            onChange={(event) =>
-              setSelectedName(event.currentTarget.files?.[0]?.name || "")
-            }
+            className={fileError ? "field-input-error" : undefined}
+            onChange={(event) => {
+              const selected = event.currentTarget.files?.[0];
+              setSelectedName(selected?.name || "");
+              setFileError("");
+              if (selected && selected.size > 4 * 1024 * 1024) {
+                setFileError("File is too large. Maximum allowed size is 4 MB.");
+              }
+            }}
             accept={
               purpose === "PRIVATE"
                 ? ".pdf,.jpg,.jpeg,.png,.webp"
@@ -344,8 +405,13 @@ export function UploadForm({
             {selectedName ? `Selected: ${selectedName}. ` : ""}
             Up to 4 MB. JPG, PNG, WebP{purpose === "PRIVATE" ? " or PDF" : ""}.
           </small>
+          {fileError && (
+            <p className="field-error-msg" role="alert">
+              {fileError}
+            </p>
+          )}
         </label>
-        <button className="btn outline small" disabled={busy || !selectedName}>
+        <button className="btn outline small" disabled={busy || !selectedName || !!fileError}>
           {busy
             ? "Uploading…"
             : field && (currentUrl || savedFile)
