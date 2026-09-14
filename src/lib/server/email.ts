@@ -466,7 +466,7 @@ export async function sendBookingCreatedEmail(params: {
       badgeBg: "#f59e0b",
       badgeColor: "#0f172a",
       contentHtml: `
-        <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(customer.name)}</strong>, your session reservation with <strong>${escapeHtml(trainerProfile?.displayName || "your coach")}</strong> has been created.</p>
+        <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(customer.name)}</strong>, your session reservation with <strong>${escapeHtml(trainerDisplayName)}</strong> has been created.</p>
         <table width="100%" border="0" cellspacing="0" cellpadding="10" style="background-color: #0f172a; border-radius: 8px; border: 1px solid #334155; margin: 20px 0; font-size: 14px;">
           <tr>
             <td style="color: #94a3b8; width: 35%;">Booking #:</td>
@@ -509,7 +509,7 @@ export async function sendBookingCreatedEmail(params: {
       badgeText: "New Reservation",
       badgeBg: "#0284c7",
       contentHtml: `
-        <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(trainerProfile?.displayName || trainerUser.name)}</strong>, a client reserved a session package with you.</p>
+        <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(trainerDisplayName)}</strong>, a client reserved a session package with you.</p>
         <table width="100%" border="0" cellspacing="0" cellpadding="10" style="background-color: #0f172a; border-radius: 8px; border: 1px solid #334155; margin: 20px 0; font-size: 14px;">
           <tr>
             <td style="color: #94a3b8; width: 35%;">Client Name:</td>
@@ -690,7 +690,7 @@ export async function sendSessionReminderEmail(params: {
       badgeText: "Session Reminder",
       badgeBg: "#0284c7",
       contentHtml: `
-        <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(customer.name)}</strong>, your live coaching session with <strong>${escapeHtml(trainerProfile?.displayName || "your coach")}</strong> is starting soon!</p>
+        <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(customer.name)}</strong>, your live coaching session with <strong>${escapeHtml(trainerDisplayName)}</strong> is starting soon!</p>
         <div style="background-color: #0f172a; border-radius: 8px; padding: 16px; border: 1px solid #334155; margin: 20px 0;">
           <p style="margin: 0; font-size: 15px; color: #38bdf8; font-weight: 700;">${escapeHtml(formattedTime)}</p>
         </div>
@@ -718,7 +718,7 @@ export async function sendSessionReminderEmail(params: {
       badgeText: "Session Reminder",
       badgeBg: "#0284c7",
       contentHtml: `
-        <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(trainerProfile?.displayName || trainerUser.name)}</strong>, your coaching session with <strong>${escapeHtml(customer?.name || "Client")}</strong> is scheduled soon!</p>
+        <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(trainerDisplayName)}</strong>, your coaching session with <strong>${escapeHtml(customer?.name || "Client")}</strong> is scheduled soon!</p>
         <div style="background-color: #0f172a; border-radius: 8px; padding: 16px; border: 1px solid #334155; margin: 20px 0;">
           <p style="margin: 0; font-size: 15px; color: #38bdf8; font-weight: 700;">${escapeHtml(formattedTime)}</p>
         </div>
@@ -830,7 +830,7 @@ export async function sendBookingCancelledEmail(params: {
       badgeText: "Cancelled",
       badgeBg: "#ef4444",
       contentHtml: `
-        <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(trainerProfile?.displayName || trainerUser.name)}</strong>, booking <strong>${escapeHtml(params.bookingNumber)}</strong> has been cancelled.</p>
+        <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(trainerDisplayName)}</strong>, booking <strong>${escapeHtml(params.bookingNumber)}</strong> has been cancelled.</p>
         <p style="margin: 0 0 16px 0;"><strong>Reason:</strong> ${escapeHtml(params.reason)}</p>
       `,
       ctaText: "Open Trainer Dashboard",
@@ -904,7 +904,7 @@ export async function sendSessionRescheduledEmail(params: {
       badgeText: eventTitle,
       badgeBg: "#0284c7",
       contentHtml: `
-        <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(trainerProfile?.displayName || trainerUser.name)}</strong>, a session time was scheduled by your client:</p>
+        <p style="margin: 0 0 16px 0;">Hi <strong>${escapeHtml(trainerDisplayName)}</strong>, a session time was scheduled by your client:</p>
         <div style="background-color: #0f172a; border-radius: 8px; padding: 16px; border: 1px solid #334155; margin: 20px 0;">
           <p style="margin: 0; font-size: 15px; color: #38bdf8; font-weight: 700;">${escapeHtml(formattedTime)}</p>
         </div>
