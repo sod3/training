@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { HeroSection } from "@/components/marketplace/hero-section";
 import { TrainerCard } from "@/components/marketplace/trainer-card";
-import { HowItWorks } from "@/components/marketplace/how-it-works";
 import { HorizontalShowcase } from "@/components/motion/horizontal-showcase";
 import { SplitHeading } from "@/components/motion/reveal";
 import { Reveal } from "@/components/motion/reveal";
@@ -103,7 +102,6 @@ export default async function Home() {
           </div>
         )}
       </section>
-      <HowItWorks />
       <HomeMatchExperience trainers={trainers} />
       <CoachingStory />
       <TrustSection />

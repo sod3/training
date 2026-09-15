@@ -9,7 +9,6 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import { gsap, useGSAP, desktopMotionQuery } from "@/components/motion/gsap";
-import { SplitHeading } from "@/components/motion/reveal";
 const stages = [
   {
     title: "Tell us what you're working toward.",
@@ -85,12 +84,6 @@ export function HowItWorks() {
   return (
     <section ref={ref} className="performance-story" id="how-it-works">
       <div className="container story-shell">
-        <div className="story-heading">
-          <p className="eyebrow">THE SPOTTER APPROACH</p>
-          <SplitHeading
-            lines={["A better connection.", "A stronger beginning."]}
-          />
-        </div>
         <div className="story-panels">
           {stages.map(({ title, copy, icon: Icon, label, tags }, index) => (
             <article className="story-panel" key={title}>
